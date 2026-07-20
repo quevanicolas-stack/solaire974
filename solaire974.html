@@ -569,6 +569,7 @@ canvas{max-height:220px}
       <div class="fl"><div class="fl-lbl">Nom & Prénom</div><input type="text" id="nom" placeholder="ex. QUEVA Nicolas" oninput="score()"></div>
       <div class="fl"><div class="fl-lbl">Ville</div><select id="ville" onchange="syncVille()"><option value="">— Sélectionner —</option></select></div>
     </div>
+    <div class="fl" style="margin-top:14px"><div class="fl-lbl">Adresse exacte</div><input type="text" id="adresse" placeholder="ex. 12 rue des Filaos, 97410 Saint-Pierre" oninput="S.address=this.value.trim();if(typeof updateComReminder==='function')updateComReminder()"></div>
     <div class="g2" style="margin-top:14px">
       <div class="fl"><div class="fl-lbl">Email</div><input type="email" id="email" placeholder="ex. nicolas.queva@email.re" oninput="S.email=this.value.trim();score()"></div>
       <div class="fl"><div class="fl-lbl">Téléphone</div><input type="tel" id="tel" placeholder="ex. 0692 12 34 56" oninput="S.tel=this.value.trim()"></div>
@@ -1311,8 +1312,7 @@ function buildComGrid(){
 function syncVille(){
   const v=document.getElementById('ville').value;
   const c=COMMUNES.find(x=>x.name===v);if(!c)return;
-  S.address='';               // sélection manuelle par ville : pas d'adresse exacte
-  applyCommune(c);
+  applyCommune(c);            // l'adresse exacte (champ dédié) reste indépendante de la ville
 }
 function applyCommune(c){
   S.commune=c;
@@ -1407,6 +1407,7 @@ function geoSaisir(){
 function geoConfirm(){
   const inp=document.getElementById('geoManualInput');
   S.address=geoManualMode?(inp.value.trim()||geoData.label):geoData.label;
+  const af=document.getElementById('adresse');if(af)af.value=S.address;   // remplit le champ Adresse exacte
   applyCommune(geoData.commune);
   closeGeoModal();
   const st=document.getElementById('geoStatus');
