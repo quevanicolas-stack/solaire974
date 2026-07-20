@@ -400,7 +400,8 @@ canvas{max-height:220px}
 .cgv .cgv-title{font-family:system-ui,'Segoe UI',sans-serif;font-size:19px;font-weight:800;color:var(--cgd);line-height:1}
 .cgv .cgv-legal{font-size:9px;color:var(--cmut);margin-top:5px}
 .cgv .cgv-intro{font-size:10.5px;color:#48544f;margin:14px 0 4px;padding:9px 12px;background:var(--csoft);border-radius:8px;border-left:3px solid var(--cg)}
-.cgv .cgv-body{column-count:2;column-gap:26px;margin-top:10px}
+.cgv .cgv-body{display:grid;grid-template-columns:1fr 1fr;gap:0 26px;margin-top:10px}
+.cgv .cgv-col{min-width:0}
 .cgv .cgv-art{break-inside:avoid;-webkit-column-break-inside:avoid;margin-bottom:11px}
 .cgv .cgv-art h4{font-family:system-ui,'Segoe UI',sans-serif;font-size:11.5px;font-weight:700;color:var(--cgd);margin:0 0 4px;padding-bottom:3px;border-bottom:1px solid var(--cline)}
 .cgv .cgv-art p{margin:0 0 4px;color:#3c4a45}
@@ -431,24 +432,24 @@ canvas{max-height:220px}
   .devis{font-size:11.5px;line-height:1.34}
   .devis .dv-head{padding-bottom:11px}
   .devis .contact{line-height:1.5}
-  .devis .cards{margin-top:11px}
+  .devis .cards{margin-top:8px}
   .devis .card-client{padding:11px 14px}
   .devis .card-meta{padding:11px 14px;gap:8px}
-  .devis .inforows{margin-top:11px;gap:6px 22px}
+  .devis .inforows{margin-top:8px;gap:5px 22px}
   .devis .inf{padding:5px 0}
-  .devis .body{margin-top:10px;gap:15px}
+  .devis .body{margin-top:7px;gap:14px}
   .devis .dv-tbl tbody td{padding:5px 9px;line-height:1.32}
   .devis .col{gap:9px}
   .devis .tt-row{padding:6px 13px}
   .devis .mini p{line-height:1.45}
-  .devis .prodrow{margin-top:9px}
-  .devis .prod{padding:11px 13px}
-  .devis .prodchart{min-height:56px}
+  .devis .prodrow{margin-top:6px}
+  .devis .prod{padding:8px 12px}
+  .devis .prodchart{min-height:46px}
   .devis .secu p{line-height:1.45}
-  .devis .mentions{margin-top:8px;padding-top:8px}
-  .devis .signs{margin-top:7px}
-  .devis .sign{min-height:46px;padding:9px 12px}
-  .devis .dv-foot{margin-top:8px;padding-top:9px}
+  .devis .mentions{margin-top:6px;padding-top:6px}
+  .devis .signs{margin-top:5px}
+  .devis .sign{min-height:36px;padding:7px 12px}
+  .devis .dv-foot{margin-top:6px;padding-top:7px}
   /* ── CGV : nouvelle page après le devis, compaction impression ── */
   .cgv{break-before:page;box-shadow:none!important;border-radius:0!important;margin-top:0!important;padding:0!important;font-size:8.4px;line-height:1.34}
   .cgv .cgv-head{padding-bottom:8px}
@@ -458,7 +459,7 @@ canvas{max-height:220px}
   .cgv .cgv-title{font-size:15px}
   .cgv .cgv-legal{font-size:8px;margin-top:3px}
   .cgv .cgv-intro{font-size:8.2px;margin:8px 0 3px;padding:6px 9px}
-  .cgv .cgv-body{column-gap:18px;margin-top:6px}
+  .cgv .cgv-body{gap:0 18px;margin-top:6px}
   .cgv .cgv-art{margin-bottom:5px}
   .cgv .cgv-art h4{font-size:9px;margin-bottom:2px;padding-bottom:2px}
   .cgv .cgv-art p{margin-bottom:2px}
@@ -907,6 +908,7 @@ canvas{max-height:220px}
       </header>
       <div class="cgv-intro">Comment ça marche ? — Les présentes conditions s'appliquent à toute commande ou devis signé avec Ecologreen pour l'installation d'une centrale photovoltaïque.</div>
       <div class="cgv-body">
+        <div class="cgv-col">
         <section class="cgv-art">
           <h4>1. Valeur contractuelle</h4>
           <p>Nos conditions générales sont contractuelles et forment un tout avec la commande ou le devis.</p>
@@ -959,6 +961,8 @@ canvas{max-height:220px}
           <p class="lbl">Remarque :</p>
           <p>Aucune compensation de créances ne sera possible en cas de multiplicité de contrats entre les parties.</p>
         </section>
+        </div>
+        <div class="cgv-col">
         <section class="cgv-art">
           <h4>9. Réserve de propriété</h4>
           <p class="lbl">Propriété des matériaux :</p>
@@ -1013,6 +1017,7 @@ canvas{max-height:220px}
           <p>Le client dispose d'un droit de rétractation de 14 jours à compter de la signature du devis. Il doit envoyer un courrier au prestataire dans les termes suivants :</p>
           <p class="cgv-quote">« Madame, Monsieur, j'ai passé commande le même jour auprès de votre société (…) selon devis (…), pour un montant de (…). Je déclare utiliser mon droit de rétractation. En conséquence, je vous prie de me rembourser sans délai les sommes que je vous ai déjà versées ou de détruire le chèque que je vous ai adressé et / ou de ne pas prélever le montant de cette commande annulée, ainsi que de ne pas procéder à la livraison éventuellement prévue. »</p>
         </section>
+        </div>
       </div>
       <footer class="cgv-foot">Ecologreen — Conditions Générales de Vente · Document contractuel annexé au devis · La Réunion (974) · contact@ecologreen.re</footer>
     </div>
