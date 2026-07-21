@@ -1618,6 +1618,15 @@ function renderProd(){
   // Vérification de cohérence (indicateur de debug visible)
   const consoCheck=r.autoKwh+r.edfKwh;
   const deltaCheck=Math.abs(consoCheck-r.conso);
+  // Décomposition batterie : l'autoconsommation totale = solaire consommé DIRECTEMENT + énergie restituée par la batterie
+  const batDisAn=r.batDischargeAn||0;                       // consommé depuis la batterie (kWh/an)
+  const autoDirectAn=Math.max(0,r.autoKwh-batDisAn);        // solaire consommé directement (hors batterie)
+  const pAutoD=r.prodAn>0?Math.round(autoDirectAn/r.prodAn*100):0;   // % de la production
+  const pStock=r.prodAn>0?Math.round(r.batChargeAn/r.prodAn*100):0;
+  const cAutoD=r.conso>0?Math.round(autoDirectAn/r.conso*100):0;     // % de la consommation
+  const cBat=r.conso>0?Math.round(batDisAn/r.conso*100):0;
+  const cEdf=r.conso>0?Math.round(r.edfKwh/r.conso*100):0;
+  const perteBat=Math.max(0,r.batChargeAn-batDisAn);        // pertes de rendement batterie
 
   document.getElementById('prodRes').innerHTML=`
   <div class="metrics" style="grid-template-columns:repeat(4,1fr);margin-bottom:14px">
@@ -1634,17 +1643,17 @@ function renderProd(){
       <div style="font-size:9px;color:var(--txt3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Production — ${r.prodAn.toLocaleString('fr')} kWh/an</div>
       <div style="margin-bottom:7px">
         <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px;flex-wrap:nowrap;gap:4px">
-          <span style="color:var(--grn-l);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Autoconsommé — ${r.autoKwh.toLocaleString('fr')} kWh</span>
-          <span style="color:var(--grn-l);flex-shrink:0">${scPct}%</span>
+          <span style="color:var(--grn-l);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Autoconsommé direct — ${autoDirectAn.toLocaleString('fr')} kWh</span>
+          <span style="color:var(--grn-l);flex-shrink:0">${pAutoD}%</span>
         </div>
-        <div style="height:5px;background:var(--bg);border-radius:3px;overflow:hidden"><div style="width:${scPct}%;height:100%;background:var(--grn);border-radius:3px"></div></div>
+        <div style="height:5px;background:var(--bg);border-radius:3px;overflow:hidden"><div style="width:${pAutoD}%;height:100%;background:var(--grn);border-radius:3px"></div></div>
       </div>
       ${hasBat?`<div style="margin-bottom:7px">
         <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px;flex-wrap:nowrap;gap:4px">
           <span style="color:#C77DFF;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Stocké batterie — ${r.batChargeAn.toLocaleString('fr')} kWh</span>
-          <span style="color:#C77DFF;flex-shrink:0">${r.prodAn>0?Math.round(r.batChargeAn/r.prodAn*100):0}%</span>
+          <span style="color:#C77DFF;flex-shrink:0">${pStock}%</span>
         </div>
-        <div style="height:5px;background:var(--bg);border-radius:3px;overflow:hidden"><div style="width:${r.prodAn>0?Math.round(r.batChargeAn/r.prodAn*100):0}%;height:100%;background:#9B5DE5;border-radius:3px"></div></div>
+        <div style="height:5px;background:var(--bg);border-radius:3px;overflow:hidden"><div style="width:${pStock}%;height:100%;background:#9B5DE5;border-radius:3px"></div></div>
       </div>`:''}
       <div>
         <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px;flex-wrap:nowrap;gap:4px">
@@ -1653,25 +1662,33 @@ function renderProd(){
         </div>
         <div style="height:5px;background:var(--bg);border-radius:3px;overflow:hidden"><div style="width:${surplusPct}%;height:100%;background:rgba(56,139,253,.5);border-radius:3px"></div></div>
       </div>
+      ${hasBat&&perteBat>0?`<div style="margin-top:8px;font-size:9px;color:var(--txt3)">Pertes de conversion batterie : ~${perteBat.toLocaleString('fr')} kWh (rendement 92 %)</div>`:''}
     </div>
 
     <div style="background:var(--bg3);border:1px solid var(--bdr);border-radius:var(--r);padding:12px">
       <div style="font-size:9px;color:var(--txt3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Consommation — ${r.conso.toLocaleString('fr')} kWh/an</div>
       <div style="margin-bottom:7px">
         <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px;flex-wrap:nowrap;gap:4px">
-          <span style="color:var(--amb-l);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Solaire — ${r.autoKwh.toLocaleString('fr')} kWh</span>
-          <span style="color:var(--amb-l);flex-shrink:0">${autoPct}%</span>
+          <span style="color:var(--amb-l);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Solaire direct — ${autoDirectAn.toLocaleString('fr')} kWh</span>
+          <span style="color:var(--amb-l);flex-shrink:0">${cAutoD}%</span>
         </div>
-        <div style="height:5px;background:var(--bg);border-radius:3px;overflow:hidden"><div style="width:${autoPct}%;height:100%;background:var(--amb-l);border-radius:3px"></div></div>
+        <div style="height:5px;background:var(--bg);border-radius:3px;overflow:hidden"><div style="width:${cAutoD}%;height:100%;background:var(--amb-l);border-radius:3px"></div></div>
       </div>
+      ${hasBat?`<div style="margin-bottom:7px">
+        <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px;flex-wrap:nowrap;gap:4px">
+          <span style="color:#C77DFF;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Depuis batterie — ${batDisAn.toLocaleString('fr')} kWh</span>
+          <span style="color:#C77DFF;flex-shrink:0">${cBat}%</span>
+        </div>
+        <div style="height:5px;background:var(--bg);border-radius:3px;overflow:hidden"><div style="width:${cBat}%;height:100%;background:#9B5DE5;border-radius:3px"></div></div>
+      </div>`:''}
       <div>
         <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px;flex-wrap:nowrap;gap:4px">
           <span style="color:var(--red);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Réseau EDF — ${r.edfKwh.toLocaleString('fr')} kWh</span>
-          <span style="color:var(--red);flex-shrink:0">${100-autoPct}%</span>
+          <span style="color:var(--red);flex-shrink:0">${cEdf}%</span>
         </div>
-        <div style="height:5px;background:var(--bg);border-radius:3px;overflow:hidden"><div style="width:${100-autoPct}%;height:100%;background:rgba(248,81,73,.5);border-radius:3px"></div></div>
+        <div style="height:5px;background:var(--bg);border-radius:3px;overflow:hidden"><div style="width:${cEdf}%;height:100%;background:rgba(248,81,73,.5);border-radius:3px"></div></div>
       </div>
-      <div style="margin-top:9px;font-size:10px;color:${deltaCheck<5?'var(--grn-l)':'var(--red)'}">✓ ${r.autoKwh.toLocaleString('fr')} + ${r.edfKwh.toLocaleString('fr')} = ${consoCheck.toLocaleString('fr')} kWh</div>
+      <div style="margin-top:9px;font-size:10px;color:${deltaCheck<5?'var(--grn-l)':'var(--red)'}">✓ ${autoDirectAn.toLocaleString('fr')}${hasBat?' + '+batDisAn.toLocaleString('fr')+' (bat.)':''} + ${r.edfKwh.toLocaleString('fr')} = ${consoCheck.toLocaleString('fr')} kWh</div>
     </div>
   </div>`;
 }
