@@ -502,7 +502,7 @@ canvas{max-height:220px}
   .ph-btns .btn{flex:1;justify-content:center}
   /* Grilles → 1 colonne */
   .g2,.g3,.g4,.obj-grid,.res-cmp,.flux-row,.shade-grid,.rec-grid,.dv-sign{grid-template-columns:1fr}
-  .metrics{grid-template-columns:1fr 1fr}
+  .metrics{grid-template-columns:1fr 1fr!important}
   .compass-layout{grid-template-columns:1fr;justify-items:center}
   .fct-cmp{grid-template-columns:1fr;gap:8px}
   .fct-cmp>div:nth-child(2){transform:rotate(90deg)}
@@ -521,8 +521,19 @@ canvas{max-height:220px}
 }
 @media(max-width:400px){
   .page{padding:12px 10px 56px}
-  .metrics{grid-template-columns:1fr 1fr}
+  .metrics{grid-template-columns:1fr 1fr!important}
   .com-grid,.pwr-grid{grid-template-columns:1fr}
+  .rec-v{white-space:normal;overflow-wrap:anywhere}
+}
+/* ── Devis à l'écran mobile uniquement (n'affecte pas l'impression) ── */
+@media screen and (max-width:860px){
+  .devis .dv-head{flex-direction:column;gap:10px}
+  .devis .head-right{text-align:left}
+  .devis .dv-foot{flex-direction:column;align-items:flex-start;gap:12px}
+  .devis .props{flex-wrap:wrap;gap:10px}
+  .devis .thanks{white-space:normal}
+  .cgv .cgv-head{flex-direction:column;gap:10px}
+  .cgv .cgv-head-right{text-align:left}
 }
 </style>
 </head>
@@ -1637,7 +1648,7 @@ function renderProd(){
   </div>
 
   <div style="font-size:9px;color:var(--txt3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px">Bilan énergétique annuel</div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px;margin-bottom:14px">
 
     <div style="background:var(--bg3);border:1px solid var(--bdr);border-radius:var(--r);padding:12px">
       <div style="font-size:9px;color:var(--txt3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Production — ${r.prodAn.toLocaleString('fr')} kWh/an</div>
