@@ -428,44 +428,47 @@ canvas{max-height:220px}
   .devis .prodrow{grid-template-columns:1.15fr 1fr!important}
   .devis .inforows{grid-template-columns:1fr 1fr!important}
   .devis .signs{grid-template-columns:1fr 1fr!important}
-  /* ── Impression : compression légère (2 colonnes, proche de l'écran) ── */
-  .devis{font-size:11.5px;line-height:1.34}
-  .devis .dv-head{padding-bottom:11px}
-  .devis .contact{line-height:1.5}
-  .devis .cards{margin-top:8px}
-  .devis .card-client{padding:11px 14px}
-  .devis .card-meta{padding:11px 14px;gap:8px}
-  .devis .inforows{margin-top:8px;gap:5px 22px}
-  .devis .inf{padding:5px 0}
-  .devis .body{margin-top:7px;gap:14px}
-  .devis .dv-tbl tbody td{padding:5px 9px;line-height:1.32}
-  .devis .col{gap:9px}
-  .devis .tt-row{padding:6px 13px}
-  .devis .mini p{line-height:1.45}
-  .devis .prodrow{margin-top:6px}
-  .devis .prod{padding:8px 12px}
-  .devis .prodchart{min-height:46px}
-  .devis .secu p{line-height:1.45}
-  .devis .mentions{margin-top:6px;padding-top:6px}
-  .devis .signs{margin-top:5px}
-  .devis .sign{min-height:36px;padding:7px 12px}
-  .devis .dv-foot{margin-top:6px;padding-top:7px}
+  /* ── Impression : compression pour tenir LARGEMENT sur 1 page (marge de sécurité iOS/Safari) ── */
+  .devis{font-size:10.3px;line-height:1.25}
+  .devis .dv-head{padding-bottom:7px}
+  .devis .contact{line-height:1.4}
+  .devis .cards{margin-top:5px}
+  .devis .card-client{padding:8px 11px}
+  .devis .card-meta{padding:8px 11px;gap:5px}
+  .devis .inforows{margin-top:5px;gap:3px 16px}
+  .devis .inf{padding:2px 0}
+  .devis .body{margin-top:5px;gap:11px}
+  .devis .dv-tbl thead th{padding:3px 8px}
+  .devis .dv-tbl tbody td{padding:2.5px 8px;line-height:1.2}
+  .devis .col{gap:6px}
+  .devis .tt-row{padding:4px 11px}
+  .devis .tt-ttc{padding:6px 11px}
+  .devis .mini{padding:7px 10px}
+  .devis .mini p{line-height:1.3;font-size:8.3px}
+  .devis .prodrow{margin-top:5px}
+  .devis .prod{padding:6px 10px}
+  .devis .prodchart{min-height:32px}
+  .devis .secu p{line-height:1.3;font-size:8.3px}
+  .devis .mentions{margin-top:4px;padding-top:4px}
+  .devis .signs{margin-top:4px}
+  .devis .sign{min-height:22px;padding:5px 10px}
+  .devis .dv-foot{margin-top:4px;padding-top:5px}
   /* ── CGV : nouvelle page après le devis, compaction impression ── */
-  .cgv{break-before:page;box-shadow:none!important;border-radius:0!important;margin-top:0!important;padding:0!important;font-size:8.4px;line-height:1.34}
-  .cgv .cgv-head{padding-bottom:8px}
-  .cgv .cgv-logo{width:36px;height:36px}
-  .cgv .cgv-name{font-size:18px}
-  .cgv .cgv-sub{font-size:8.5px}
-  .cgv .cgv-title{font-size:15px}
-  .cgv .cgv-legal{font-size:8px;margin-top:3px}
-  .cgv .cgv-intro{font-size:8.2px;margin:8px 0 3px;padding:6px 9px}
-  .cgv .cgv-body{gap:0 18px;margin-top:6px}
-  .cgv .cgv-art{margin-bottom:5px}
-  .cgv .cgv-art h4{font-size:9px;margin-bottom:2px;padding-bottom:2px}
-  .cgv .cgv-art p{margin-bottom:2px}
-  .cgv .cgv-art .lbl{font-size:8.2px;margin-top:3px}
-  .cgv .cgv-quote{font-size:8px;padding:5px 8px;margin-top:3px}
-  .cgv .cgv-foot{margin-top:8px;padding-top:6px;font-size:7px}
+  .cgv{break-before:page;box-shadow:none!important;border-radius:0!important;margin-top:0!important;padding:0!important;font-size:7.7px;line-height:1.27}
+  .cgv .cgv-head{padding-bottom:6px}
+  .cgv .cgv-logo{width:32px;height:32px}
+  .cgv .cgv-name{font-size:16px}
+  .cgv .cgv-sub{font-size:8px}
+  .cgv .cgv-title{font-size:13px}
+  .cgv .cgv-legal{font-size:7.4px;margin-top:2px}
+  .cgv .cgv-intro{font-size:7.5px;margin:6px 0 3px;padding:5px 8px}
+  .cgv .cgv-body{gap:0 15px;margin-top:5px}
+  .cgv .cgv-art{margin-bottom:4px}
+  .cgv .cgv-art h4{font-size:8.3px;margin-bottom:1.5px;padding-bottom:1px}
+  .cgv .cgv-art p{margin-bottom:1.5px}
+  .cgv .cgv-art .lbl{font-size:7.5px;margin-top:2px}
+  .cgv .cgv-quote{font-size:7.3px;padding:4px 7px;margin-top:2px}
+  .cgv .cgv-foot{margin-top:6px;padding-top:4px;font-size:6.6px}
 }
 @media(max-width:860px){
   .devis .cards,.devis .body,.devis .prodrow,.devis .inforows,.devis .signs{grid-template-columns:1fr}
