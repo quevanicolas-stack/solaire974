@@ -1144,14 +1144,32 @@ function buildCentrale(kWc,bat){
     ref:`K${kWc}KWC${bat>0?'_'+bat:''}`};
 }
 
-// Primes S24-ZNI Réunion — paliers réels CRE : tarif dégressif par tranche de puissance
-// Référence vérifiée : 6 kWc → N-2:6060€ / N-1:5820€ / N:5580€ (soit 1010/970/930 €/kWc)
-// Au-delà de 9 kWc, palier supérieur (9-36 kWc) appliqué avec dégressivité ≈ -15% (paliers CRE non identiques entre tranches)
+// Prime à l'investissement (autoconsommation avec vente du surplus) — ZNI Réunion, EDF SEI.
+// Arrêté ZNI du 5 janvier 2024, barème CRE révisé chaque trimestre. Le taux s'applique à la
+// PUISSANCE TOTALE selon la tranche dans laquelle elle tombe (effet de seuil réel — d'où
+// l'intérêt de caler la puissance juste sous 3 ou 9 kWc) :
+//   ≤ 3 kWc       : 1550 €/kWc (1,55 €/Wc)
+//   > 3 à 9 kWc   :  930 €/kWc (0,93 €/Wc)   — ex. 6 kWc = 5580 €, 9 kWc = 8370 €
+//   > 9 à 36 kWc  :  120 €/kWc (0,12 €/Wc, plafond 4320 €)
+//   > 36 à 100 kWc:   60 €/kWc (0,06 €/Wc, plafond 6000 €)
+// Valeurs période courante (N). Dégressivité trimestrielle indicative : +~4,3 % en N-1, +~8,6 % en N-2.
+function getPrimeRateN(kWc){
+  if(kWc<=3)  return 1550;
+  if(kWc<=9)  return 930;
+  if(kWc<=36) return 120;
+  return 60;
+}
+function getPrimePalier(kWc){
+  if(kWc<=3)  return '≤ 3 kWc (1,55 €/Wc)';
+  if(kWc<=9)  return '3 à 9 kWc (0,93 €/Wc)';
+  if(kWc<=36) return '9 à 36 kWc (0,12 €/Wc)';
+  return '36 à 100 kWc (0,06 €/Wc)';
+}
 function getPrimeRate(kWc,periode){
-  const baseRates={'N-2':1010,'N-1':970,'N':930};
-  let rate=baseRates[periode]||930;
-  if(kWc>9)rate=rate*0.85; // palier 9-36 kWc
-  return rate;
+  // Barème par tranche (période N) + légère dégressivité pour N-1 / N-2 (préserve 1010/970/930 sur la tranche ≤9)
+  const base=getPrimeRateN(kWc);
+  const factor=periode==='N-2'?1010/930:periode==='N-1'?970/930:1;
+  return Math.round(base*factor);
 }
 function getPrimeEDF(kWc,periode){
   return Math.round(kWc*getPrimeRate(kWc,periode));
@@ -1843,7 +1861,7 @@ function renderPrimes(){
     rows+=`<tr class="${isActive?'active-p':''}"><td>${p.annee}</td><td>${val.toLocaleString('fr')} €</td><td>${variation}</td></tr>`;
   });
   document.getElementById('primeTbody').innerHTML=rows;
-  document.getElementById('primeNote').textContent=`Palier appliqué : ${kWc<=9?'≤ 9 kWc':'9-36 kWc (dégressivité -15%)'} — calcul basé sur ${kWc} kWc installés.`;
+  document.getElementById('primeNote').textContent=`Palier appliqué : ${getPrimePalier(kWc)} — calcul basé sur ${kWc} kWc installés.`;
 }
 
 function renderAides(){
@@ -2001,44 +2019,34 @@ function simulateRentability(){
   return{rows,sched,breakevenYears,cumulFinal:cumul};
 }
 
+// Formatage unique du seuil de rentabilité (temps de retour = 1re fraction d'année où le cumul ≥ 0).
+// Utilisé à l'identique page 3, page 5 (texte + graphique) et synthèse — garantit la cohérence.
+function formatSeuil(bkv){
+  if(bkv===null||bkv===undefined) return {txt:'> 20 ans',color:'var(--red)'};
+  if(bkv<=0) return {txt:'Immédiat',color:'var(--grn-l)'};
+  if(bkv<1)  return {txt:Math.round(bkv*12)+' mois',color:'var(--grn-l)'};
+  return {txt:bkv.toFixed(1).replace('.',',')+' ans',color:bkv<=2?'var(--grn-l)':bkv<=7?'var(--amb-l)':'var(--red)'};
+}
+
 function renderSeuil(){
   const r=getCalc();
   const sim=simulateRentability();
-  const fa=getFactApres();
-  const sched=sim.sched;
   const tarRev=S.tarRev||TARIF_REVENTE_ZNI;
   const ecoAnCroisiere=r.autoKwh*r.pTTC+r.surplusKwh*tarRev;
-  // Effort mensuel réel première année vs avant installation
-  const factAvantMens=(S.factAn||2565)/12;
-  const effortMens=sched.mode==='propre'
-    ?(fa.factApresAn/12-factAvantMens)
-    :(sched.mens2026+fa.factApresAn/12-factAvantMens);
+  // Effort journalier = effort mensuel réel 2026 (identique à l'étape 4 Financement) ÷ 30,44 jours
+  const effortMens=getEffortMensuel2026();
   const effortJour=effortMens/30.44;
   const effortSign=effortJour>=0?'+':'';
-  // Seuil de rentabilité : première année où l'économie annuelle nette (tableau) est positive
-  let seuilTxt_s,seuilColor_s,seuilUnit_s;
-  let seuilFound=null;
-  for(let i=0;i<sim.rows.length;i++){
-    if(sim.rows[i].ecoNetteAn>0){seuilFound=i;break;}
-  }
-  if(seuilFound===null){
-    seuilTxt_s='> 20 ans';seuilColor_s='var(--red)';seuilUnit_s='non atteint dans la période';
-  }else if(seuilFound===0){
-    seuilTxt_s='Immédiat';seuilColor_s='var(--grn-l)';
-    seuilUnit_s='+'+Math.round(sim.rows[0].ecoNetteAn).toLocaleString('fr')+' € net en an 1';
-  }else{
-    const mois_s=seuilFound*12;
-    seuilTxt_s=seuilFound===1?'1 an':seuilFound+' ans';
-    seuilColor_s=seuilFound<=2?'var(--grn-l)':seuilFound<=7?'var(--amb-l)':'var(--red)';
-    seuilUnit_s='+'+Math.round(sim.rows[seuilFound].ecoNetteAn).toLocaleString('fr')+' € net ('+mois_s+' mois)';
-  }
+  const effortColor=effortJour>0?'var(--red)':'var(--grn-l)';
+  // Seuil de rentabilité = temps de retour sur investissement (même calcul que le tableau page 5)
+  const seuil=formatSeuil(sim.breakevenYears);
   document.getElementById('seuilBlock').innerHTML=`
     <div class="metrics" style="grid-template-columns:1fr 1fr 1fr">
       <div class="met"><div class="met-lbl">Économies annuelles en croisière</div><div class="met-val" style="color:var(--grn-l)">${Math.round(ecoAnCroisiere).toLocaleString('fr')}</div><div class="met-unit">€/an (dès année 2)</div></div>
-      <div class="met"><div class="met-lbl">Seuil de rentabilité</div><div class="met-val" style="color:${seuilColor_s}">${seuilTxt_s}</div><div class="met-unit">${seuilUnit_s}</div></div>
-      <div class="met"><div class="met-lbl">Effort journalier 2026</div><div class="met-val" style="color:var(--red)">${effortSign}${effortJour.toFixed(2)}</div><div class="met-unit">€ / jour</div></div>
+      <div class="met"><div class="met-lbl">Seuil de rentabilité</div><div class="met-val" style="color:${seuil.color}">${seuil.txt}</div><div class="met-unit">retour sur investissement</div></div>
+      <div class="met"><div class="met-lbl">Effort journalier 2026</div><div class="met-val" style="color:${effortColor}">${effortSign}${effortJour.toFixed(2)}</div><div class="met-unit">€ / jour</div></div>
     </div>
-    <div style="font-size:10px;color:var(--txt3);margin-top:10px">Effort = mensualité crédit + facture résiduelle − ancienne facture, divisé par 30,44 jours.</div>`;
+    <div style="font-size:10px;color:var(--txt3);margin-top:10px">Effort = mensualité crédit + assurance + facture résiduelle − ancienne facture, ÷ 30,44 jours. Seuil = année où le cumul des gains couvre l'investissement (identique au tableau de rentabilité, page 5).</div>`;
 }
 
 /* ═══════════════════════════════════════════════
@@ -2087,6 +2095,16 @@ function getFinanceSchedule(){
   };
 }
 
+// Effort mensuel réel de la 1re année (2026) vs facture d'avant installation.
+// Source unique partagée par l'étape 3 (effort journalier) et l'étape 4 (effort mensuel) — inclut l'assurance emprunteur.
+function getEffortMensuel2026(){
+  const sched=getFinanceSchedule();
+  const facRes=getFactApres().factApresAn/12;          // facture résiduelle EDF mensuelle
+  const factAvantMens=(S.factAn||2565)/12;             // ancienne facture mensuelle
+  if(sched.mode==='propre') return facRes-factAvantMens;
+  return sched.mens2026+(sched.assurance||0)+facRes-factAvantMens;
+}
+
 function setFinMode(m){
   S.finMode=m;
   document.getElementById('tFin').classList.toggle('on',m==='credit');
@@ -2132,7 +2150,7 @@ function calcFin(){
           <div class="fin-row"><span class="fin-lbl">Facture résiduelle EDF</span><span class="fin-v">${facRes.toFixed(2)} €</span></div>
           <div class="fin-row"><span class="fin-lbl">Revente surplus</span><span class="fin-v">0,00 €</span></div>
           <div class="fin-row"><span class="fin-lbl">Coût global mensuel</span><span class="fin-v big">${facRes.toFixed(2)} €</span></div>
-          <div class="fin-row"><span class="fin-lbl">Effort vs avant</span><span class="fin-v pos">${(facRes-factAvantMens).toFixed(2)} €</span></div>
+          <div class="fin-row"><span class="fin-lbl">Effort vs avant</span><span class="fin-v pos">${getEffortMensuel2026().toFixed(2)} €</span></div>
         </div>
       </div>`;
     document.getElementById('fin2027').innerHTML=`
@@ -2151,7 +2169,7 @@ function calcFin(){
     const assurance=sched.assurance||0;
     const assurance2027=sched.assurance2027||0;
     const cout2026=sched.mens2026+assurance+facRes;
-    const effort2026=cout2026-factAvantMens;
+    const effort2026=getEffortMensuel2026();
     const cout2027=sched.mens2027+assurance2027+facRes-reventeMens;
     document.getElementById('fin2026').innerHTML=`
       <div class="g2">
@@ -2226,7 +2244,7 @@ function renderP5(){
     <div class="met card-grn"><div class="met-lbl">−Prime EDF (S24-ZNI)</div><div class="met-val" style="color:var(--grn-l)">−${primeEDF.toLocaleString('fr')} €</div></div>
     <div class="met card-grn"><div class="met-lbl">Coût réel du projet</div><div class="met-val" style="color:var(--grn-l)">${(prixTTC-primeForm-primeEDF).toLocaleString('fr')} €</div></div>
   </div>
-  <div style="font-size:10px;color:var(--txt3);margin-top:10px">Mode de paiement : <strong style="color:var(--txt2)">${sched.mode==='propre'?'Fonds propres — paiement comptant intégral en 2026':'Financement crédit — '+duree+' mois'}</strong>${(()=>{let sf=null;for(let i=0;i<sim.rows.length;i++){if(sim.rows[i].ecoNetteAn>0){sf=i;break;}}return sf===null?'':sf===0?' · Seuil de rentabilité : <strong style="color:var(--grn-l)">Immédiat</strong>':' · Seuil de rentabilité : <strong style="color:'+(sf<=2?'var(--grn-l)':sf<=7?'var(--amb-l)':'var(--red)')+'">'+( sf===1?'1 an':sf+' ans')+'</strong>';})()}</div>`;
+  <div style="font-size:10px;color:var(--txt3);margin-top:10px">Mode de paiement : <strong style="color:var(--txt2)">${sched.mode==='propre'?'Fonds propres — paiement comptant intégral en 2026':'Financement crédit — '+duree+' mois'}</strong> · Seuil de rentabilité : <strong style="color:${formatSeuil(sim.breakevenYears).color}">${formatSeuil(sim.breakevenYears).txt}</strong></div>`;
 
   let rows='';
   let totalInvest=0,totalEco=0,totalResid=0,totalSurplus=0,totalFacture=0,totalEcoNette=0,totalPrime=0;
@@ -2370,7 +2388,7 @@ function renderP6(){
   /* ── Récapitulatif pages 1 → 5 ── */
   const shadeLbl=S.shade>=1?'Aucun (×1.00)':S.shade>=0.85?'Partiel (×0.85)':'Fort (×0.65)';
   const bkv=sim.breakevenYears;
-  const bkvTxt=bkv===null?'> 20 ans':bkv===0?'Immédiat':bkv<1?Math.round(bkv*12)+' mois':bkv.toFixed(1).replace('.',',')+' ans';
+  const bkvTxt=formatSeuil(bkv).txt;
   document.getElementById('recapGrid').innerHTML=`
     <div class="rec-blk"><div class="rec-hd"><div class="rec-num">1</div><div class="rec-ttl">Client</div></div>
       <div class="rec-row"><span class="rec-l">Nom</span><span class="rec-v">${nom}</span></div>
