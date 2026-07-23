@@ -762,15 +762,20 @@ canvas{max-height:220px}
         <div id="lblProdVal" style="font-family:'DM Mono',monospace;font-size:clamp(9px,1.4vw,17px);font-weight:700;color:#F0B429;white-space:nowrap;text-shadow:0 1px 3px rgba(0,0,0,.9)">— kWh/an</div>
         <div style="font-family:'DM Sans',sans-serif;font-size:clamp(7px,0.9vw,12px);color:#e0e0e0;margin-top:1px;text-shadow:0 1px 3px rgba(0,0,0,.9)">Production</div>
       </div>
-      <!-- Label dynamique Autoconsommation — fond transparent sur l'image -->
+      <!-- Label dynamique Autonomie — fond transparent sur l'image -->
       <div id="lblAutoconso" style="position:absolute;left:63.5%;top:11%;width:19%;min-height:9%;background:transparent;border-radius:0;padding:4px 7px;text-align:left;line-height:1.35">
-        <div id="lblAutoVal" style="font-family:'DM Mono',monospace;font-size:clamp(9px,1.4vw,17px);font-weight:700;color:#e0e0e0;white-space:nowrap;text-shadow:0 1px 3px rgba(0,0,0,.9)">—%</div>
-        <div style="font-family:'DM Sans',sans-serif;font-size:clamp(7px,0.9vw,12px);color:#e0e0e0;margin-top:1px;text-shadow:0 1px 3px rgba(0,0,0,.9)">Autoconsommation</div>
+        <div id="lblAutoVal" style="font-family:'DM Mono',monospace;font-size:clamp(9px,1.4vw,17px);font-weight:700;color:#6cb6ff;white-space:nowrap;text-shadow:0 1px 3px rgba(0,0,0,.9)">—%</div>
+        <div style="font-family:'DM Sans',sans-serif;font-size:clamp(7px,0.9vw,12px);color:#e0e0e0;margin-top:1px;text-shadow:0 1px 3px rgba(0,0,0,.9)">Autonomie</div>
+      </div>
+      <!-- Label dynamique Consommation annuelle — bas gauche, sous la voiture -->
+      <div id="lblConso" style="position:absolute;left:4%;top:76.5%;width:27%;background:transparent;padding:4px 7px;text-align:left;line-height:1.3">
+        <div id="lblConsoVal" style="font-family:'DM Mono',monospace;font-size:clamp(9px,1.4vw,17px);font-weight:700;color:#e6e6e6;white-space:nowrap;text-shadow:0 1px 3px rgba(0,0,0,.95)">— kWh/an</div>
+        <div style="font-family:'DM Sans',sans-serif;font-size:clamp(7px,0.9vw,12px);color:#cfcfcf;margin-top:1px;text-shadow:0 1px 3px rgba(0,0,0,.95)">Consommation</div>
       </div>
     </div>
     <div style="padding:12px 18px 16px">
       <div style="font-size:9px;color:var(--txt3);text-align:center;margin-bottom:10px" id="houseVizCaption"></div>
-      <div class="metrics" id="houseStats" style="grid-template-columns:repeat(3,1fr)"></div>
+      <div class="metrics" id="houseStats" style="grid-template-columns:repeat(4,1fr)"></div>
     </div>
   </div>
 
@@ -1569,14 +1574,14 @@ function renderHouseViz(){
   const c=S.centrale;
   const r=getCalc();
   const hasBat=c.bat>0;
-  const autoPct=Math.round(r.scRate*100);      // taux d'autoconsommation réel (prod utilisée / prod totale)
   const prodLabel=r.prodAn>0?r.prodAn.toLocaleString('fr'):'—';
-  const batteryLabel=hasBat?c.bat+' kWh':'Aucune';
+  const consoLabel=r.conso>0?r.conso.toLocaleString('fr'):'—';
   const panCount=c.panneaux;
 
-  // Mise à jour des labels flottants au-dessus de l'image
+  // Labels flottants sur l'image : production (haut gauche), autonomie (haut droite), consommation (bas gauche, sous la voiture)
   document.getElementById('lblProdVal').textContent=prodLabel+' kWh/an';
-  document.getElementById('lblAutoVal').textContent=autoPct+'%';
+  document.getElementById('lblAutoVal').textContent=Math.round(r.autonomie*100)+'%';
+  document.getElementById('lblConsoVal').textContent=consoLabel+' kWh/an';
 
   // Caption + stats sous l'image
   document.getElementById('houseVizCaption').textContent=
@@ -1585,7 +1590,8 @@ function renderHouseViz(){
   document.getElementById('houseStats').innerHTML=`
     <div class="met"><div class="met-lbl">Puissance installée</div><div class="met-val">${c.kWc}</div><div class="met-unit">kWc · ${panCount} panneaux</div></div>
     <div class="met"><div class="met-lbl">Autoconsommation</div><div class="met-val" style="color:var(--grn-l)">${Math.round(r.scRate*100)}</div><div class="met-unit">% de la production</div></div>
-    <div class="met"><div class="met-lbl">Autonomie</div><div class="met-val" style="color:var(--blu)">${Math.round(r.autonomie*100)}</div><div class="met-unit">% de la conso.</div></div>`;
+    <div class="met"><div class="met-lbl">Autonomie</div><div class="met-val" style="color:var(--blu)">${Math.round(r.autonomie*100)}</div><div class="met-unit">% de la conso.</div></div>
+    <div class="met"><div class="met-lbl">Capacité de stockage</div><div class="met-val" style="color:#C77DFF">${hasBat?c.bat:'—'}</div><div class="met-unit">${hasBat?'kWh de batterie':'sans batterie'}</div></div>`;
 }
 
 /* ═══ MODÈLE PHYSIQUE DES FLUX ÉNERGÉTIQUES ═══
@@ -1613,8 +1619,10 @@ function getCalc(){
   // Batterie (charge depuis surplus, décharge la nuit)
   const batCap=S.centrale.bat;                        // capacité nominale (kWh)
   const batEff=0.92;                                  // rendement aller-retour
-  const batCharge=Math.min(surplusMidi,batCap);       // chargée chaque jour (≤ capacité)
-  const batDischarge=Math.min(batCharge*batEff,consoNuit); // déchargée la nuit (≤ besoin nuit)
+  // La batterie ne stocke que ce qu'elle pourra restituer la nuit : bornée par le surplus, la
+  // capacité ET le besoin nocturne (÷ rendement). Le reste du surplus est exporté au réseau.
+  const batCharge=Math.min(surplusMidi,batCap,consoNuit/batEff); // énergie réellement stockée le jour
+  const batDischarge=batCharge*batEff;                // restituée la nuit (≤ consoNuit par construction)
   const exportJour=Math.max(0,surplusMidi-batCharge); // surplus envoyé au réseau
   const edfNuit=Math.max(0,consoNuit-batDischarge);   // réseau résiduel la nuit
 
@@ -1764,7 +1772,7 @@ function renderChart(){
     // Bilan nocturne détaillé
     const surplusMidi=Math.max(0,prodJour-consoJourQ);
     const batCap=S.centrale.bat||0;
-    const batCharge=Math.min(surplusMidi,batCap);
+    const batCharge=Math.min(surplusMidi,batCap,consoNuitQ/0.92); // stocke seulement ce qui sera restitué la nuit
     const exportJour=Math.max(0,surplusMidi-batCharge);
     const batPct=batCap>0?Math.round(batCharge/batCap*100):0;
     // #3 : couverture batterie de la conso nuit → colonne violette du comparatif journalier
