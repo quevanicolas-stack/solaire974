@@ -1068,31 +1068,31 @@ canvas{max-height:220px}
 /* ═══════════════════════════════════════════════
    DATA
 ═══════════════════════════════════════════════ */
-const COMMUNES=[
-  {name:'Saint-Denis',irr:1533,prod:1380,lat:-20.88,lng:55.45,zone:'A'},
-  {name:'Sainte-Marie',irr:1490,prod:1340,lat:-20.90,lng:55.53,zone:'A'},
-  {name:'Sainte-Clotilde',irr:1510,prod:1360,lat:-20.89,lng:55.49,zone:'A'},
-  {name:'Sainte-Suzanne',irr:1460,prod:1310,lat:-20.93,lng:55.57,zone:'B'},
-  {name:'Saint-André',irr:1420,prod:1270,lat:-20.96,lng:55.65,zone:'B'},
-  {name:'Bras-Panon',irr:1350,prod:1200,lat:-21.01,lng:55.70,zone:'C'},
-  {name:'Saint-Benoît',irr:1300,prod:1150,lat:-21.03,lng:55.72,zone:'C'},
-  {name:'Sainte-Rose',irr:1250,prod:1100,lat:-21.13,lng:55.81,zone:'D'},
-  {name:'Saint-Philippe',irr:1280,prod:1130,lat:-21.35,lng:55.76,zone:'D'},
-  {name:'Saint-Joseph',irr:1450,prod:1300,lat:-21.38,lng:55.62,zone:'B'},
-  {name:'Saint-Pierre',irr:1580,prod:1430,lat:-21.34,lng:55.48,zone:'A'},
-  {name:'Le Tampon',irr:1480,prod:1320,lat:-21.28,lng:55.52,zone:'B'},
-  {name:'Petite-Île',irr:1550,prod:1400,lat:-21.36,lng:55.57,zone:'A'},
-  {name:'Saint-Louis',irr:1560,prod:1410,lat:-21.27,lng:55.41,zone:'A'},
-  {name:'Étang-Salé',irr:1600,prod:1450,lat:-21.27,lng:55.37,zone:'A'},
-  {name:'Saint-Leu',irr:1620,prod:1470,lat:-21.16,lng:55.29,zone:'A'},
-  {name:'Les Avirons',irr:1590,prod:1440,lat:-21.25,lng:55.33,zone:'A'},
-  {name:'Cilaos',irr:1400,prod:1250,lat:-21.13,lng:55.47,zone:'B'},
-  {name:'Trois-Bassins',irr:1610,prod:1460,lat:-21.10,lng:55.30,zone:'A'},
-  {name:'Saint-Paul',irr:1640,prod:1490,lat:-21.00,lng:55.27,zone:'A'},
-  {name:'La Possession',irr:1580,prod:1430,lat:-20.93,lng:55.33,zone:'A'},
-  {name:'Le Port',irr:1560,prod:1410,lat:-20.94,lng:55.31,zone:'A'},
-  {name:'Plaine-des-Palmistes',irr:1200,prod:1060,lat:-21.10,lng:55.59,zone:'D'},
-  {name:'Salazie',irr:1150,prod:1010,lat:-21.03,lng:55.54,zone:'D'},
+const COMMUNES=[  // productible = PVGIS SARAH3 (Nord, 21°, pertes 14%, relief ON) — P14_N par commune
+  {name:'Saint-Denis',irr:1676,prod:1496,lat:-20.88,lng:55.45,zone:'A'},
+  {name:'Sainte-Marie',irr:1684,prod:1504,lat:-20.90,lng:55.53,zone:'A'},
+  {name:'Sainte-Clotilde',irr:1676,prod:1496,lat:-20.89,lng:55.49,zone:'A'},
+  {name:'Sainte-Suzanne',irr:1665,prod:1487,lat:-20.93,lng:55.57,zone:'A'},
+  {name:'Saint-André',irr:1654,prod:1477,lat:-20.96,lng:55.65,zone:'A'},
+  {name:'Bras-Panon',irr:1618,prod:1445,lat:-21.01,lng:55.70,zone:'B'},
+  {name:'Saint-Benoît',irr:1660,prod:1482,lat:-21.03,lng:55.72,zone:'A'},
+  {name:'Sainte-Rose',irr:1595,prod:1424,lat:-21.13,lng:55.81,zone:'B'},
+  {name:'Saint-Philippe',irr:1547,prod:1381,lat:-21.35,lng:55.76,zone:'C'},
+  {name:'Saint-Joseph',irr:1478,prod:1320,lat:-21.38,lng:55.62,zone:'C'},
+  {name:'Saint-Pierre',irr:1509,prod:1347,lat:-21.34,lng:55.48,zone:'C'},
+  {name:'Le Tampon',irr:1432,prod:1279,lat:-21.28,lng:55.52,zone:'D'},
+  {name:'Petite-Île',irr:1484,prod:1325,lat:-21.36,lng:55.57,zone:'C'},
+  {name:'Saint-Louis',irr:1466,prod:1309,lat:-21.27,lng:55.41,zone:'C'},
+  {name:'Étang-Salé',irr:1662,prod:1484,lat:-21.27,lng:55.37,zone:'A'},
+  {name:'Saint-Leu',irr:1492,prod:1332,lat:-21.16,lng:55.29,zone:'C'},
+  {name:'Les Avirons',irr:1325,prod:1183,lat:-21.25,lng:55.33,zone:'D'},
+  {name:'Cilaos',irr:1392,prod:1243,lat:-21.13,lng:55.47,zone:'D'},
+  {name:'Trois-Bassins',irr:1412,prod:1261,lat:-21.10,lng:55.30,zone:'D'},
+  {name:'Saint-Paul',irr:1455,prod:1299,lat:-21.00,lng:55.27,zone:'D'},
+  {name:'La Possession',irr:1467,prod:1310,lat:-20.93,lng:55.33,zone:'C'},
+  {name:'Le Port',irr:1463,prod:1306,lat:-20.94,lng:55.31,zone:'C'},
+  {name:'Plaine-des-Palmistes',irr:1328,prod:1186,lat:-21.10,lng:55.59,zone:'D'},
+  {name:'Salazie',irr:1294,prod:1155,lat:-21.03,lng:55.54,zone:'D'},
 ];
 
 // Puissances et batteries disponibles — tableau tarifaire mis à jour (juillet 2025)
@@ -1184,7 +1184,7 @@ function getPrimeEDF(kWc,periode){
 // Production : pic été austral (novembre → février), creux hiver austral (juin → août)
 // Consommation : pic été austral (climatisation déc-fév), creux hiver austral
 const MOIS_LABELS=['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
-const PROD_MOIS_FACTORS =[1.12,1.08,1.03,0.96,0.88,0.82,0.84,0.91,0.99,1.06,1.13,1.18]; // Σ=12
+const PROD_MOIS_FACTORS =[1.06,0.97,1.03,0.94,0.93,0.86,0.92,0.99,1.05,1.10,1.04,1.11]; // Σ=12 (PVGIS SARAH3, Nord 21°)
 const CONSO_MOIS_FACTORS=[1.10,1.08,1.04,0.98,0.93,0.90,0.89,0.90,0.95,1.00,1.06,1.17]; // Σ=12
 
 // Tarif revente ZNI Réunion selon la puissance installée (source CRE)
@@ -1511,8 +1511,8 @@ function setIncl(){
   document.getElementById('panelG').style.transform=`rotate(-${S.incl}deg)`;
   renderFactors();renderProd();renderChart();
 }
-function oFact(d){const deg=d>180?360-d:d;if(deg<=20)return 1;if(deg<=45)return.97;if(deg<=90)return.90;if(deg<=120)return.82;if(deg<=150)return.73;return.65;}
-function iFact(i){if(i<5)return.88;if(i<=15)return.96;if(i<=25)return 1;if(i<=35)return.98;if(i<=50)return.93;if(i<=65)return.84;return.72;}
+function oFact(d){const deg=d>180?360-d:d;if(deg<=15)return 1;if(deg<=40)return.98;if(deg<=70)return.95;if(deg<=100)return.92;if(deg<=130)return.89;if(deg<=160)return.86;return.83;}
+function iFact(i){if(i<5)return.96;if(i<=12)return.99;if(i<=25)return 1;if(i<=37)return.99;if(i<=52)return.94;if(i<=70)return.85;if(i<=82)return.68;return.53;}
 function getProdCorr(){return Math.round(S.commune.prod*oFact(S.orient)*iFact(S.incl)*S.shade);}
 function renderFactors(){
   const of=oFact(S.orient),ifc=iFact(S.incl),tot=of*ifc*S.shade;
