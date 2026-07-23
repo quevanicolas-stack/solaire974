@@ -1272,7 +1272,7 @@ function calcFact(){
     el.classList.toggle('req-err',empty);
   });
 
-  const div=S.freq==='bi'?6:12; // nombre de périodes par an
+  const div=S.freq==='bi'?6:10; // nombre de périodes par an
   const factPer=factAn/div;    // facture par période
 
   // Prix TTC = facture annuelle / consommation annuelle
@@ -1888,7 +1888,8 @@ function renderAides(){
 
 function getFactApres(){
   const r=getCalc();
-  const div=S.freq==='bi'?6:12;
+  // EDF mensualise sur 10 échéances (régularisation du prorata au 12e mois) ou facture au bimestre (6/an)
+  const div=S.freq==='bi'?6:10;
   const aboAn=S.abo||176;
   const prixHT=S.prixHT||0;
   const factAvantAn=S.factAn||2565;
@@ -1909,7 +1910,7 @@ function getFactApres(){
 }
 
 function renderFactCompare(){
-  const div=S.freq==='bi'?6:12;
+  const div=S.freq==='bi'?6:10;
   const factAvant=(S.factAn||2565)/div;
   const fa=getFactApres();
   const eco=factAvant-fa.factApres;
@@ -2019,13 +2020,29 @@ function simulateRentability(){
   return{rows,sched,breakevenYears,cumulFinal:cumul};
 }
 
-// Formatage unique du seuil de rentabilité (temps de retour = 1re fraction d'année où le cumul ≥ 0).
-// Utilisé à l'identique page 3, page 5 (texte + graphique) et synthèse — garantit la cohérence.
+// AMORTISSEMENT = temps de retour sur investissement (fraction d'année où le CUMUL des gains ≥ 0,
+// dernière colonne du tableau). Formatage/couleur uniques (page 5 graphique, texte et synthèse).
 function formatSeuil(bkv){
   if(bkv===null||bkv===undefined) return {txt:'> 20 ans',color:'var(--red)'};
   if(bkv<=0) return {txt:'Immédiat',color:'var(--grn-l)'};
   if(bkv<1)  return {txt:Math.round(bkv*12)+' mois',color:'var(--grn-l)'};
   return {txt:bkv.toFixed(1).replace('.',',')+' ans',color:bkv<=2?'var(--grn-l)':bkv<=7?'var(--amb-l)':'var(--red)'};
+}
+
+// SEUIL DE RENTABILITÉ = 1re année où l'économie annuelle NETTE est positive (avant-dernière colonne :
+// payer la centrale — crédit + facture résiduelle — coûte moins que l'ancienne facture EDF).
+// Généralement la 2e année, grâce à la prime EDF versée en 2027.
+function getSeuilRenta(sim){
+  for(let k=0;k<sim.rows.length;k++){
+    if(sim.rows[k].ecoNetteAn>0){
+      const an=k+1; // rows[0]=2026 (1re année), rows[1]=2027 (2e année), ...
+      return {txt:an===1?'1re année':an+'e année',
+              color:an<=2?'var(--grn-l)':an<=7?'var(--amb-l)':'var(--red)',
+              unit:'+'+Math.round(sim.rows[k].ecoNetteAn).toLocaleString('fr')+' €/an net dès lors',
+              an};
+    }
+  }
+  return {txt:'> 20 ans',color:'var(--red)',unit:'non atteint sur 20 ans',an:null};
 }
 
 function renderSeuil(){
@@ -2038,15 +2055,15 @@ function renderSeuil(){
   const effortJour=effortMens/30.44;
   const effortSign=effortJour>=0?'+':'';
   const effortColor=effortJour>0?'var(--red)':'var(--grn-l)';
-  // Seuil de rentabilité = temps de retour sur investissement (même calcul que le tableau page 5)
-  const seuil=formatSeuil(sim.breakevenYears);
+  // Seuil de rentabilité = 1re année où payer la centrale coûte moins que l'ancienne facture EDF (avant-dernière colonne)
+  const seuil=getSeuilRenta(sim);
   document.getElementById('seuilBlock').innerHTML=`
     <div class="metrics" style="grid-template-columns:1fr 1fr 1fr">
       <div class="met"><div class="met-lbl">Économies annuelles en croisière</div><div class="met-val" style="color:var(--grn-l)">${Math.round(ecoAnCroisiere).toLocaleString('fr')}</div><div class="met-unit">€/an (dès année 2)</div></div>
-      <div class="met"><div class="met-lbl">Seuil de rentabilité</div><div class="met-val" style="color:${seuil.color}">${seuil.txt}</div><div class="met-unit">retour sur investissement</div></div>
+      <div class="met"><div class="met-lbl">Seuil de rentabilité</div><div class="met-val" style="color:${seuil.color}">${seuil.txt}</div><div class="met-unit">${seuil.unit}</div></div>
       <div class="met"><div class="met-lbl">Effort journalier 2026</div><div class="met-val" style="color:${effortColor}">${effortSign}${effortJour.toFixed(2)}</div><div class="met-unit">€ / jour</div></div>
     </div>
-    <div style="font-size:10px;color:var(--txt3);margin-top:10px">Effort = mensualité crédit + assurance + facture résiduelle − ancienne facture, ÷ 30,44 jours. Seuil = année où le cumul des gains couvre l'investissement (identique au tableau de rentabilité, page 5).</div>`;
+    <div style="font-size:10px;color:var(--txt3);margin-top:10px">Effort = mensualité crédit + assurance + facture résiduelle − ancienne facture, ÷ 30,44 jours. Seuil de rentabilité = 1re année où payer la centrale (crédit + facture résiduelle) coûte moins que l'ancienne facture EDF — souvent dès la 2e année grâce à la prime.</div>`;
 }
 
 /* ═══════════════════════════════════════════════
@@ -2210,7 +2227,7 @@ function calcFin(){
   }
 
   const factAn=S.factAn||2565;
-  const div=S.freq==='bi'?6:12;
+  const div=S.freq==='bi'?6:10;
   const f2027an=factAn*1.07;
   // Ratios dynamiques calculés depuis les données client (pas de valeurs hardcodées)
   const _pHT=S.prixHT||0;const _conso=S.conso||0;const _abo=S.abo||176;
@@ -2244,7 +2261,7 @@ function renderP5(){
     <div class="met card-grn"><div class="met-lbl">−Prime EDF (S24-ZNI)</div><div class="met-val" style="color:var(--grn-l)">−${primeEDF.toLocaleString('fr')} €</div></div>
     <div class="met card-grn"><div class="met-lbl">Coût réel du projet</div><div class="met-val" style="color:var(--grn-l)">${(prixTTC-primeForm-primeEDF).toLocaleString('fr')} €</div></div>
   </div>
-  <div style="font-size:10px;color:var(--txt3);margin-top:10px">Mode de paiement : <strong style="color:var(--txt2)">${sched.mode==='propre'?'Fonds propres — paiement comptant intégral en 2026':'Financement crédit — '+duree+' mois'}</strong> · Seuil de rentabilité : <strong style="color:${formatSeuil(sim.breakevenYears).color}">${formatSeuil(sim.breakevenYears).txt}</strong></div>`;
+  <div style="font-size:10px;color:var(--txt3);margin-top:10px">Mode de paiement : <strong style="color:var(--txt2)">${sched.mode==='propre'?'Fonds propres — paiement comptant intégral en 2026':'Financement crédit — '+duree+' mois'}</strong> · Seuil de rentabilité : <strong style="color:${getSeuilRenta(sim).color}">${getSeuilRenta(sim).txt}</strong> · Amortissement : <strong style="color:${formatSeuil(sim.breakevenYears).color}">${formatSeuil(sim.breakevenYears).txt}</strong></div>`;
 
   let rows='';
   let totalInvest=0,totalEco=0,totalResid=0,totalSurplus=0,totalFacture=0,totalEcoNette=0,totalPrime=0;
@@ -2389,6 +2406,7 @@ function renderP6(){
   const shadeLbl=S.shade>=1?'Aucun (×1.00)':S.shade>=0.85?'Partiel (×0.85)':'Fort (×0.65)';
   const bkv=sim.breakevenYears;
   const bkvTxt=formatSeuil(bkv).txt;
+  const seuilR=getSeuilRenta(sim);
   document.getElementById('recapGrid').innerHTML=`
     <div class="rec-blk"><div class="rec-hd"><div class="rec-num">1</div><div class="rec-ttl">Client</div></div>
       <div class="rec-row"><span class="rec-l">Nom</span><span class="rec-v">${nom}</span></div>
@@ -2434,7 +2452,8 @@ function renderP6(){
       <div class="rec-row"><span class="rec-l">Remise</span><span class="rec-v grn">−${c.primeForm.toLocaleString('fr')} €</span></div>
     </div>
     <div class="rec-blk"><div class="rec-hd"><div class="rec-num">6</div><div class="rec-ttl">Rentabilité 20 ans</div></div>
-      <div class="rec-row"><span class="rec-l">Seuil de rentabilité</span><span class="rec-v ${bkv!==null&&bkv<=7?'grn':'amb'}">${bkvTxt}</span></div>
+      <div class="rec-row"><span class="rec-l">Seuil de rentabilité</span><span class="rec-v ${seuilR.color==='var(--grn-l)'?'grn':'amb'}">${seuilR.txt}</span></div>
+      <div class="rec-row"><span class="rec-l">Amortissement</span><span class="rec-v ${bkv!==null&&bkv<=7?'grn':'amb'}">${bkvTxt}</span></div>
       <div class="rec-row"><span class="rec-l">Gain net cumulé 20 ans</span><span class="rec-v ${sim.cumulFinal>=0?'grn':'red'}">${sim.cumulFinal>=0?'+':''}${Math.round(sim.cumulFinal).toLocaleString('fr')} €</span></div>
       <div class="rec-row"><span class="rec-l">Inflation appliquée</span><span class="rec-v">+7% · +5% · +2%</span></div>
       <div class="rec-row"><span class="rec-l">Économie an 1</span><span class="rec-v grn">${sim.rows[1]?Math.round(sim.rows[1].econoAn).toLocaleString('fr')+' €':'—'}</span></div>
@@ -2457,7 +2476,7 @@ function renderP6(){
         y:{ticks:{color:'#484F58',font:{size:10},callback:v=>v.toLocaleString('fr')},grid:{color:'rgba(255,255,255,.04)'},title:{display:true,text:'kWh / mois',color:'#484F58',font:{size:10}}}}
     }});
 
-  /* ── Chart ROI cumulé 20 ans + marqueur seuil ── */
+  /* ── Chart ROI cumulé 20 ans + marqueur amortissement ── */
   const roiLabels=sim.rows.map(x=>x.year);
   const roiData=sim.rows.map(x=>Math.round(x.cumul));
   let bkIdx=-1;
@@ -2475,14 +2494,14 @@ function renderP6(){
     options:{responsive:true,maintainAspectRatio:false,
       plugins:{legend:{display:false},
         tooltip:{backgroundColor:'#1C2330',titleColor:'#E6EDF3',bodyColor:'#8B949E',borderColor:'rgba(255,255,255,.1)',borderWidth:1,
-          callbacks:{label:c2=>(c2.raw>=0?'+':'')+c2.raw.toLocaleString('fr')+' €'+(c2.dataIndex===bkIdx?' — seuil de rentabilité atteint':'')}}},
+          callbacks:{label:c2=>(c2.raw>=0?'+':'')+c2.raw.toLocaleString('fr')+' €'+(c2.dataIndex===bkIdx?' — amortissement atteint':'')}}},
       scales:{x:{ticks:{color:'#484F58',font:{size:9},maxRotation:45},grid:{color:'rgba(255,255,255,.04)'}},
         y:{ticks:{color:'#484F58',font:{size:10},callback:v=>v.toLocaleString('fr')+' €'},
           grid:{color:c2=>c2.tick.value===0?'rgba(240,180,41,.55)':'rgba(255,255,255,.04)',lineWidth:c2=>c2.tick.value===0?1.5:1}}}
     }});
   document.getElementById('roiInfo6').innerHTML=bkv===null
-    ?`<span style="color:var(--amb-l)">●</span> Le seuil de rentabilité n'est pas atteint sur la période de 20 ans simulée.`
-    :`<span style="color:var(--amb-l)">●</span> Seuil de rentabilité atteint en <strong style="color:var(--amb-l)">${bkvTxt}</strong> (point orange) — le cumul démarre à −${Math.round(sched.montantBase).toLocaleString('fr')} € et remonte via les gains bruts annuels (économies + revente + prime).`;
+    ?`<span style="color:var(--amb-l)">●</span> L'amortissement n'est pas atteint sur la période de 20 ans simulée.`
+    :`<span style="color:var(--amb-l)">●</span> Amortissement atteint en <strong style="color:var(--amb-l)">${bkvTxt}</strong> (point orange) — le cumul démarre à −${Math.round(sched.montantBase).toLocaleString('fr')} € et remonte via les gains bruts annuels (économies + revente + prime).`;
 
   /* ── Devis format Ecologreen ── */
   const today=new Date();
