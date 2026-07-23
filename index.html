@@ -768,7 +768,7 @@ canvas{max-height:220px}
         <div style="font-family:'DM Sans',sans-serif;font-size:clamp(7px,0.9vw,12px);color:#e0e0e0;margin-top:1px;text-shadow:0 1px 3px rgba(0,0,0,.9)">Autonomie</div>
       </div>
       <!-- Label dynamique Consommation annuelle — bas gauche, sous la voiture -->
-      <div id="lblConso" style="position:absolute;left:4%;top:76.5%;width:27%;background:transparent;padding:4px 7px;text-align:left;line-height:1.3">
+      <div id="lblConso" style="position:absolute;left:8.5%;top:86%;width:22%;background:transparent;padding:4px 7px;text-align:left;line-height:1.35">
         <div id="lblConsoVal" style="font-family:'DM Mono',monospace;font-size:clamp(9px,1.4vw,17px);font-weight:700;color:#e6e6e6;white-space:nowrap;text-shadow:0 1px 3px rgba(0,0,0,.95)">— kWh/an</div>
         <div style="font-family:'DM Sans',sans-serif;font-size:clamp(7px,0.9vw,12px);color:#cfcfcf;margin-top:1px;text-shadow:0 1px 3px rgba(0,0,0,.95)">Consommation</div>
       </div>
@@ -1228,6 +1228,7 @@ function go(n){
     else if(i<n){el.classList.add('done');num.textContent='✓';}
     else num.textContent=i+1;
   });
+  if(n===1){renderComMet();renderFactors();renderProd();renderHouseViz();renderChart();}
   if(n>=2)renderP3();
   if(n>=3)calcFin();
   if(n>=4)renderP5();
@@ -1466,6 +1467,7 @@ function updateRoof(){
   if(v<12)alert.innerHTML=`<div class="alert ae" style="margin-top:8px"><div class="adot"></div>Surface insuffisante — minimum 12 m² requis.</div>`;
   else alert.innerHTML=`<div class="alert aok" style="margin-top:8px"><div class="adot"></div>Surface exploitable — jusqu'à ${maxKwc} kWc installable.</div>`;
   renderProd();
+  renderHouseViz();
   checkPwrAlert();
 }
 
