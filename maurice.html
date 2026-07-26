@@ -612,18 +612,23 @@ canvas{max-height:220px}
 
   <div class="sec">Données CEB</div>
   <div class="card">
-    <div class="g2" style="margin-bottom:14px">
-      <div class="fl"><div class="fl-lbl">Consommation annuelle (kWh)</div><input type="number" class="mono" id="conso" placeholder="4800" oninput="calcFact()"></div>
-      <div class="fl"><div class="fl-lbl">Type de compteur CEB</div>
-        <select id="meterType" onchange="setMeter()">
-          <option value="110A">110A — domestique social</option>
-          <option value="110" selected>110 — domestique</option>
-          <option value="120">120 — domestique</option>
-          <option value="140">140 — domestique</option>
-          <option value="commercial">Commercial (215)</option>
-          <option value="industriel">Industriel (315)</option>
-        </select>
-      </div>
+    <div style="font-size:11px;color:var(--txt3);margin-bottom:12px;line-height:1.5">Une facture CEB couvre 4 mois. Renseignez la consommation (kWh) de ces 4 mois — la moyenne est automatiquement annualisée pour l'étude.</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(115px,1fr));gap:10px;margin-bottom:8px">
+      <div class="fl"><div class="fl-lbl">Mois 1 (kWh)</div><input type="number" class="mono" id="mois1" placeholder="400" oninput="calcFact()"></div>
+      <div class="fl"><div class="fl-lbl">Mois 2 (kWh)</div><input type="number" class="mono" id="mois2" placeholder="400" oninput="calcFact()"></div>
+      <div class="fl"><div class="fl-lbl">Mois 3 (kWh)</div><input type="number" class="mono" id="mois3" placeholder="400" oninput="calcFact()"></div>
+      <div class="fl"><div class="fl-lbl">Mois 4 (kWh)</div><input type="number" class="mono" id="mois4" placeholder="400" oninput="calcFact()"></div>
+    </div>
+    <div id="consoAnnNote" style="font-size:11px;color:var(--grn-l);margin-bottom:14px;min-height:15px"></div>
+    <div class="fl" style="margin-bottom:14px"><div class="fl-lbl">Type de compteur CEB</div>
+      <select id="meterType" onchange="setMeter()">
+        <option value="110A">110A — domestique social</option>
+        <option value="110" selected>110 — domestique</option>
+        <option value="120">120 — domestique</option>
+        <option value="140">140 — domestique</option>
+        <option value="commercial">Commercial (215)</option>
+        <option value="industriel">Industriel (315)</option>
+      </select>
     </div>
     <div class="fl" id="flPuiss" style="display:none;margin-bottom:14px"><div class="fl-lbl">Puissance souscrite (kW) — redevance minimale commerciale/industrielle</div><input type="number" class="mono" id="connectedKw" placeholder="30" oninput="calcFact()"></div>
     <div id="alertConso"></div>
@@ -1251,8 +1256,9 @@ function go(n){
   // Item 8 : bloquer la navigation si les champs requis sont manquants
   if(n>0){
     calcFact(); // déclenche la validation visuelle
+    const _lbl={mois1:'Mois 1',mois2:'Mois 2',mois3:'Mois 3',mois4:'Mois 4',connectedKw:'Puissance souscrite'};
     const _ci=(S.meterType==='commercial'||S.meterType==='industriel');
-    const manquants=['conso'].concat(_ci?['connectedKw']:[]).filter(id=>{const e=document.getElementById(id);return !e||e.value.trim()==='';});
+    const manquants=['mois1','mois2','mois3','mois4'].concat(_ci?['connectedKw']:[]).filter(id=>{const e=document.getElementById(id);return !e||e.value.trim()==='';}).map(id=>_lbl[id]||id);
     if(manquants.length>0){
       const el=document.getElementById('alertConso');
       el.innerHTML=`<div class="alert ae"><div class="adot"></div>Champs requis manquants : veuillez renseigner ${manquants.join(', ')} avant de continuer.</div>`;
@@ -1307,26 +1313,33 @@ function updateJour(){
   renderHouseViz();
 }
 function calcFact(){
-  // Bloquer les valeurs négatives
-  ['conso','connectedKw'].forEach(id=>{
+  // Une facture CEB couvre 4 mois : l'utilisateur saisit 4 mois, on annualise par la moyenne ×12
+  const moisIds=['mois1','mois2','mois3','mois4'];
+  moisIds.concat(['connectedKw']).forEach(id=>{
     const el=document.getElementById(id);
     if(el&&parseFloat(el.value)<0){el.value='';}
   });
-  const conso=parseFloat(document.getElementById('conso').value)||0;
+  const vals=moisIds.map(id=>parseFloat((document.getElementById(id)||{}).value)).filter(v=>!isNaN(v)&&v>=0);
+  const moyMois=vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:0;
+  const conso=Math.round(moyMois*12);
   const kwEl=document.getElementById('connectedKw');
   const connectedKw=kwEl?(parseFloat(kwEl.value)||0):0;
-  S.conso=conso;S.connectedKw=connectedKw;
+  S.conso=conso;S.connectedKw=connectedKw;S.consoMois4=vals;
 
-  // Facture CEB dérivée de la consommation et du type de compteur
+  // Rappel de l'annualisation retenue
+  const _note=document.getElementById('consoAnnNote');
+  if(_note)_note.textContent=vals.length?`Moyenne : ${Math.round(moyMois).toLocaleString('fr')} kWh/mois → consommation annuelle retenue : ${conso.toLocaleString('fr')} kWh/an`:'';
+
+  // Facture CEB dérivée de la consommation annualisée et du type de compteur
   const factAn=conso>0?cebFactureAn(conso,S.meterType,connectedKw):0;
   const miniAn=cebRedevanceMinAn(S.meterType,connectedKw);
   S.factAn=factAn;
   S.prixHT=conso>0?factAn/conso:0;
   S.abo=miniAn;
 
-  // Surbrillance des champs requis vides (puissance requise seulement en commercial/industriel)
+  // Surbrillance des champs requis vides (4 mois ; puissance requise seulement en commercial/industriel)
   const comInd=(S.meterType==='commercial'||S.meterType==='industriel');
-  const REQ=['conso'].concat(comInd?['connectedKw']:[]);
+  const REQ=moisIds.concat(comInd?['connectedKw']:[]);
   REQ.forEach(id=>{const el=document.getElementById(id);if(el)el.classList.toggle('req-err',el.value.trim()==='');});
 
   const div=S.freq==='bi'?6:12; // CEB : 12 mensualités (ou 6 bimestres)
@@ -1349,7 +1362,8 @@ function calcFact(){
   const alertEl=document.getElementById('alertConso');
   if(alertEl){
     if(conso>0&&factAn>0){
-      alertEl.innerHTML=`<div class="alert aok"><div class="adot"></div>Facture CEB estimée : ${Math.round(factAn).toLocaleString('fr')} Rs/an — compteur ${cebLabel(S.meterType)}, prix moyen ${pMoy.toFixed(2)} Rs/kWh.</div>`;
+      const fac4=factAn/3; // 3 factures de 4 mois par an
+      alertEl.innerHTML=`<div class="alert aok"><div class="adot"></div>Facture CEB estimée : ${Math.round(factAn).toLocaleString('fr')} Rs/an (≈ ${Math.round(fac4).toLocaleString('fr')} Rs par facture de 4 mois) — compteur ${cebLabel(S.meterType)}, prix moyen ${pMoy.toFixed(2)} Rs/kWh.</div>`;
     }else alertEl.innerHTML='';
   }
   score();
@@ -1413,7 +1427,7 @@ function updateComReminder(){
   el.innerHTML=`<div style="display:flex;align-items:center;gap:11px">
     <div style="font-size:22px;line-height:1">📍</div>
     <div style="flex:1">
-      <div style="font-size:16px;font-weight:700;color:var(--txt);font-family:'Barlow Condensed',sans-serif;letter-spacing:.02em">${c.name}<span style="color:var(--txt3);font-weight:400;font-size:12px;font-family:'DM Sans',sans-serif"> · La Réunion</span></div>
+      <div style="font-size:16px;font-weight:700;color:var(--txt);font-family:'Barlow Condensed',sans-serif;letter-spacing:.02em">${c.name}<span style="color:var(--txt3);font-weight:400;font-size:12px;font-family:'DM Sans',sans-serif"> · Île Maurice</span></div>
       <div style="font-size:11px;color:var(--txt3);margin-top:2px">Zone ${c.zone} — ${zl[c.zone]} · Localité définie à l'étape 1 (Informations client)</div>
       ${addr}
     </div>
