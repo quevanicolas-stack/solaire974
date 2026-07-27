@@ -595,13 +595,8 @@ canvas{max-height:220px}
 
   <div class="sec">Compteur & habitudes</div>
   <div class="card">
-    <div class="g2" style="margin-bottom:14px">
-      <div class="fl"><div class="fl-lbl">Type de compteur</div>
-        <div class="tog"><div class="tog-btn on" id="tMono" onclick="setCompteur('mono')">Monophasé</div><div class="tog-btn" id="tTri" onclick="setCompteur('tri')">Triphasé</div></div>
-      </div>
-      <div class="fl"><div class="fl-lbl">Fréquence de facturation</div>
-        <div class="tog"><div class="tog-btn on" id="fMois" onclick="setFreq('mois')">Mensuelle</div><div class="tog-btn" id="fBi" onclick="setFreq('bi')">Bimestrielle</div></div>
-      </div>
+    <div class="fl" style="margin-bottom:14px"><div class="fl-lbl">Type de compteur</div>
+      <div class="tog"><div class="tog-btn on" id="tMono" onclick="setCompteur('mono')">Monophasé</div><div class="tog-btn" id="tTri" onclick="setCompteur('tri')">Triphasé</div></div>
     </div>
     <div class="rng-wrap">
       <div class="rng-hd"><div class="rng-lbl">Répartition consommation</div><div class="rng-val" id="jourPct">Jour 60% — Nuit 40%</div></div>
@@ -631,6 +626,7 @@ canvas{max-height:220px}
       </select>
     </div>
     <div class="fl" id="flPuiss" style="display:none;margin-bottom:14px"><div class="fl-lbl">Puissance souscrite (kW) — redevance minimale commerciale/industrielle</div><input type="number" class="mono" id="connectedKw" placeholder="30" oninput="calcFact()"></div>
+    <label style="display:flex;align-items:flex-start;gap:9px;font-size:12px;color:var(--txt2);margin-bottom:14px;cursor:pointer;line-height:1.4"><input type="checkbox" id="saisonChk" onchange="setSaison()" style="width:15px;height:15px;margin-top:1px;accent-color:var(--grn);flex-shrink:0"><span>Tenir compte de la saisonnalité (répartit conso et production mois par mois ; sinon consommation lissée sur l'année)</span></label>
     <div id="alertConso"></div>
     <div class="dv"></div>
     <div class="metrics" style="grid-template-columns:1fr 1fr 1fr;margin-bottom:12px">
@@ -1234,13 +1230,51 @@ function cebFactureMois(kwhMois,t,kw){
 // plate, cohérente avant/après — capture l'écrêtage des tranches hautes par l'autoconsommation solaire.
 function cebFactureAn(kwhAn,t,kw){return cebFactureMois((kwhAn||0)/12,t,kw)*12;}
 
+// ─ Option saisonnalité ─ Bilan mensuel : rejoue le modèle d'autoconsommation mois par mois
+// (production PVGIS + profil de conso Maurice), pour que les tranches CEB reflètent les pics
+// saisonniers (import réseau plus élevé en hiver austral → tranches plus chères).
+function getBilanMensuel(){
+  const r=getCalc();
+  const prodAn=r.prodAn, conso=r.conso;
+  const sumPF=PROD_MOIS_FACTORS.reduce((a,b)=>a+b,0);
+  const sumCF=CONSO_MOIS_FACTORS.reduce((a,b)=>a+b,0);
+  const jourFrac=S.jourPct/100, batCap=S.centrale.bat, batEff=0.92;
+  const nd=[31,28,31,30,31,30,31,31,30,31,30,31];
+  const consoM=[], edfM=[];
+  for(let m=0;m<12;m++){
+    const prodDay=(prodAn*PROD_MOIS_FACTORS[m]/sumPF)/nd[m];
+    const consoDay=(conso*CONSO_MOIS_FACTORS[m]/sumCF)/nd[m];
+    const consoJour=consoDay*jourFrac, consoNuit=consoDay*(1-jourFrac);
+    const edfJour=Math.max(0,consoJour-prodDay);
+    const surplusMidi=Math.max(0,prodDay-consoJour);
+    const batCharge=Math.min(surplusMidi,batCap,consoNuit/batEff);
+    const edfNuit=Math.max(0,consoNuit-batCharge*batEff);
+    consoM.push(consoDay*nd[m]); edfM.push((edfJour+edfNuit)*nd[m]);
+  }
+  return {consoM, edfM};
+}
+// Facture CEB annuelle « avant » (respecte l'option saisonnalité).
+function cebAvantAn(conso){
+  if(!S.saison) return cebFactureAn(conso,S.meterType,S.connectedKw);
+  const sumCF=CONSO_MOIS_FACTORS.reduce((a,b)=>a+b,0);
+  let s=0; for(let m=0;m<12;m++) s+=cebFactureMois(conso*CONSO_MOIS_FACTORS[m]/sumCF,S.meterType,S.connectedKw); return s;
+}
+// Factures CEB annuelles avant / après solaire (respecte l'option saisonnalité).
+function cebBillsAn(){
+  const r=getCalc(), t=S.meterType, kw=S.connectedKw;
+  if(!S.saison) return {avantAn:cebFactureAn(r.conso,t,kw), apresAn:cebFactureAn(r.edfKwh,t,kw)};
+  const mb=getBilanMensuel();
+  let a=0,p=0; for(let m=0;m<12;m++){a+=cebFactureMois(mb.consoM[m],t,kw);p+=cebFactureMois(mb.edfM[m],t,kw);} return {avantAn:a,apresAn:p};
+}
+function setSaison(){ const c=document.getElementById('saisonChk'); S.saison=!!(c&&c.checked); calcFact(); }
+
 /* ═══════════════════════════════════════════════
    STATE
 ═══════════════════════════════════════════════ */
 let S={
   page:0,compteur:'mono',freq:'mois',jourPct:60,
   conso:0,factAn:0,abo:0,prixHT:0,
-  meterType:'110',connectedKw:0,
+  meterType:'110',connectedKw:0,saison:false,
   commune:COMMUNES[0],roof:30,orient:0,incl:20,shade:1.0,
   centrale:null, // initialisé après buildCentrale
   finMode:'credit',apport:0,duree:180,taux:7.12,tarRev:0,
@@ -1331,7 +1365,7 @@ function calcFact(){
   if(_note)_note.textContent=vals.length?`Moyenne : ${Math.round(moyMois).toLocaleString('fr')} kWh/mois → consommation annuelle retenue : ${conso.toLocaleString('fr')} kWh/an`:'';
 
   // Facture CEB dérivée de la consommation annualisée et du type de compteur
-  const factAn=conso>0?cebFactureAn(conso,S.meterType,connectedKw):0;
+  const factAn=conso>0?cebAvantAn(conso):0;
   const miniAn=cebRedevanceMinAn(S.meterType,connectedKw);
   S.factAn=factAn;
   S.prixHT=conso>0?factAn/conso:0;
@@ -1944,7 +1978,7 @@ function getFactApres(){
   // CEB : facture mensuelle (12 échéances) ou bimestrielle (6). Facture résiduelle = grille CEB
   // appliquée à l'import réseau résiduel (l'autoconsommation solaire écrête les tranches les plus chères).
   const div=S.freq==='bi'?6:12;
-  const factApresAn=cebFactureAn(r.edfKwh,S.meterType,S.connectedKw);
+  const factApresAn=cebBillsAn().apresAn;
   const factApres=factApresAn/div;
   const miniAn=cebRedevanceMinAn(S.meterType,S.connectedKw);
   const kwhResidAn=Math.max(0,factApresAn-miniAn);
@@ -2005,8 +2039,9 @@ function simulateRentability(){
   const dureeAnnees=Math.ceil(duree/12);
 
   const autoKwh=r.autoKwh,surplusKwh=r.surplusKwh,edfKwh=r.edfKwh,conso=r.conso;
-  const factAvant0=cebFactureAn(conso,S.meterType,S.connectedKw);
-  const factApres0=cebFactureAn(edfKwh,S.meterType,S.connectedKw);
+  const _cb=cebBillsAn();
+  const factAvant0=_cb.avantAn;
+  const factApres0=_cb.apresAn;
 
   function getInflation(year){
     if(year===2026)return 0;      // année de référence : pas d'inflation
@@ -2095,7 +2130,8 @@ function renderSeuil(){
   const r=getCalc();
   const sim=simulateRentability();
   const tarRev=0;
-  const ecoAnCroisiere=cebFactureAn(r.conso,S.meterType,S.connectedKw)-cebFactureAn(r.edfKwh,S.meterType,S.connectedKw);
+  const _cbS=cebBillsAn();
+  const ecoAnCroisiere=_cbS.avantAn-_cbS.apresAn;
   // Effort journalier = effort mensuel réel 2026 (identique à l'étape 4 Financement) ÷ 30,44 jours
   const effortMens=getEffortMensuel2026();
   const effortJour=effortMens/30.44;
