@@ -575,7 +575,9 @@ canvas{max-height:220px}
 @page dossierpg{size:A4;margin:0}
 @media print{
   #dossierMkt{display:block!important}
-  #dossierMkt .dpage{page:dossierpg;page-break-after:always;break-after:page}
+  #dossierMkt .dpage{page:dossierpg}
+  #dossierMkt .dpage+.dpage{page-break-before:always;break-before:page}
+  #printDoc{page-break-before:always;break-before:page}
   /* Devis + CGV : on desserre la compression « sécurité 1 page » pour bien REMPLIR la page A4 */
   #printDoc .devis{font-size:13px;line-height:1.28}
   #printDoc .devis .contact{line-height:1.45}
