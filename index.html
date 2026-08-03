@@ -421,7 +421,7 @@ canvas{max-height:220px}
   #printDoc{display:block!important;width:100%}
   #devisBlock{box-shadow:none!important;border-radius:0!important;padding:0!important}
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
-  @page{size:A4;margin:6mm}
+  @page{size:A4;margin:0}
   /* Rétablir la disposition 2 colonnes du devis à l impression (annule le mode mobile <860px) */
   .devis .cards{grid-template-columns:1fr .82fr!important}
   .devis .body{grid-template-columns:1.62fr 1fr!important}
@@ -972,7 +972,7 @@ canvas{max-height:220px}
     <div class="ph-btns"><button class="btn btn-g" onclick="go(4)">← Retour</button><button class="btn btn-p" onclick="window.print()">Imprimer le devis</button></div>
   </div>
 
-  <div class="print-tip" style="margin:14px 0 2px;padding:10px 13px;background:var(--bg3,#f4f6f8);border:1px solid var(--bdr,#e3e6ea);border-radius:8px;font-size:12px;color:var(--txt2,#5f6368);line-height:1.45"><strong style="color:var(--txt,#3a3f45)">Astuce impression</strong> — pour un dossier pleine page et bien centré : dans les options d'impression, réglez « Marges » sur « Aucune » et décochez « En-têtes et pieds de page ».</div>
+  <div class="print-tip" style="margin:14px 0 2px;padding:10px 13px;background:var(--bg3,#f4f6f8);border:1px solid var(--bdr,#e3e6ea);border-radius:8px;font-size:12px;color:var(--txt2,#5f6368);line-height:1.45"><strong style="color:var(--txt,#3a3f45)">Impression pleine page — réglage obligatoire</strong> : dans la fenêtre d'impression, réglez « Marges » sur « Aucune » et décochez « En-têtes et pieds de page ». Sans ce réglage, le navigateur ajoute une marge et décale le contenu (bandes blanches).</div>
 
   <div class="sec">Récapitulatif de l'étude</div>
   <div class="rec-grid" id="recapGrid"></div>
@@ -2946,5 +2946,11 @@ document.querySelectorAll('.shade').forEach((el,i)=>{el.classList.toggle('sel',i
 })();
 </script>
 
+<style>
+/* Impression pleine page (aucune marge) : devis/CGV avec retrait minimal de securite (texte non rogne par l'imprimante) + pied de page colle en bas */
+@media print{
+  #printDoc .devis,#printDoc .cgv{padding:6mm 5mm!important;box-sizing:border-box!important}
+}
+</style>
 </body>
 </html>
