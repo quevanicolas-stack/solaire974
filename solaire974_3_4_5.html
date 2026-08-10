@@ -1066,6 +1066,7 @@ function getCalc(){
   const prodAn=Math.round(prodCorr*S.centrale.kWc);      // production annuelle totale
   const conso=S.conso||12426;                             // consommation annuelle
   const pTTC=S.factAn>0&&S.conso>0?S.factAn/S.conso:0.206;
+  const pEnergie=S.factAn>0&&S.conso>0?(S.factAn-(S.abo||176))/S.conso:0.192; // prix du kWh hors abonnement (abonnement fixe, jamais économisé par l'autoconsommation)
 
   // ─ Modèle journalier (valeurs moyennes × 365) ─
   const prodDay=prodAn/365;
@@ -1103,7 +1104,7 @@ function getCalc(){
     autoKwh,surplusKwh,edfKwh,
     batChargeAn,batDischargeAn,
     scRate,autonomie,
-    pTTC,conso
+    pTTC,pEnergie,conso
   };
 }
 
@@ -1409,6 +1410,7 @@ function simulateRentability(){
   const dureeAnnees=Math.ceil(duree/12);
 
   const pTTC0=r.pTTC||0.206;
+  const pEnergie0=r.pEnergie||0.192;
   const autoKwh=r.autoKwh,surplusKwh=r.surplusKwh,edfKwh=r.edfKwh,conso=r.conso;
 
   function getInflation(year){
@@ -1419,6 +1421,7 @@ function simulateRentability(){
   }
 
   let basePTTC=pTTC0;
+  let basePEnergie=pEnergie0;
   // Cumul = récupération de l'investissement par les gains bruts, indépendant du mode de paiement
   // Il démarre à −montantBase et remonte via les économies brutes chaque année
   // "Éco. annuelle" affiche les économies NETTES (gains bruts − investissement annuel)
@@ -1429,6 +1432,7 @@ function simulateRentability(){
   for(let y=2026;y<=2046;y++){
     const inf=getInflation(y);
     if(y>2026)basePTTC*=(1+inf);
+    if(y>2026)basePEnergie*=(1+inf);
 
     let investAn=0;
     if(sched.mode==='propre'){
@@ -1440,9 +1444,9 @@ function simulateRentability(){
     }
     investAn=Math.max(0,investAn);
 
-    const econoAn=Math.round(autoKwh*basePTTC);
-    const residAn=Math.round(edfKwh*basePTTC);
+    const econoAn=Math.round(autoKwh*basePEnergie);
     const factureAn=Math.round(conso*basePTTC);
+    const residAn=factureAn-econoAn;
     const surplusAn=(y===2026)?0:Math.round(surplusKwh*tarRev);
     const primeAn=y===2027?sched.primeEDF:0;
 
@@ -1475,7 +1479,7 @@ function renderSeuil(){
   const fa=getFactApres();
   const sched=sim.sched;
   const tarRev=S.tarRev||TARIF_REVENTE_ZNI;
-  const ecoAnCroisiere=r.autoKwh*r.pTTC+r.surplusKwh*tarRev;
+  const ecoAnCroisiere=r.autoKwh*r.pEnergie+r.surplusKwh*tarRev;
   // Effort mensuel réel première année vs avant installation
   const factAvantMens=(S.factAn||2565)/12;
   const effortMens=sched.mode==='propre'
