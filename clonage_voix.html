@@ -1,0 +1,1793 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Studio Voix — Clonage et synthèse vocale</title>
+<style>
+:root{
+  --bg:#0D1117;--bg2:#161B22;--bg3:#1C2330;--bg4:#222A38;
+  --bdr:rgba(255,255,255,0.07);--bdr2:rgba(255,255,255,0.13);
+  --txt:#E6EDF3;--txt2:#8B949E;--txt3:#484F58;
+  --grn:#1D9E75;--grn-l:#5DCAA5;--grn-d:rgba(29,158,117,0.15);
+  --amb:#D29922;--amb-l:#F0B429;--amb-d:rgba(240,180,41,0.12);
+  --blu:#388BFD;--blu-l:#79B8FF;--blu-d:rgba(56,139,253,0.12);
+  --red:#F85149;--red-l:#FF8B82;--red-d:rgba(248,81,73,0.12);
+  --vio:#A371F7;--vio-d:rgba(163,113,247,0.12);
+  --r:10px;--r2:14px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg);color:var(--txt);
+  font-family:'DM Sans',-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+  font-size:14px;line-height:1.5;overflow:hidden}
+
+/* ─── SHELL ─── */
+.shell{display:grid;grid-template-columns:224px 1fr;height:100vh}
+
+/* ─── SIDEBAR ─── */
+.sidebar{background:var(--bg2);border-right:1px solid var(--bdr);display:flex;flex-direction:column}
+.s-logo{padding:22px 18px 16px;border-bottom:1px solid var(--bdr)}
+.s-mark{width:34px;height:34px;background:var(--vio-d);border:1px solid rgba(163,113,247,.3);border-radius:8px;display:flex;align-items:center;justify-content:center;gap:2px;margin-bottom:9px}
+.s-bar{width:3px;border-radius:2px;background:var(--vio)}
+.s-title{font-size:15px;font-weight:700;color:var(--txt);letter-spacing:.03em;line-height:1.2}
+.s-sub{font-size:10px;color:var(--txt3);letter-spacing:.07em;text-transform:uppercase;margin-top:1px}
+.s-nav{flex:1;padding:14px 10px;display:flex;flex-direction:column;gap:2px;overflow-y:auto}
+.s-nav-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer;transition:background .12s}
+.s-nav-item:hover{background:rgba(255,255,255,.04)}
+.s-nav-item.active{background:var(--vio-d)}
+.s-nav-item.bloque{opacity:.4;cursor:not-allowed}
+.s-num{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-family:'DM Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:10px;font-weight:500;flex-shrink:0;
+  background:var(--bg3);color:var(--txt3);border:1px solid var(--bdr);transition:all .15s}
+.s-nav-item.active .s-num{background:var(--vio-d);border-color:var(--vio);color:var(--vio)}
+.s-nav-item.done .s-num{background:var(--grn);border-color:var(--grn);color:#fff}
+.s-nav-lbl{font-size:12px;color:var(--txt2)}
+.s-nav-item.active .s-nav-lbl{color:var(--txt);font-weight:500}
+.s-foot{padding:12px 14px;border-top:1px solid var(--bdr)}
+.s-etat{font-size:10px;color:var(--txt3);letter-spacing:.05em;text-transform:uppercase;margin-bottom:5px}
+.s-pastille{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--txt2)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--txt3);flex-shrink:0}
+.dot.ok{background:var(--grn);box-shadow:0 0 0 3px var(--grn-d)}
+.dot.att{background:var(--amb);box-shadow:0 0 0 3px var(--amb-d)}
+
+/* ─── ZONE PRINCIPALE ─── */
+.main{overflow-y:auto;padding:26px 30px 60px;position:relative}
+.page{display:none;max-width:980px;margin:0 auto}
+.page.on{display:block}
+.ph{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;padding-bottom:18px;margin-bottom:22px;border-bottom:1px solid var(--bdr);flex-wrap:wrap}
+.ph-tag{font-size:10px;color:var(--vio);letter-spacing:.1em;text-transform:uppercase;font-weight:600;margin-bottom:4px}
+.ph-title{font-size:23px;font-weight:700;letter-spacing:-.01em;line-height:1.15}
+.ph-desc{font-size:13px;color:var(--txt2);margin-top:3px}
+.ph-btns{display:flex;gap:8px;flex-shrink:0}
+
+.sec{font-size:11px;color:var(--txt2);letter-spacing:.09em;text-transform:uppercase;font-weight:600;margin:24px 0 10px}
+.sec:first-of-type{margin-top:0}
+.card{background:var(--bg2);border:1px solid var(--bdr);border-radius:var(--r2);padding:18px}
+.card+.card{margin-top:10px}
+
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+
+/* ─── CHAMPS ─── */
+.champ{margin-bottom:13px}
+.champ:last-child{margin-bottom:0}
+.lbl{display:block;font-size:11px;color:var(--txt2);margin-bottom:5px;letter-spacing:.02em}
+.lbl .obl{color:var(--red);margin-left:2px}
+input[type=text],input[type=password],input[type=date],textarea,select{
+  width:100%;background:var(--bg3);border:1px solid var(--bdr);border-radius:var(--r);
+  padding:9px 11px;color:var(--txt);font-size:13px;font-family:inherit;transition:border-color .15s,background .15s}
+input:focus,textarea:focus,select:focus{outline:none;border-color:var(--vio);background:var(--bg4)}
+textarea{resize:vertical;min-height:120px;line-height:1.6}
+select{cursor:pointer;appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--txt3) 50%),linear-gradient(135deg,var(--txt3) 50%,transparent 50%);
+  background-position:calc(100% - 16px) 50%,calc(100% - 11px) 50%;background-size:5px 5px,5px 5px;background-repeat:no-repeat;padding-right:32px}
+.req-err{border-color:var(--red) !important;background:var(--red-d) !important}
+.aide{font-size:11px;color:var(--txt3);margin-top:5px;line-height:1.45}
+
+.check{display:flex;align-items:flex-start;gap:9px;padding:10px 12px;background:var(--bg3);border:1px solid var(--bdr);border-radius:var(--r);cursor:pointer;transition:border-color .15s}
+.check:hover{border-color:var(--bdr2)}
+.check+.check{margin-top:7px}
+.check.req-err{border-color:var(--red) !important;background:var(--red-d) !important}
+.check input{margin-top:2px;accent-color:var(--vio);width:15px;height:15px;flex-shrink:0;cursor:pointer}
+.check span{font-size:12.5px;line-height:1.5;color:var(--txt)}
+
+.radios{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.radio{display:flex;align-items:flex-start;gap:9px;padding:13px;background:var(--bg3);border:1px solid var(--bdr);border-radius:var(--r);cursor:pointer;transition:all .15s}
+.radio:hover{border-color:var(--bdr2)}
+.radio.sel{border-color:var(--vio);background:var(--vio-d)}
+.radio input{margin-top:2px;accent-color:var(--vio);width:15px;height:15px;flex-shrink:0;cursor:pointer}
+.radio-t{font-size:13px;font-weight:600}
+.radio-d{font-size:11px;color:var(--txt2);margin-top:2px;line-height:1.4}
+
+/* ─── BOUTONS ─── */
+.btn{display:inline-flex;align-items:center;gap:7px;padding:9px 15px;border-radius:var(--r);border:1px solid transparent;
+  font-size:12.5px;font-weight:600;font-family:inherit;cursor:pointer;transition:all .15s;white-space:nowrap}
+.btn-p{background:var(--vio);color:#fff}
+.btn-p:hover{filter:brightness(1.12)}
+.btn-g{background:var(--bg3);color:var(--txt2);border-color:var(--bdr2)}
+.btn-g:hover{background:var(--bg4);color:var(--txt)}
+.btn-r{background:var(--red-d);color:var(--red-l);border-color:rgba(248,81,73,.3)}
+.btn-r:hover{background:rgba(248,81,73,.2)}
+.btn-v{background:var(--grn);color:#fff}
+.btn-v:hover{filter:brightness(1.12)}
+.btn:disabled{opacity:.4;cursor:not-allowed;filter:none}
+.btn-sm{padding:6px 10px;font-size:11.5px}
+.nav-btns{display:flex;gap:8px;justify-content:space-between;margin-top:28px;padding-top:18px;border-top:1px solid var(--bdr)}
+
+/* ─── ENCARTS ─── */
+.note{border-radius:var(--r);padding:12px 14px;font-size:12.5px;line-height:1.55;border:1px solid}
+.note+.note,.card+.note,.note+.card{margin-top:10px}
+.note-t{font-weight:600;margin-bottom:3px;font-size:12.5px}
+.n-blu{background:var(--blu-d);border-color:rgba(56,139,253,.28);color:#C4DDFF}
+.n-amb{background:var(--amb-d);border-color:rgba(240,180,41,.28);color:#F5D48A}
+.n-red{background:var(--red-d);border-color:rgba(248,81,73,.28);color:#FFC2BE}
+.n-grn{background:var(--grn-d);border-color:rgba(29,158,117,.28);color:#9FE3C7}
+
+/* ─── ENREGISTREUR ─── */
+.rec-zone{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.rec-btn{width:72px;height:72px;border-radius:50%;border:2px solid var(--bdr2);background:var(--bg3);
+  cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .18s;flex-shrink:0}
+.rec-btn:hover{border-color:var(--red);background:var(--red-d)}
+.rec-btn .forme{width:26px;height:26px;border-radius:50%;background:var(--red);transition:all .18s}
+.rec-btn.rec{border-color:var(--red);background:var(--red-d);animation:pulse 1.6s ease-in-out infinite}
+.rec-btn.rec .forme{border-radius:4px;width:22px;height:22px}
+.rec-btn:disabled{opacity:.4;cursor:not-allowed;animation:none}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(248,81,73,.28)}50%{box-shadow:0 0 0 12px rgba(248,81,73,0)}}
+.rec-info{flex:1;min-width:220px}
+.rec-chrono{font-family:'DM Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:27px;font-weight:500;letter-spacing:.02em;line-height:1.1}
+.rec-etat{font-size:11.5px;color:var(--txt2);margin-top:3px}
+.vu{height:34px;background:var(--bg3);border:1px solid var(--bdr);border-radius:var(--r);width:100%;margin-top:12px;display:block}
+
+.jauge{margin-top:14px}
+.jauge-tete{display:flex;justify-content:space-between;font-size:11px;color:var(--txt2);margin-bottom:5px}
+.jauge-piste{height:7px;background:var(--bg3);border-radius:4px;overflow:hidden;position:relative}
+.jauge-plein{height:100%;background:var(--amb);border-radius:4px;transition:width .3s,background .3s}
+.jauge-plein.ok{background:var(--grn)}
+.jauge-reperes{display:flex;justify-content:space-between;font-size:10px;color:var(--txt3);margin-top:4px}
+
+/* ─── LISTES ─── */
+.item{display:flex;align-items:center;gap:12px;padding:11px 13px;background:var(--bg3);border:1px solid var(--bdr);border-radius:var(--r)}
+.item+.item{margin-top:7px}
+.item-corps{flex:1;min-width:0}
+.item-nom{font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item-meta{font-size:11px;color:var(--txt3);margin-top:2px;font-family:'DM Mono',ui-monospace,Menlo,Consolas,monospace}
+.item-btns{display:flex;gap:6px;flex-shrink:0}
+audio{height:32px;max-width:190px;flex-shrink:0}
+.vide{text-align:center;padding:26px 16px;color:var(--txt3);font-size:12.5px;border:1px dashed var(--bdr2);border-radius:var(--r)}
+
+.phrase{padding:11px 13px;background:var(--bg3);border-left:2px solid var(--vio);border-radius:0 var(--r) var(--r) 0;font-size:13px;line-height:1.6;color:var(--txt)}
+.phrase+.phrase{margin-top:7px}
+
+/* ─── CURSEURS ─── */
+.curs-tete{display:flex;justify-content:space-between;font-size:11px;margin-bottom:6px}
+.curs-val{font-family:'DM Mono',ui-monospace,Menlo,Consolas,monospace;color:var(--vio)}
+input[type=range]{width:100%;height:4px;background:var(--bg4);border-radius:3px;appearance:none;cursor:pointer;outline:none}
+input[type=range]::-webkit-slider-thumb{appearance:none;width:15px;height:15px;border-radius:50%;background:var(--vio);cursor:pointer;border:2px solid var(--bg2)}
+input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;background:var(--vio);cursor:pointer;border:2px solid var(--bg2)}
+
+/* ─── DIVERS ─── */
+.badge{display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:20px;font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase}
+.b-vio{background:var(--vio-d);color:var(--vio);border:1px solid rgba(163,113,247,.3)}
+.b-grn{background:var(--grn-d);color:var(--grn-l);border:1px solid rgba(29,158,117,.3)}
+.b-amb{background:var(--amb-d);color:var(--amb-l);border:1px solid rgba(240,180,41,.3)}
+.b-red{background:var(--red-d);color:var(--red-l);border:1px solid rgba(248,81,73,.3)}
+
+.kv{display:flex;justify-content:space-between;padding:7px 0;font-size:12.5px;border-bottom:1px solid var(--bdr)}
+.kv:last-child{border-bottom:none}
+.kv-c{color:var(--txt2)}
+.kv-v{font-family:'DM Mono',ui-monospace,Menlo,Consolas,monospace;color:var(--txt)}
+
+.compteur{font-size:11px;color:var(--txt3);text-align:right;margin-top:5px;font-family:'DM Mono',ui-monospace,Menlo,Consolas,monospace}
+.compteur.trop{color:var(--red)}
+
+.spin{width:13px;height:13px;border:2px solid rgba(255,255,255,.25);border-top-color:#fff;border-radius:50%;animation:tourne .7s linear infinite;flex-shrink:0}
+@keyframes tourne{to{transform:rotate(360deg)}}
+
+.toast-zone{position:fixed;bottom:20px;right:20px;z-index:900;display:flex;flex-direction:column;gap:8px;max-width:min(380px,calc(100vw - 40px))}
+.toast{background:var(--bg4);border:1px solid var(--bdr2);border-radius:var(--r);padding:11px 14px;font-size:12.5px;
+  box-shadow:0 8px 24px rgba(0,0,0,.45);animation:entre .22s ease;border-left:3px solid var(--vio)}
+.toast.err{border-left-color:var(--red)}
+.toast.ok{border-left-color:var(--grn)}
+@keyframes entre{from{opacity:0;transform:translateX(14px)}to{opacity:1;transform:none}}
+
+.bandeau{position:sticky;top:-26px;z-index:50;margin:-26px -30px 20px;padding:8px 30px;
+  background:var(--amb-d);border-bottom:1px solid rgba(240,180,41,.28);font-size:11.5px;color:#F5D48A;
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+
+/* ─── RESPONSIVE ─── */
+@media(max-width:860px){
+  html,body{overflow:auto}
+  .shell{grid-template-columns:1fr;height:auto}
+  .sidebar{border-right:none;border-bottom:1px solid var(--bdr)}
+  .s-nav{flex-direction:row;overflow-x:auto;padding:10px}
+  .s-nav-item{flex-shrink:0}
+  .s-nav-lbl{display:none}
+  .s-foot{display:none}
+  .main{padding:18px 16px 50px;overflow:visible}
+  .bandeau{margin:-18px -16px 16px;padding:8px 16px;position:static}
+  .grid2,.grid3,.radios{grid-template-columns:1fr}
+  .ph{flex-direction:column}
+  .ph-btns{width:100%}
+  .ph-btns .btn{flex:1;justify-content:center}
+  .item{flex-wrap:wrap}
+  audio{max-width:100%;width:100%}
+}
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- ══════════════ SIDEBAR ══════════════ -->
+  <div class="sidebar">
+    <div class="s-logo">
+      <div class="s-mark">
+        <div class="s-bar" style="height:9px"></div>
+        <div class="s-bar" style="height:17px"></div>
+        <div class="s-bar" style="height:13px"></div>
+      </div>
+      <div class="s-title">Studio Voix</div>
+      <div class="s-sub">Clonage et synthèse</div>
+    </div>
+    <div class="s-nav" id="navLat"></div>
+    <div class="s-foot">
+      <div class="s-etat">État</div>
+      <div class="s-pastille"><span class="dot" id="dotCons"></span><span id="txtCons">Consentement requis</span></div>
+      <div class="s-pastille" style="margin-top:4px"><span class="dot" id="dotEch"></span><span id="txtEch">Aucun échantillon</span></div>
+      <div class="s-pastille" style="margin-top:4px"><span class="dot" id="dotVoix"></span><span id="txtVoix">Aucune voix créée</span></div>
+    </div>
+  </div>
+
+  <!-- ══════════════ PRINCIPAL ══════════════ -->
+  <div class="main" id="zonePrincipale">
+
+    <div class="bandeau">
+      <span class="badge b-amb">Contenu synthétique</span>
+      <span>Tout audio produit ici est une imitation générée par ordinateur. Il doit être signalé comme tel à quiconque l'écoute.</span>
+    </div>
+
+    <!-- ─────────── PAGE 1 : CONSENTEMENT ─────────── -->
+    <div class="page on" id="p0">
+      <div class="ph">
+        <div>
+          <div class="ph-tag">Étape 01 / 06</div>
+          <div class="ph-title">Consentement</div>
+          <div class="ph-desc">Identifier la personne dont la voix va être reproduite</div>
+        </div>
+      </div>
+
+      <div class="note n-blu">
+        <div class="note-t">Pourquoi cette étape</div>
+        Reproduire la voix d'une personne permet de lui faire dire des choses qu'elle n'a jamais dites.
+        En France, la voix est un attribut de la personnalité protégé par l'article 9 du Code civil : sa reproduction
+        exige l'accord de l'intéressé. Cette page enregistre cet accord et conditionne l'accès au reste de l'application.
+      </div>
+
+      <div class="sec">Origine de la voix</div>
+      <div class="card">
+        <div class="radios" id="zoneOrigine">
+          <label class="radio" onclick="choisirOrigine('moi')">
+            <input type="radio" name="origine" id="origMoi">
+            <div>
+              <div class="radio-t">C'est ma propre voix</div>
+              <div class="radio-d">J'enregistre et je clone ma voix, pour mon propre usage.</div>
+            </div>
+          </label>
+          <label class="radio" onclick="choisirOrigine('autre')">
+            <input type="radio" name="origine" id="origAutre">
+            <div>
+              <div class="radio-t">C'est la voix d'une autre personne</div>
+              <div class="radio-d">Son accord explicite et préalable est obligatoire.</div>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <div id="zoneIdentite" style="display:none">
+        <div class="sec">Identité et accord</div>
+        <div class="card">
+          <div class="grid2">
+            <div class="champ">
+              <label class="lbl">Nom de la personne concernée<span class="obl">*</span></label>
+              <input type="text" id="consNom" placeholder="Nom et prénom" oninput="majEtat()">
+            </div>
+            <div class="champ">
+              <label class="lbl">Date de recueil de l'accord<span class="obl">*</span></label>
+              <input type="date" id="consDate" oninput="majEtat()">
+            </div>
+          </div>
+          <div class="champ">
+            <label class="lbl">Usage prévu de la voix reproduite<span class="obl">*</span></label>
+            <input type="text" id="consUsage" placeholder="Exemple : narration de la vidéo de présentation interne" oninput="majEtat()">
+            <div class="aide">Décrire précisément l'usage. L'accord porte sur cet usage et non sur un usage illimité.</div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:10px">
+          <label class="check" id="chk1"><input type="checkbox" id="cons1" onchange="majEtat()">
+            <span id="lblCons1">La personne concernée a donné son accord explicite et préalable à la reproduction de sa voix pour l'usage décrit ci-dessus.</span></label>
+          <label class="check" id="chk2"><input type="checkbox" id="cons2" onchange="majEtat()">
+            <span>Les enregistrements produits seront présentés comme des voix de synthèse et jamais comme des enregistrements authentiques de la personne.</span></label>
+          <label class="check" id="chk3"><input type="checkbox" id="cons3" onchange="majEtat()">
+            <span>Cette voix ne servira pas à usurper une identité, à obtenir un paiement ou une information, ni à contourner une authentification vocale.</span></label>
+          <label class="check" id="chk4"><input type="checkbox" id="cons4" onchange="majEtat()">
+            <span>La personne concernée peut retirer son accord à tout moment ; la voix et les enregistrements seront alors supprimés.</span></label>
+        </div>
+      </div>
+
+      <div class="note n-red" style="margin-top:14px">
+        <div class="note-t">Usages interdits</div>
+        Imiter la voix d'un tiers sans son accord, d'une personnalité publique, ou s'en servir pour tromper
+        un interlocuteur (fraude au président, faux appel d'un proche, contournement d'une authentification vocale)
+        est illicite. L'usurpation d'identité est punie d'un an d'emprisonnement et de 15 000 euros d'amende
+        (article 226-4-1 du Code pénal). Cette application ne doit pas servir à cela.
+      </div>
+
+      <div class="nav-btns">
+        <span></span>
+        <button class="btn btn-p" onclick="go(1)">Enregistrement des échantillons →</button>
+      </div>
+    </div>
+
+    <!-- ─────────── PAGE 2 : ENREGISTREMENT ─────────── -->
+    <div class="page" id="p1">
+      <div class="ph">
+        <div>
+          <div class="ph-tag">Étape 02 / 06</div>
+          <div class="ph-title">Enregistrement des échantillons</div>
+          <div class="ph-desc">Constituer la banque de voix qui servira de modèle</div>
+        </div>
+        <div class="ph-btns">
+          <button class="btn btn-g" onclick="go(0)">← Retour</button>
+          <button class="btn btn-p" onclick="go(2)">Service vocal →</button>
+        </div>
+      </div>
+
+      <div class="note n-blu">
+        <div class="note-t">Conditions d'un bon clonage</div>
+        Une à deux minutes d'audio propre suffisent, et au-delà de trois minutes le gain devient négligeable.
+        Ce qui compte : une seule voix, aucun bruit de fond, aucune musique, pas d'écho, un débit naturel,
+        un micro à quinze centimètres de la bouche. Un enregistrement saturé ou lointain dégrade davantage
+        le résultat qu'un enregistrement court.
+      </div>
+
+      <div class="sec">Enregistrer</div>
+      <div class="card">
+        <div class="rec-zone">
+          <button class="rec-btn" id="btnRec" onclick="basculerEnregistrement()" title="Démarrer ou arrêter l'enregistrement">
+            <div class="forme"></div>
+          </button>
+          <div class="rec-info">
+            <div class="rec-chrono" id="chrono">00:00</div>
+            <div class="rec-etat" id="recEtat">Micro en attente d'autorisation</div>
+          </div>
+        </div>
+        <canvas class="vu" id="vu"></canvas>
+        <div class="aide" id="alerteSat" style="display:none;color:var(--red-l)">
+          Niveau saturé : la voix est trop forte ou trop proche du micro. Reculez légèrement.
+        </div>
+
+        <div class="grid2" style="margin-top:14px">
+          <label class="check"><input type="checkbox" id="optTraitement" checked>
+            <span>Réduction de bruit et suppression d'écho du navigateur</span></label>
+          <label class="check"><input type="checkbox" id="optGain">
+            <span>Contrôle automatique du gain (à éviter pour le clonage)</span></label>
+        </div>
+      </div>
+
+      <div class="sec">Ou importer des fichiers audio existants</div>
+      <div class="card">
+        <input type="file" id="fichiers" accept="audio/*" multiple style="display:none" onchange="importerFichiers(event)">
+        <button class="btn btn-g" style="width:100%;justify-content:center" onclick="document.getElementById('fichiers').click()">
+          Choisir des fichiers audio
+        </button>
+        <div class="aide">Formats acceptés : mp3, wav, m4a, ogg, webm. La même exigence de qualité s'applique.</div>
+      </div>
+
+      <div class="sec">Texte suggéré à lire</div>
+      <div class="card">
+        <div class="phrase">Le vent du sud-est souffle sur les hauts de l'île, et la pluie fine finit toujours par descendre sur la ville avant midi.</div>
+        <div class="phrase">Combien coûte réellement une installation de ce type, et en combien d'années devient-elle rentable ?</div>
+        <div class="phrase">Attention : ce chiffre n'est pas définitif. Il faudra le vérifier avant de signer quoi que ce soit.</div>
+        <div class="phrase">J'ai relu le dossier hier soir. Franchement, c'est du très bon travail, je n'ai presque rien à redire.</div>
+        <div class="phrase">Zéro, un, deux, trois, quatre, cinq, six, sept, huit, neuf, dix. Lundi, mardi, mercredi, jeudi, vendredi.</div>
+        <div class="aide">Ces phrases couvrent les sons du français, plusieurs intonations (neutre, interrogative, avertissement, enthousiaste) et les chiffres. Lisez-les naturellement, sans forcer l'articulation.</div>
+      </div>
+
+      <div class="sec">Échantillons collectés</div>
+      <div class="card">
+        <div class="jauge">
+          <div class="jauge-tete">
+            <span>Durée totale utile</span>
+            <span class="curs-val" id="dureeTotale">0 s</span>
+          </div>
+          <div class="jauge-piste"><div class="jauge-plein" id="jaugePlein" style="width:0%"></div></div>
+          <div class="jauge-reperes"><span>0</span><span>60 s — minimum conseillé</span><span>180 s</span></div>
+        </div>
+        <div id="listeEch" style="margin-top:14px"></div>
+      </div>
+
+      <div class="nav-btns">
+        <button class="btn btn-g" onclick="go(0)">← Retour</button>
+        <button class="btn btn-p" onclick="go(2)">Service vocal →</button>
+      </div>
+    </div>
+
+    <!-- ─────────── PAGE 3 : SERVICE VOCAL ─────────── -->
+    <div class="page" id="p2">
+      <div class="ph">
+        <div>
+          <div class="ph-tag">Étape 03 / 06</div>
+          <div class="ph-title">Service vocal</div>
+          <div class="ph-desc">Connexion au moteur de clonage</div>
+        </div>
+        <div class="ph-btns">
+          <button class="btn btn-g" onclick="go(1)">← Retour</button>
+          <button class="btn btn-p" onclick="go(3)">Création de la voix →</button>
+        </div>
+      </div>
+
+      <div class="note n-amb">
+        <div class="note-t">Pourquoi un service externe</div>
+        Le clonage vocal exige un modèle de plusieurs gigaoctets qu'un navigateur ne peut pas faire tourner.
+        L'enregistrement et le stockage restent sur votre machine, mais la création de la voix et la synthèse
+        passent par une interface de programmation distante. Un compte payant est nécessaire chez le fournisseur :
+        le clonage instantané n'est pas disponible sur les offres gratuites.
+      </div>
+
+      <div class="sec">Mode de fonctionnement</div>
+      <div class="card">
+        <div class="radios">
+          <label class="radio sel" id="radioReel" onclick="choisirMode('reel')">
+            <input type="radio" name="mode" id="modeReel" checked>
+            <div>
+              <div class="radio-t">Clonage réel</div>
+              <div class="radio-d">Reproduit la voix enregistrée. Nécessite une clé d'accès.</div>
+            </div>
+          </label>
+          <label class="radio" id="radioDemo" onclick="choisirMode('demo')">
+            <input type="radio" name="mode" id="modeDemo">
+            <div>
+              <div class="radio-t">Mode démonstration</div>
+              <div class="radio-d">Voix générique du navigateur, sans clé ni réseau. Ce n'est pas la voix enregistrée.</div>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <div id="zoneApi">
+        <div class="sec">Clé d'accès</div>
+        <div class="card">
+          <div class="champ">
+            <label class="lbl">Clé d'interface de programmation<span class="obl">*</span></label>
+            <input type="password" id="cleApi" placeholder="Collez votre clé ici" autocomplete="off" oninput="majEtat()">
+            <div class="aide">
+              La clé reste dans ce navigateur et n'est envoyée qu'au fournisseur du service.
+              Elle n'est transmise à aucun autre serveur et ne figure dans aucun fichier du projet.
+            </div>
+          </div>
+          <label class="check"><input type="checkbox" id="memoCle">
+            <span>Mémoriser la clé sur cet appareil. Sans cette option elle est oubliée à la fermeture de l'onglet.</span></label>
+          <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+            <button class="btn btn-g" id="btnTest" onclick="testerConnexion()">Tester la connexion</button>
+            <button class="btn btn-g" onclick="oublierCle()">Oublier la clé</button>
+          </div>
+          <div id="resTest" style="margin-top:12px"></div>
+        </div>
+
+        <div class="sec">Moteur de synthèse</div>
+        <div class="card">
+          <div class="champ">
+            <label class="lbl">Modèle</label>
+            <select id="modele">
+              <option value="eleven_multilingual_v2">Multilingue v2 — meilleure qualité, recommandé en français</option>
+              <option value="eleven_turbo_v2_5">Turbo v2.5 — plus rapide, qualité légèrement inférieure</option>
+              <option value="eleven_flash_v2_5">Flash v2.5 — latence minimale, qualité la plus basse</option>
+            </select>
+            <div class="aide">Le multilingue v2 restitue le mieux les accents et la prosodie du français.</div>
+          </div>
+        </div>
+
+        <div class="note n-blu">
+          <div class="note-t">Si la connexion échoue</div>
+          Un navigateur bloque les appels distants émis depuis un fichier ouvert en local (adresse commençant par
+          <span class="kv-v">file://</span>). Servez la page par un petit serveur local, par exemple
+          <span class="kv-v">npx http-server</span> dans le dossier du projet, puis ouvrez
+          <span class="kv-v">http://localhost:8080/clonage_voix.html</span>.
+        </div>
+      </div>
+
+      <div class="nav-btns">
+        <button class="btn btn-g" onclick="go(1)">← Retour</button>
+        <button class="btn btn-p" onclick="go(3)">Création de la voix →</button>
+      </div>
+    </div>
+
+    <!-- ─────────── PAGE 4 : CRÉATION DE LA VOIX ─────────── -->
+    <div class="page" id="p3">
+      <div class="ph">
+        <div>
+          <div class="ph-tag">Étape 04 / 06</div>
+          <div class="ph-title">Création de la voix</div>
+          <div class="ph-desc">Envoyer les échantillons et obtenir une voix clonée</div>
+        </div>
+        <div class="ph-btns">
+          <button class="btn btn-g" onclick="go(2)">← Retour</button>
+          <button class="btn btn-p" onclick="go(4)">Synthèse →</button>
+        </div>
+      </div>
+
+      <div id="zoneCreation">
+        <div class="sec">Récapitulatif avant envoi</div>
+        <div class="card" id="recapEnvoi"></div>
+
+        <div class="sec">Paramètres de la voix</div>
+        <div class="card">
+          <div class="grid2">
+            <div class="champ">
+              <label class="lbl">Nom de la voix<span class="obl">*</span></label>
+              <input type="text" id="voixNom" placeholder="Exemple : Voix Nicolas" oninput="majEtat()">
+            </div>
+            <div class="champ">
+              <label class="lbl">Description</label>
+              <input type="text" id="voixDesc" placeholder="Exemple : voix masculine, ton posé, français">
+            </div>
+          </div>
+          <label class="check"><input type="checkbox" id="optBruit">
+            <span>Retirer le bruit de fond des échantillons avant l'analyse. Utile en environnement bruyant, inutile sur un enregistrement déjà propre.</span></label>
+          <button class="btn btn-p" id="btnCreer" style="width:100%;justify-content:center;margin-top:14px" onclick="creerVoix()">
+            Créer la voix clonée
+          </button>
+          <div id="resCreation" style="margin-top:12px"></div>
+        </div>
+
+        <div class="sec">Voix disponibles sur le compte</div>
+        <div class="card">
+          <button class="btn btn-g btn-sm" onclick="listerVoix()">Rafraîchir la liste</button>
+          <div id="listeVoix" style="margin-top:12px"></div>
+        </div>
+      </div>
+
+      <div id="zoneCreationDemo" style="display:none">
+        <div class="note n-amb">
+          <div class="note-t">Mode démonstration actif</div>
+          Aucune voix n'est clonée dans ce mode : la synthèse utilisera une voix générique du navigateur.
+          Passez en clonage réel à l'étape précédente pour reproduire la voix enregistrée.
+        </div>
+      </div>
+
+      <div class="nav-btns">
+        <button class="btn btn-g" onclick="go(2)">← Retour</button>
+        <button class="btn btn-p" onclick="go(4)">Synthèse →</button>
+      </div>
+    </div>
+
+    <!-- ─────────── PAGE 5 : SYNTHÈSE ─────────── -->
+    <div class="page" id="p4">
+      <div class="ph">
+        <div>
+          <div class="ph-tag">Étape 05 / 06</div>
+          <div class="ph-title">Synthèse</div>
+          <div class="ph-desc">Écrire un texte et l'entendre dans la voix reproduite</div>
+        </div>
+        <div class="ph-btns">
+          <button class="btn btn-g" onclick="go(3)">← Retour</button>
+          <button class="btn btn-p" onclick="go(5)">Bibliothèque →</button>
+        </div>
+      </div>
+
+      <div class="card" id="voixActive"></div>
+
+      <div class="sec">Texte à prononcer</div>
+      <div class="card">
+        <textarea id="texte" placeholder="Saisissez ici le texte que la voix doit prononcer." oninput="majCompteur()"></textarea>
+        <div class="compteur" id="compteur">0 caractère</div>
+        <div class="aide">
+          La ponctuation guide l'intonation : un point marque une pause franche, les virgules aèrent le débit,
+          les points de suspension créent une hésitation. Écrire les nombres en toutes lettres améliore la prononciation.
+        </div>
+      </div>
+
+      <div class="sec">Réglages de rendu</div>
+      <div class="card" id="carteReglages">
+        <div class="grid2">
+          <div class="champ">
+            <div class="curs-tete"><span>Stabilité</span><span class="curs-val" id="vStab">0,50</span></div>
+            <input type="range" id="stabilite" min="0" max="1" step="0.05" value="0.5" oninput="majReglages()">
+            <div class="aide">Bas : plus d'émotion et de variation. Haut : ton monotone mais constant.</div>
+          </div>
+          <div class="champ">
+            <div class="curs-tete"><span>Similarité</span><span class="curs-val" id="vSim">0,75</span></div>
+            <input type="range" id="similarite" min="0" max="1" step="0.05" value="0.75" oninput="majReglages()">
+            <div class="aide">Haut : colle au timbre d'origine, y compris ses défauts d'enregistrement.</div>
+          </div>
+          <div class="champ">
+            <div class="curs-tete"><span>Expressivité</span><span class="curs-val" id="vStyle">0,00</span></div>
+            <input type="range" id="style" min="0" max="1" step="0.05" value="0" oninput="majReglages()">
+            <div class="aide">Accentue le style de la personne. Au-delà de 0,5 la voix devient instable.</div>
+          </div>
+          <div class="champ" style="display:flex;align-items:flex-end">
+            <label class="check" style="width:100%"><input type="checkbox" id="boost" checked>
+              <span>Renforcement du locuteur : améliore la ressemblance, allonge légèrement le calcul.</span></label>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn btn-p" id="btnSynth" style="width:100%;justify-content:center;margin-top:14px" onclick="synthetiser()">
+        Générer l'audio
+      </button>
+      <div id="resSynth" style="margin-top:12px"></div>
+
+      <div class="nav-btns">
+        <button class="btn btn-g" onclick="go(3)">← Retour</button>
+        <button class="btn btn-p" onclick="go(5)">Bibliothèque →</button>
+      </div>
+    </div>
+
+    <!-- ─────────── PAGE 6 : BIBLIOTHÈQUE ─────────── -->
+    <div class="page" id="p5">
+      <div class="ph">
+        <div>
+          <div class="ph-tag">Étape 06 / 06</div>
+          <div class="ph-title">Bibliothèque</div>
+          <div class="ph-desc">Audios produits, traçabilité et suppression</div>
+        </div>
+        <div class="ph-btns">
+          <button class="btn btn-g" onclick="go(4)">← Retour</button>
+        </div>
+      </div>
+
+      <div class="sec">Audios générés</div>
+      <div class="card"><div id="listeGen"></div></div>
+
+      <div class="sec">Trace du consentement</div>
+      <div class="card">
+        <div id="traceConsentement"></div>
+        <button class="btn btn-g btn-sm" style="margin-top:12px" onclick="exporterConsentement()">
+          Exporter la trace du consentement
+        </button>
+      </div>
+
+      <div class="sec">Retrait du consentement</div>
+      <div class="card">
+        <div class="note n-red" style="margin:0">
+          <div class="note-t">Effacement total</div>
+          Si la personne retire son accord, tout doit disparaître : échantillons, audios générés et voix
+          chez le fournisseur. La suppression locale est immédiate ; la voix distante doit être supprimée
+          depuis l'étape 04 ou depuis le compte du fournisseur.
+        </div>
+        <button class="btn btn-r" style="width:100%;justify-content:center;margin-top:12px" onclick="toutEffacer()">
+          Effacer toutes les données locales
+        </button>
+      </div>
+
+      <div class="nav-btns">
+        <button class="btn btn-g" onclick="go(4)">← Retour</button>
+        <span></span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast-zone" id="toasts"></div>
+
+<script>
+'use strict';
+
+/* ══════════════════════════════════════════════════════
+   ÉTAT GLOBAL
+   ══════════════════════════════════════════════════════ */
+
+const PAGES = [
+  {t:'Consentement'},
+  {t:'Enregistrement'},
+  {t:'Service vocal'},
+  {t:'Création voix'},
+  {t:'Synthèse'},
+  {t:'Bibliothèque'}
+];
+
+const API = 'https://api.elevenlabs.io/v1';
+const DUREE_CIBLE = 180;   // secondes affichées en pleine jauge
+const DUREE_MINI  = 60;    // secondes en dessous desquelles on avertit
+
+const etat = {
+  page:0,
+  origine:null,          // 'moi' | 'autre'
+  consentement:null,     // objet figé au moment de la validation
+  echantillons:[],       // {id, nom, blob, duree, type}
+  mode:'reel',           // 'reel' | 'demo'
+  voixId:null,
+  voixNom:null,
+  generations:[]         // {id, nom, texte, blob, date, voix}
+};
+
+let bd = null;
+
+/* ══════════════════════════════════════════════════════
+   BASE DE DONNÉES LOCALE
+   ══════════════════════════════════════════════════════ */
+
+function ouvrirBase(){
+  return new Promise((resolve,reject)=>{
+    const req = indexedDB.open('studio_voix', 1);
+    req.onupgradeneeded = e=>{
+      const b = e.target.result;
+      if(!b.objectStoreNames.contains('echantillons')) b.createObjectStore('echantillons',{keyPath:'id'});
+      if(!b.objectStoreNames.contains('generations'))  b.createObjectStore('generations',{keyPath:'id'});
+      if(!b.objectStoreNames.contains('config'))       b.createObjectStore('config',{keyPath:'cle'});
+    };
+    req.onsuccess = ()=>resolve(req.result);
+    req.onerror   = ()=>reject(req.error);
+  });
+}
+
+function tx(magasin, mode){ return bd.transaction(magasin, mode).objectStore(magasin); }
+
+function bdEcrire(magasin, obj){
+  return new Promise((resolve,reject)=>{
+    if(!bd) return resolve();
+    const r = tx(magasin,'readwrite').put(obj);
+    r.onsuccess = ()=>resolve(); r.onerror = ()=>reject(r.error);
+  });
+}
+function bdLire(magasin, cle){
+  return new Promise((resolve,reject)=>{
+    if(!bd) return resolve(null);
+    const r = tx(magasin,'readonly').get(cle);
+    r.onsuccess = ()=>resolve(r.result||null); r.onerror = ()=>reject(r.error);
+  });
+}
+function bdTout(magasin){
+  return new Promise((resolve,reject)=>{
+    if(!bd) return resolve([]);
+    const r = tx(magasin,'readonly').getAll();
+    r.onsuccess = ()=>resolve(r.result||[]); r.onerror = ()=>reject(r.error);
+  });
+}
+function bdEffacerLigne(magasin, cle){
+  return new Promise((resolve,reject)=>{
+    if(!bd) return resolve();
+    const r = tx(magasin,'readwrite').delete(cle);
+    r.onsuccess = ()=>resolve(); r.onerror = ()=>reject(r.error);
+  });
+}
+function bdViderMagasin(magasin){
+  return new Promise((resolve,reject)=>{
+    if(!bd) return resolve();
+    const r = tx(magasin,'readwrite').clear();
+    r.onsuccess = ()=>resolve(); r.onerror = ()=>reject(r.error);
+  });
+}
+
+/* ══════════════════════════════════════════════════════
+   UTILITAIRES
+   ══════════════════════════════════════════════════════ */
+
+const $ = id => document.getElementById(id);
+
+function ident(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
+
+function echapper(s){
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function fmtDuree(sec){
+  if(!isFinite(sec) || sec < 0) sec = 0;
+  const m = Math.floor(sec/60), s = Math.floor(sec%60);
+  return String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+}
+
+function fmtTaille(o){
+  if(o < 1024) return o + ' o';
+  if(o < 1048576) return (o/1024).toFixed(0) + ' Ko';
+  return (o/1048576).toFixed(1) + ' Mo';
+}
+
+function fmtNombre(n){ return n.toLocaleString('fr-FR'); }
+
+function horodatage(){
+  const d = new Date(), p = n => String(n).padStart(2,'0');
+  return d.getFullYear() + p(d.getMonth()+1) + p(d.getDate()) + '-' + p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds());
+}
+
+function slug(s){
+  return String(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-zA-Z0-9]+/g,'-').replace(/^-+|-+$/g,'').toLowerCase().slice(0,40) || 'voix';
+}
+
+function toast(msg, genre){
+  const d = document.createElement('div');
+  d.className = 'toast' + (genre ? ' ' + genre : '');
+  d.textContent = msg;
+  $('toasts').appendChild(d);
+  setTimeout(()=>{ d.style.opacity='0'; d.style.transition='opacity .3s'; setTimeout(()=>d.remove(),300); }, 4600);
+}
+
+function occupe(bouton, actif, texte){
+  if(!bouton) return;
+  bouton.disabled = actif;
+  if(actif){
+    bouton.dataset.libelle = bouton.innerHTML;
+    bouton.innerHTML = '<span class="spin"></span>' + echapper(texte||'Traitement…');
+  } else if(bouton.dataset.libelle){
+    bouton.innerHTML = bouton.dataset.libelle;
+    delete bouton.dataset.libelle;
+  }
+}
+
+/* Mesure la durée réelle d'un blob audio, avec repli sur la valeur estimée. */
+async function mesurerDuree(blob, repli){
+  try{
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if(!Ctx) return repli || 0;
+    const ctx = new Ctx();
+    const tampon = await ctx.decodeAudioData(await blob.arrayBuffer());
+    const d = tampon.duration;
+    ctx.close();
+    return isFinite(d) && d > 0 ? d : (repli || 0);
+  }catch(e){
+    return repli || 0;
+  }
+}
+
+/* ══════════════════════════════════════════════════════
+   NAVIGATION
+   ══════════════════════════════════════════════════════ */
+
+function construireNav(){
+  $('navLat').innerHTML = PAGES.map((p,i)=>
+    '<div class="s-nav-item" id="nav'+i+'" onclick="go('+i+')">' +
+      '<div class="s-num">'+String(i+1).padStart(2,'0')+'</div>' +
+      '<div class="s-nav-lbl">'+echapper(p.t)+'</div>' +
+    '</div>').join('');
+}
+
+/* Renvoie un message si la page demandée est inaccessible, sinon null. */
+function verrou(n){
+  if(n > 0 && !etat.consentement)
+    return "Validez d'abord le consentement.";
+  if(n >= 3 && etat.mode === 'reel' && etat.echantillons.length === 0)
+    return "Aucun échantillon : enregistrez ou importez au moins un extrait de voix.";
+  if(n >= 3 && etat.mode === 'reel' && !cleCourante())
+    return "Renseignez la clé d'accès du service vocal.";
+  return null;
+}
+
+function go(n){
+  if(n > 0 && !etat.consentement && !validerConsentement()) return;
+
+  const message = verrou(n);
+  if(message){ toast(message, 'err'); signalerManques(n); return; }
+
+  if(enregistrement) arreterEnregistrement();
+
+  etat.page = n;
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
+  $('p'+n).classList.add('on');
+  const zone = $('zonePrincipale');
+  if(zone) zone.scrollTop = 0;
+  window.scrollTo(0,0);
+
+  if(n === 3) majRecapEnvoi();
+  if(n === 4){ majVoixActive(); majCompteur(); }
+  if(n === 5){ afficherGenerations(); afficherTraceConsentement(); }
+
+  majEtat();
+}
+
+/* Met en évidence les champs qui bloquent l'accès à la page demandée. */
+function signalerManques(n){
+  if(n >= 3 && etat.mode === 'reel' && !cleCourante() && etat.page === 2){
+    const c = $('cleApi'); if(c) c.classList.add('req-err');
+  }
+}
+
+/* ══════════════════════════════════════════════════════
+   PAGE 1 — CONSENTEMENT
+   ══════════════════════════════════════════════════════ */
+
+function choisirOrigine(valeur){
+  etat.origine = valeur;
+  $('origMoi').checked   = (valeur === 'moi');
+  $('origAutre').checked = (valeur === 'autre');
+  document.querySelectorAll('#zoneOrigine .radio').forEach((r,i)=>{
+    r.classList.toggle('sel', (i === 0) === (valeur === 'moi'));
+  });
+  $('zoneIdentite').style.display = 'block';
+
+  $('lblCons1').textContent = (valeur === 'moi')
+    ? "Je consens à la reproduction de ma propre voix pour l'usage décrit ci-dessus."
+    : "La personne concernée a donné son accord explicite et préalable à la reproduction de sa voix pour l'usage décrit ci-dessus.";
+
+  if(valeur === 'moi' && !$('consNom').value) $('consNom').placeholder = 'Votre nom';
+  if(!$('consDate').value) $('consDate').value = new Date().toISOString().slice(0,10);
+
+  majEtat();
+}
+
+function validerConsentement(){
+  let manque = false;
+  const marquer = (el, mauvais)=>{
+    if(!el) return;
+    el.classList.toggle('req-err', mauvais);
+    if(mauvais) manque = true;
+  };
+
+  if(!etat.origine){
+    toast("Indiquez d'abord à qui appartient la voix.", 'err');
+    return false;
+  }
+
+  marquer($('consNom'),   !$('consNom').value.trim());
+  marquer($('consDate'),  !$('consDate').value);
+  marquer($('consUsage'), !$('consUsage').value.trim());
+  for(let i=1; i<=4; i++) marquer($('chk'+i), !$('cons'+i).checked);
+
+  if(manque){
+    toast('Complétez tous les champs et cochez les quatre engagements.', 'err');
+    return false;
+  }
+
+  etat.consentement = {
+    origine: etat.origine,
+    nom:     $('consNom').value.trim(),
+    date:    $('consDate').value,
+    usage:   $('consUsage').value.trim(),
+    valideLe: new Date().toISOString()
+  };
+  bdEcrire('config', {cle:'consentement', valeur: etat.consentement});
+  toast('Consentement enregistré.', 'ok');
+  return true;
+}
+
+function afficherTraceConsentement(){
+  const c = etat.consentement;
+  if(!c){ $('traceConsentement').innerHTML = '<div class="vide">Aucun consentement enregistré.</div>'; return; }
+  $('traceConsentement').innerHTML =
+    ligneKv('Origine de la voix', c.origine === 'moi' ? 'Voix du propre utilisateur' : "Voix d'un tiers, avec accord") +
+    ligneKv('Personne concernée', c.nom) +
+    ligneKv("Date de l'accord", new Date(c.date + 'T00:00:00').toLocaleDateString('fr-FR')) +
+    ligneKv('Usage déclaré', c.usage) +
+    ligneKv('Validé le', new Date(c.valideLe).toLocaleString('fr-FR')) +
+    ligneKv('Engagements', 'Quatre engagements acceptés');
+}
+
+function ligneKv(cle, valeur){
+  return '<div class="kv"><span class="kv-c">'+echapper(cle)+'</span><span class="kv-v">'+echapper(valeur)+'</span></div>';
+}
+
+function exporterConsentement(){
+  const c = etat.consentement;
+  if(!c){ toast('Aucun consentement à exporter.', 'err'); return; }
+  const lignes = [
+    'TRACE DE CONSENTEMENT — REPRODUCTION DE VOIX',
+    '',
+    'Origine de la voix   : ' + (c.origine === 'moi' ? "voix de l'utilisateur lui-même" : "voix d'un tiers, avec accord recueilli"),
+    'Personne concernée   : ' + c.nom,
+    "Date de l'accord     : " + c.date,
+    'Usage déclaré        : ' + c.usage,
+    'Validation dans      : ' + new Date(c.valideLe).toLocaleString('fr-FR'),
+    '',
+    'Engagements acceptés :',
+    "  1. Accord explicite et préalable de la personne concernée pour l'usage décrit.",
+    '  2. Les productions sont présentées comme des voix de synthèse.',
+    "  3. Aucun usage d'usurpation, de fraude ou de contournement d'authentification vocale.",
+    '  4. Retrait possible à tout moment, avec suppression des données.',
+    '',
+    'Échantillons conservés : ' + etat.echantillons.length,
+    'Audios générés         : ' + etat.generations.length,
+    'Voix distante          : ' + (etat.voixId || 'aucune'),
+    '',
+    'Document généré le ' + new Date().toLocaleString('fr-FR') + '.'
+  ];
+  telecharger(new Blob([lignes.join('\n')], {type:'text/plain;charset=utf-8'}),
+              'consentement_' + slug(c.nom) + '_' + horodatage() + '.txt');
+}
+
+/* ══════════════════════════════════════════════════════
+   PAGE 2 — ENREGISTREMENT
+   ══════════════════════════════════════════════════════ */
+
+let enregistreur = null, enregistrement = false, flux = null;
+let morceaux = [], debutRec = 0, minuteur = null;
+let ctxAudio = null, analyseur = null, animation = null, sourceMicro = null;
+
+function typeMimeSupporte(){
+  const candidats = ['audio/webm;codecs=opus','audio/webm','audio/mp4','audio/ogg;codecs=opus','audio/ogg'];
+  if(!window.MediaRecorder) return '';
+  for(const m of candidats){
+    try{ if(MediaRecorder.isTypeSupported(m)) return m; }catch(e){}
+  }
+  return '';
+}
+
+function extensionDe(type){
+  if(!type) return 'webm';
+  if(type.indexOf('webm') >= 0) return 'webm';
+  if(type.indexOf('mp4') >= 0 || type.indexOf('m4a') >= 0) return 'm4a';
+  if(type.indexOf('ogg') >= 0) return 'ogg';
+  if(type.indexOf('mpeg') >= 0) return 'mp3';
+  if(type.indexOf('wav') >= 0) return 'wav';
+  return 'webm';
+}
+
+function basculerEnregistrement(){
+  if(enregistrement) arreterEnregistrement(); else demarrerEnregistrement();
+}
+
+async function demarrerEnregistrement(){
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    toast("Ce navigateur ne donne pas accès au micro.", 'err');
+    return;
+  }
+  if(!window.MediaRecorder){
+    toast("Ce navigateur ne sait pas enregistrer l'audio.", 'err');
+    return;
+  }
+
+  try{
+    const traitement = $('optTraitement').checked;
+    flux = await navigator.mediaDevices.getUserMedia({audio:{
+      echoCancellation: traitement,
+      noiseSuppression: traitement,
+      autoGainControl:  $('optGain').checked,
+      channelCount: 1
+    }});
+  }catch(e){
+    $('recEtat').textContent = 'Accès au micro refusé';
+    toast("Accès au micro refusé. Autorisez le micro dans les réglages du navigateur.", 'err');
+    return;
+  }
+
+  const type = typeMimeSupporte();
+  try{
+    enregistreur = type ? new MediaRecorder(flux, {mimeType:type}) : new MediaRecorder(flux);
+  }catch(e){
+    enregistreur = new MediaRecorder(flux);
+  }
+
+  morceaux = [];
+  enregistreur.ondataavailable = e=>{ if(e.data && e.data.size > 0) morceaux.push(e.data); };
+  enregistreur.onstop = finaliserEnregistrement;
+  enregistreur.start();
+
+  enregistrement = true;
+  debutRec = Date.now();
+  $('btnRec').classList.add('rec');
+  $('recEtat').textContent = 'Enregistrement en cours — parlez normalement';
+  minuteur = setInterval(()=>{ $('chrono').textContent = fmtDuree((Date.now()-debutRec)/1000); }, 200);
+
+  demarrerVumetre();
+}
+
+function arreterEnregistrement(){
+  if(!enregistrement) return;
+  enregistrement = false;
+  clearInterval(minuteur);
+  $('btnRec').classList.remove('rec');
+  $('recEtat').textContent = 'Traitement de la prise…';
+  try{ enregistreur.stop(); }catch(e){}
+  arreterVumetre();
+}
+
+async function finaliserEnregistrement(){
+  const type = (enregistreur && enregistreur.mimeType) || 'audio/webm';
+  const blob = new Blob(morceaux, {type});
+  morceaux = [];
+
+  if(flux){ flux.getTracks().forEach(t=>t.stop()); flux = null; }
+
+  const estimee = (Date.now()-debutRec)/1000;
+  $('chrono').textContent = '00:00';
+  $('recEtat').textContent = 'Prise enregistrée';
+
+  if(blob.size < 1200 || estimee < 1){
+    toast('Prise trop courte, elle a été ignorée.', 'err');
+    return;
+  }
+
+  const duree = await mesurerDuree(blob, estimee);
+  await ajouterEchantillon({
+    id: ident(),
+    nom: 'Prise ' + (etat.echantillons.length + 1) + '.' + extensionDe(type),
+    blob, duree, type,
+    source: 'micro'
+  });
+  toast('Prise ajoutée : ' + fmtDuree(duree) + '.', 'ok');
+}
+
+/* ─── Vumètre ─── */
+
+function demarrerVumetre(){
+  try{
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if(!Ctx) return;
+    ctxAudio = new Ctx();
+    sourceMicro = ctxAudio.createMediaStreamSource(flux);
+    analyseur = ctxAudio.createAnalyser();
+    analyseur.fftSize = 1024;
+    sourceMicro.connect(analyseur);
+    dessinerVumetre();
+  }catch(e){ /* le vumètre est un confort, son échec ne bloque pas l'enregistrement */ }
+}
+
+function arreterVumetre(){
+  if(animation) cancelAnimationFrame(animation);
+  animation = null;
+  if(ctxAudio){ try{ ctxAudio.close(); }catch(e){} ctxAudio = null; }
+  analyseur = null; sourceMicro = null;
+  const c = $('vu'), g = c.getContext('2d');
+  g.clearRect(0,0,c.width,c.height);
+  $('alerteSat').style.display = 'none';
+}
+
+function dessinerVumetre(){
+  const c = $('vu');
+  if(!analyseur || !c) return;
+  const g = c.getContext('2d');
+  const l = c.clientWidth, h = c.clientHeight;
+  if(c.width !== l) c.width = l;
+  if(c.height !== h) c.height = h;
+
+  const donnees = new Uint8Array(analyseur.fftSize);
+  analyseur.getByteTimeDomainData(donnees);
+
+  let crete = 0, somme = 0;
+  for(let i=0;i<donnees.length;i++){
+    const v = Math.abs(donnees[i]-128)/128;
+    if(v > crete) crete = v;
+    somme += v*v;
+  }
+  const efficace = Math.sqrt(somme/donnees.length);
+
+  g.clearRect(0,0,l,h);
+  const barres = 48, largeur = l/barres;
+  for(let i=0;i<barres;i++){
+    const pas = i/barres;
+    const actif = pas < Math.min(1, efficace*3.2);
+    g.fillStyle = !actif ? 'rgba(255,255,255,.06)'
+                : pas > .88 ? '#F85149' : pas > .7 ? '#F0B429' : '#1D9E75';
+    const hb = actif ? Math.max(4, h * (0.25 + pas*0.6)) : 4;
+    g.fillRect(i*largeur + 1, (h-hb)/2, largeur - 2, hb);
+  }
+
+  $('alerteSat').style.display = crete > 0.985 ? 'block' : 'none';
+  animation = requestAnimationFrame(dessinerVumetre);
+}
+
+/* ─── Échantillons ─── */
+
+async function ajouterEchantillon(ech){
+  etat.echantillons.push(ech);
+  await bdEcrire('echantillons', ech);
+  afficherEchantillons();
+  majEtat();
+}
+
+async function importerFichiers(evt){
+  const fichiers = Array.from(evt.target.files || []);
+  evt.target.value = '';
+  for(const f of fichiers){
+    if(f.type && f.type.indexOf('audio') !== 0){
+      toast('Fichier ignoré, ce n\u2019est pas de l\u2019audio : ' + f.name, 'err');
+      continue;
+    }
+    const duree = await mesurerDuree(f, 0);
+    await ajouterEchantillon({
+      id: ident(), nom: f.name, blob: f, duree,
+      type: f.type || 'audio/mpeg', source: 'fichier'
+    });
+  }
+  if(fichiers.length) toast(fichiers.length + ' fichier(s) traité(s).', 'ok');
+}
+
+function afficherEchantillons(){
+  const zone = $('listeEch');
+  if(!etat.echantillons.length){
+    zone.innerHTML = '<div class="vide">Aucun échantillon pour le moment.</div>';
+    majJauge();
+    return;
+  }
+  zone.innerHTML = etat.echantillons.map(e=>
+    '<div class="item">' +
+      '<div class="item-corps">' +
+        '<div class="item-nom">'+echapper(e.nom)+'</div>' +
+        '<div class="item-meta">'+fmtDuree(e.duree)+' — '+fmtTaille(e.blob.size)+' — '+
+          (e.source === 'micro' ? 'micro' : 'import')+'</div>' +
+      '</div>' +
+      '<audio controls preload="none" src="'+URL.createObjectURL(e.blob)+'"></audio>' +
+      '<div class="item-btns">' +
+        '<button class="btn btn-r btn-sm" onclick="supprimerEchantillon(\''+e.id+'\')">Supprimer</button>' +
+      '</div>' +
+    '</div>').join('');
+  majJauge();
+}
+
+async function supprimerEchantillon(id){
+  etat.echantillons = etat.echantillons.filter(e=>e.id !== id);
+  await bdEffacerLigne('echantillons', id);
+  afficherEchantillons();
+  majEtat();
+  toast('Échantillon supprimé.');
+}
+
+function dureeCumulee(){
+  return etat.echantillons.reduce((t,e)=>t + (e.duree||0), 0);
+}
+
+function majJauge(){
+  const total = dureeCumulee();
+  const pct = Math.min(100, total / DUREE_CIBLE * 100);
+  const plein = $('jaugePlein');
+  plein.style.width = pct + '%';
+  plein.classList.toggle('ok', total >= DUREE_MINI);
+  $('dureeTotale').textContent = total >= 60
+    ? fmtDuree(total) + ' (' + Math.round(total) + ' s)'
+    : Math.round(total) + ' s';
+}
+
+/* ══════════════════════════════════════════════════════
+   PAGE 3 — SERVICE VOCAL
+   ══════════════════════════════════════════════════════ */
+
+function choisirMode(m){
+  etat.mode = m;
+  $('modeReel').checked = (m === 'reel');
+  $('modeDemo').checked = (m === 'demo');
+  $('radioReel').classList.toggle('sel', m === 'reel');
+  $('radioDemo').classList.toggle('sel', m === 'demo');
+  $('zoneApi').style.display = (m === 'reel') ? 'block' : 'none';
+  $('zoneCreation').style.display = (m === 'reel') ? 'block' : 'none';
+  $('zoneCreationDemo').style.display = (m === 'reel') ? 'none' : 'block';
+  const carte = $('carteReglages');
+  if(carte) carte.style.opacity = (m === 'reel') ? '1' : '.45';
+  majEtat();
+}
+
+function cleCourante(){
+  const champ = $('cleApi');
+  return champ ? champ.value.trim() : '';
+}
+
+function memoriserCle(){
+  const cle = cleCourante();
+  if(!cle) return;
+  try{
+    if($('memoCle').checked){ localStorage.setItem('studio_voix_cle', cle); sessionStorage.removeItem('studio_voix_cle'); }
+    else { sessionStorage.setItem('studio_voix_cle', cle); localStorage.removeItem('studio_voix_cle'); }
+  }catch(e){ /* stockage indisponible : la clé reste en mémoire vive */ }
+}
+
+function oublierCle(){
+  try{ localStorage.removeItem('studio_voix_cle'); sessionStorage.removeItem('studio_voix_cle'); }catch(e){}
+  $('cleApi').value = '';
+  $('memoCle').checked = false;
+  $('resTest').innerHTML = '';
+  majEtat();
+  toast('Clé effacée de cet appareil.');
+}
+
+function entetes(json){
+  const h = {'xi-api-key': cleCourante()};
+  if(json) h['Content-Type'] = 'application/json';
+  return h;
+}
+
+/* Traduit une erreur du service en message compréhensible. */
+async function messageErreur(reponse){
+  let brut = '';
+  try{
+    const donnees = await reponse.json();
+    brut = (donnees && donnees.detail && (donnees.detail.message || donnees.detail.status)) ||
+           (typeof donnees.detail === 'string' ? donnees.detail : '') || '';
+  }catch(e){}
+
+  const code = String(brut).toLowerCase();
+  if(reponse.status === 401) return "Clé refusée : vérifiez qu'elle est complète et toujours active.";
+  if(code.indexOf('can_not_use_instant_voice_cloning') >= 0 || code.indexOf('voice_limit') >= 0)
+    return "Le clonage instantané n'est pas inclus dans l'offre du compte. Il faut un abonnement payant chez le fournisseur.";
+  if(reponse.status === 403) return "Accès refusé : l'offre du compte ne permet pas cette opération. " + brut;
+  if(reponse.status === 422) return 'Requête refusée : ' + (brut || 'paramètres invalides.');
+  if(reponse.status === 429) return 'Trop de requêtes ou quota de caractères épuisé.';
+  if(reponse.status >= 500) return 'Le service est momentanément indisponible. Réessayez dans un instant.';
+  return brut || ('Erreur ' + reponse.status + '.');
+}
+
+function messageReseau(e){
+  return "Connexion impossible au service vocal. Deux causes habituelles : la page est ouverte en local " +
+         "(adresse file://) et le navigateur bloque l'appel, ou l'accès réseau est filtré. " +
+         "Servez la page via un serveur local, par exemple npx http-server, puis rouvrez-la sur http://localhost:8080/. " +
+         "(" + (e && e.message ? e.message : 'échec réseau') + ")";
+}
+
+async function testerConnexion(){
+  const cle = cleCourante();
+  if(!cle){
+    $('cleApi').classList.add('req-err');
+    toast("Renseignez d'abord la clé d'accès.", 'err');
+    return;
+  }
+  $('cleApi').classList.remove('req-err');
+  const bouton = $('btnTest');
+  occupe(bouton, true, 'Test en cours…');
+  $('resTest').innerHTML = '';
+
+  try{
+    const r = await fetch(API + '/user', {headers: entetes(false)});
+    if(!r.ok){
+      $('resTest').innerHTML = '<div class="note n-red">' + echapper(await messageErreur(r)) + '</div>';
+      return;
+    }
+    const d = await r.json();
+    const abo = d.subscription || {};
+    const utilises = abo.character_count, plafond = abo.character_limit;
+    let detail = '';
+    if(typeof utilises === 'number' && typeof plafond === 'number'){
+      detail = ligneKv('Caractères consommés', fmtNombre(utilises) + ' / ' + fmtNombre(plafond)) +
+               ligneKv('Restant', fmtNombre(Math.max(0, plafond - utilises)));
+    }
+    $('resTest').innerHTML =
+      '<div class="note n-grn"><div class="note-t">Connexion établie</div>' +
+      ligneKv('Offre du compte', abo.tier || 'non communiquée') + detail + '</div>';
+    memoriserCle();
+    toast('Connexion au service vocale établie.', 'ok');
+  }catch(e){
+    $('resTest').innerHTML = '<div class="note n-red">' + echapper(messageReseau(e)) + '</div>';
+  }finally{
+    occupe(bouton, false);
+    majEtat();
+  }
+}
+
+/* ══════════════════════════════════════════════════════
+   PAGE 4 — CRÉATION DE LA VOIX
+   ══════════════════════════════════════════════════════ */
+
+function majRecapEnvoi(){
+  const total = dureeCumulee();
+  let avis = '';
+  if(total < DUREE_MINI){
+    avis = '<div class="note n-amb" style="margin-top:10px"><div class="note-t">Matière insuffisante</div>' +
+           'Moins d\u2019une minute d\u2019audio : la ressemblance sera approximative. Ajoutez des prises pour un meilleur résultat.</div>';
+  } else if(total > 300){
+    avis = '<div class="note n-blu" style="margin-top:10px">Au-delà de cinq minutes, le surplus n\u2019améliore plus le résultat. ' +
+           'Mieux vaut garder les meilleures prises.</div>';
+  }
+  $('recapEnvoi').innerHTML =
+    ligneKv('Personne concernée', etat.consentement ? etat.consentement.nom : '—') +
+    ligneKv('Échantillons', String(etat.echantillons.length)) +
+    ligneKv('Durée cumulée', fmtDuree(total)) +
+    ligneKv('Volume envoyé', fmtTaille(etat.echantillons.reduce((t,e)=>t+e.blob.size,0))) +
+    avis;
+}
+
+async function creerVoix(){
+  if(etat.mode !== 'reel'){ toast('Le mode démonstration ne crée pas de voix.', 'err'); return; }
+  if(!etat.echantillons.length){ toast("Aucun échantillon à envoyer.", 'err'); return; }
+
+  const nom = $('voixNom').value.trim();
+  if(!nom){
+    $('voixNom').classList.add('req-err');
+    toast('Donnez un nom à la voix.', 'err');
+    return;
+  }
+  $('voixNom').classList.remove('req-err');
+
+  const bouton = $('btnCreer');
+  occupe(bouton, true, 'Envoi et analyse…');
+  $('resCreation').innerHTML = '';
+
+  try{
+    const donnees = new FormData();
+    donnees.append('name', nom);
+    const desc = $('voixDesc').value.trim();
+    if(desc) donnees.append('description', desc);
+    if($('optBruit').checked) donnees.append('remove_background_noise', 'true');
+    etat.echantillons.forEach(e=>donnees.append('files', e.blob, e.nom));
+
+    /* Content-Type volontairement omis : le navigateur pose lui-même la frontière multipart. */
+    const r = await fetch(API + '/voices/add', {method:'POST', headers:{'xi-api-key':cleCourante()}, body:donnees});
+
+    if(!r.ok){
+      $('resCreation').innerHTML = '<div class="note n-red">' + echapper(await messageErreur(r)) + '</div>';
+      return;
+    }
+    const d = await r.json();
+    etat.voixId  = d.voice_id;
+    etat.voixNom = nom;
+    await bdEcrire('config', {cle:'voix', valeur:{id: d.voice_id, nom}});
+
+    $('resCreation').innerHTML =
+      '<div class="note n-grn"><div class="note-t">Voix créée</div>' +
+      ligneKv('Nom', nom) + ligneKv('Identifiant', d.voice_id) +
+      (d.requires_verification ? ligneKv('Vérification', 'Le fournisseur demande une vérification vocale') : '') +
+      '</div>';
+    toast('Voix clonée avec succès.', 'ok');
+    memoriserCle();
+    listerVoix();
+  }catch(e){
+    $('resCreation').innerHTML = '<div class="note n-red">' + echapper(messageReseau(e)) + '</div>';
+  }finally{
+    occupe(bouton, false);
+    majEtat();
+  }
+}
+
+let voixDistantes = [];   // dernière liste renvoyée par le service
+
+async function listerVoix(){
+  if(etat.mode !== 'reel' || !cleCourante()){
+    $('listeVoix').innerHTML = '<div class="vide">Clé d\u2019accès requise pour lister les voix.</div>';
+    return;
+  }
+  $('listeVoix').innerHTML = '<div class="vide">Chargement…</div>';
+  try{
+    const r = await fetch(API + '/voices', {headers: entetes(false)});
+    if(!r.ok){ $('listeVoix').innerHTML = '<div class="note n-red">' + echapper(await messageErreur(r)) + '</div>'; return; }
+    const d = await r.json();
+    const voix = (d.voices || []).filter(v=>v.category === 'cloned' || v.category === 'generated' || v.category === 'professional');
+    if(!voix.length){
+      $('listeVoix').innerHTML = '<div class="vide">Aucune voix personnelle sur ce compte.</div>';
+      return;
+    }
+    /* Les noms de voix viennent du service : on les garde en mémoire et on ne
+       passe qu'un indice aux boutons, pour ne jamais injecter de texte distant
+       dans un attribut onclick. */
+    voixDistantes = voix;
+    $('listeVoix').innerHTML = voix.map((v,i)=>
+      '<div class="item">' +
+        '<div class="item-corps">' +
+          '<div class="item-nom">'+echapper(v.name)+
+            (v.voice_id === etat.voixId ? ' <span class="badge b-grn">active</span>' : '')+'</div>' +
+          '<div class="item-meta">'+echapper(v.voice_id)+'</div>' +
+        '</div>' +
+        '<div class="item-btns">' +
+          '<button class="btn btn-g btn-sm" onclick="activerVoixParIndice('+i+')">Utiliser</button>' +
+          '<button class="btn btn-r btn-sm" onclick="supprimerVoixParIndice('+i+')">Supprimer</button>' +
+        '</div>' +
+      '</div>').join('');
+  }catch(e){
+    $('listeVoix').innerHTML = '<div class="note n-red">' + echapper(messageReseau(e)) + '</div>';
+  }
+}
+
+function activerVoixParIndice(i){
+  const v = voixDistantes[i];
+  if(v) activerVoix(v.voice_id, v.name);
+}
+
+function supprimerVoixParIndice(i){
+  const v = voixDistantes[i];
+  if(v) supprimerVoix(v.voice_id, v.name);
+}
+
+async function activerVoix(id, nom){
+  etat.voixId = id;
+  etat.voixNom = nom;
+  await bdEcrire('config', {cle:'voix', valeur:{id, nom}});
+  listerVoix();
+  majEtat();
+  toast('Voix active : ' + nom + '.', 'ok');
+}
+
+async function supprimerVoix(id, nom){
+  if(!confirm('Supprimer définitivement la voix « ' + (nom || id) + ' » chez le fournisseur ?')) return;
+  try{
+    const r = await fetch(API + '/voices/' + id, {method:'DELETE', headers: entetes(false)});
+    if(!r.ok){ toast(await messageErreur(r), 'err'); return; }
+    if(etat.voixId === id){
+      etat.voixId = null; etat.voixNom = null;
+      await bdEffacerLigne('config', 'voix');
+    }
+    listerVoix();
+    majEtat();
+    toast('Voix supprimée.', 'ok');
+  }catch(e){ toast(messageReseau(e), 'err'); }
+}
+
+/* ══════════════════════════════════════════════════════
+   PAGE 5 — SYNTHÈSE
+   ══════════════════════════════════════════════════════ */
+
+function majReglages(){
+  const f = n => n.toFixed(2).replace('.', ',');
+  $('vStab').textContent  = f(parseFloat($('stabilite').value));
+  $('vSim').textContent   = f(parseFloat($('similarite').value));
+  $('vStyle').textContent = f(parseFloat($('style').value));
+}
+
+function majCompteur(){
+  const n = $('texte').value.length;
+  const c = $('compteur');
+  c.textContent = fmtNombre(n) + (n > 1 ? ' caractères' : ' caractère') + ' sur 5 000';
+  c.classList.toggle('trop', n > 5000);
+}
+
+function majVoixActive(){
+  const zone = $('voixActive');
+  if(etat.mode === 'demo'){
+    zone.innerHTML = '<div class="note n-amb" style="margin:0"><div class="note-t">Mode démonstration</div>' +
+      'La lecture utilise une voix générique du navigateur. Ce n\u2019est pas la voix enregistrée, ' +
+      'et l\u2019audio ne peut pas être téléchargé dans ce mode.</div>';
+    return;
+  }
+  if(!etat.voixId){
+    zone.innerHTML = '<div class="note n-red" style="margin:0"><div class="note-t">Aucune voix active</div>' +
+      'Revenez à l\u2019étape 04 pour créer la voix ou en activer une existante.</div>';
+    return;
+  }
+  zone.innerHTML =
+    '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
+      '<span class="badge b-vio">Voix active</span>' +
+      '<strong>'+echapper(etat.voixNom || 'Voix clonée')+'</strong>' +
+      '<span class="item-meta">'+echapper(etat.voixId)+'</span>' +
+    '</div>';
+}
+
+async function synthetiser(){
+  const texte = $('texte').value.trim();
+  if(!texte){
+    $('texte').classList.add('req-err');
+    toast('Saisissez le texte à prononcer.', 'err');
+    return;
+  }
+  $('texte').classList.remove('req-err');
+  if(texte.length > 5000){ toast('Texte trop long : 5 000 caractères au maximum.', 'err'); return; }
+
+  if(etat.mode === 'demo'){ synthetiserDemo(texte); return; }
+
+  if(!etat.voixId){ toast("Aucune voix active. Créez-la à l'étape 04.", 'err'); return; }
+
+  const bouton = $('btnSynth');
+  occupe(bouton, true, 'Génération…');
+  $('resSynth').innerHTML = '';
+
+  try{
+    const corps = {
+      text: texte,
+      model_id: $('modele').value,
+      voice_settings:{
+        stability: parseFloat($('stabilite').value),
+        similarity_boost: parseFloat($('similarite').value),
+        style: parseFloat($('style').value),
+        use_speaker_boost: $('boost').checked
+      }
+    };
+    const r = await fetch(API + '/text-to-speech/' + etat.voixId + '?output_format=mp3_44100_128', {
+      method:'POST', headers: entetes(true), body: JSON.stringify(corps)
+    });
+    if(!r.ok){
+      $('resSynth').innerHTML = '<div class="note n-red">' + echapper(await messageErreur(r)) + '</div>';
+      return;
+    }
+    const blob = await r.blob();
+    const gen = {
+      id: ident(),
+      nom: 'voix-synthetique_' + slug(etat.voixNom || 'voix') + '_' + horodatage() + '.mp3',
+      texte, blob, date: new Date().toISOString(), voix: etat.voixNom || etat.voixId
+    };
+    etat.generations.unshift(gen);
+    await bdEcrire('generations', gen);
+
+    $('resSynth').innerHTML =
+      '<div class="note n-grn"><div class="note-t">Audio généré</div>' +
+        '<div style="display:flex;gap:10px;align-items:center;margin-top:8px;flex-wrap:wrap">' +
+          '<audio controls src="'+URL.createObjectURL(blob)+'"></audio>' +
+          '<button class="btn btn-g btn-sm" onclick="telechargerGeneration(\''+gen.id+'\')">Télécharger</button>' +
+        '</div>' +
+        '<div style="margin-top:8px;font-size:11.5px">Le nom du fichier porte la mention « voix-synthetique » : ne la retirez pas.</div>' +
+      '</div>';
+    toast('Audio généré.', 'ok');
+    memoriserCle();
+  }catch(e){
+    $('resSynth').innerHTML = '<div class="note n-red">' + echapper(messageReseau(e)) + '</div>';
+  }finally{
+    occupe(bouton, false);
+  }
+}
+
+function synthetiserDemo(texte){
+  if(!window.speechSynthesis){
+    toast('Ce navigateur ne propose pas de synthèse vocale intégrée.', 'err');
+    return;
+  }
+  window.speechSynthesis.cancel();
+  const mot = new SpeechSynthesisUtterance(texte);
+  const voix = window.speechSynthesis.getVoices();
+  const fr = voix.find(v=>v.lang && v.lang.toLowerCase().indexOf('fr') === 0);
+  if(fr) mot.voice = fr;
+  mot.lang = 'fr-FR';
+  mot.rate = 1;
+  window.speechSynthesis.speak(mot);
+  $('resSynth').innerHTML =
+    '<div class="note n-amb"><div class="note-t">Lecture de démonstration</div>' +
+    'Voix générique du navigateur' + (fr ? ' (' + echapper(fr.name) + ')' : '') + '. ' +
+    'Aucun fichier n\u2019est produit et ce n\u2019est pas la voix enregistrée.' +
+    '<div style="margin-top:8px"><button class="btn btn-g btn-sm" onclick="window.speechSynthesis.cancel()">Arrêter la lecture</button></div></div>';
+}
+
+/* ══════════════════════════════════════════════════════
+   PAGE 6 — BIBLIOTHÈQUE
+   ══════════════════════════════════════════════════════ */
+
+function afficherGenerations(){
+  const zone = $('listeGen');
+  if(!etat.generations.length){
+    zone.innerHTML = '<div class="vide">Aucun audio généré pour le moment.</div>';
+    return;
+  }
+  zone.innerHTML = etat.generations.map(g=>
+    '<div class="item">' +
+      '<div class="item-corps">' +
+        '<div class="item-nom">'+echapper(g.texte.slice(0,70) + (g.texte.length > 70 ? '…' : ''))+'</div>' +
+        '<div class="item-meta">'+new Date(g.date).toLocaleString('fr-FR')+' — '+echapper(g.voix)+' — '+fmtTaille(g.blob.size)+'</div>' +
+      '</div>' +
+      '<audio controls preload="none" src="'+URL.createObjectURL(g.blob)+'"></audio>' +
+      '<div class="item-btns">' +
+        '<button class="btn btn-g btn-sm" onclick="telechargerGeneration(\''+g.id+'\')">Télécharger</button>' +
+        '<button class="btn btn-r btn-sm" onclick="supprimerGeneration(\''+g.id+'\')">Supprimer</button>' +
+      '</div>' +
+    '</div>').join('');
+}
+
+function telecharger(blob, nom){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = nom;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 4000);
+}
+
+function telechargerGeneration(id){
+  const g = etat.generations.find(x=>x.id === id);
+  if(!g) return;
+  telecharger(g.blob, g.nom);
+}
+
+async function supprimerGeneration(id){
+  etat.generations = etat.generations.filter(g=>g.id !== id);
+  await bdEffacerLigne('generations', id);
+  afficherGenerations();
+  toast('Audio supprimé.');
+}
+
+async function toutEffacer(){
+  if(!confirm("Effacer les échantillons, les audios générés et la trace du consentement stockés dans ce navigateur ? Cette action est définitive.")) return;
+  await bdViderMagasin('echantillons');
+  await bdViderMagasin('generations');
+  await bdViderMagasin('config');
+  try{ localStorage.removeItem('studio_voix_cle'); sessionStorage.removeItem('studio_voix_cle'); }catch(e){}
+
+  etat.echantillons = []; etat.generations = [];
+  etat.consentement = null; etat.origine = null;
+  etat.voixId = null; etat.voixNom = null;
+
+  afficherEchantillons(); afficherGenerations(); afficherTraceConsentement();
+  toast('Toutes les données locales ont été effacées.', 'ok');
+  setTimeout(()=>location.reload(), 900);
+}
+
+/* ══════════════════════════════════════════════════════
+   ÉTAT DE L'INTERFACE
+   ══════════════════════════════════════════════════════ */
+
+function majEtat(){
+  /* Navigation latérale */
+  PAGES.forEach((p,i)=>{
+    const el = $('nav'+i);
+    if(!el) return;
+    el.classList.toggle('active', i === etat.page);
+    el.classList.toggle('bloque', verrou(i) !== null && i !== etat.page);
+    el.classList.toggle('done', etapeFaite(i) && i !== etat.page);
+  });
+
+  /* Pastilles d'état */
+  const cons = !!etat.consentement;
+  $('dotCons').className = 'dot' + (cons ? ' ok' : ' att');
+  $('txtCons').textContent = cons
+    ? 'Consentement : ' + etat.consentement.nom
+    : 'Consentement requis';
+
+  const n = etat.echantillons.length, total = dureeCumulee();
+  $('dotEch').className = 'dot' + (total >= DUREE_MINI ? ' ok' : n ? ' att' : '');
+  $('txtEch').textContent = n ? n + ' échantillon(s) — ' + fmtDuree(total) : 'Aucun échantillon';
+
+  if(etat.mode === 'demo'){
+    $('dotVoix').className = 'dot att';
+    $('txtVoix').textContent = 'Mode démonstration';
+  } else {
+    $('dotVoix').className = 'dot' + (etat.voixId ? ' ok' : '');
+    $('txtVoix').textContent = etat.voixId ? 'Voix : ' + (etat.voixNom || 'clonée') : 'Aucune voix créée';
+  }
+
+  /* Nettoyage des marqueurs d'erreur dès que le champ est rempli */
+  ['consNom','consDate','consUsage','voixNom','cleApi','texte'].forEach(id=>{
+    const el = $(id);
+    if(el && el.value && el.value.trim()) el.classList.remove('req-err');
+  });
+  for(let i=1;i<=4;i++){
+    const c = $('cons'+i), b = $('chk'+i);
+    if(c && b && c.checked) b.classList.remove('req-err');
+  }
+}
+
+function etapeFaite(i){
+  switch(i){
+    case 0: return !!etat.consentement;
+    case 1: return etat.echantillons.length > 0;
+    case 2: return etat.mode === 'demo' || !!cleCourante();
+    case 3: return etat.mode === 'demo' || !!etat.voixId;
+    case 4: return etat.generations.length > 0;
+    default: return false;
+  }
+}
+
+/* ══════════════════════════════════════════════════════
+   DÉMARRAGE
+   ══════════════════════════════════════════════════════ */
+
+async function demarrer(){
+  construireNav();
+  afficherEchantillons();
+  afficherGenerations();
+  majReglages();
+  majCompteur();
+
+  try{
+    bd = await ouvrirBase();
+  }catch(e){
+    toast('Stockage local indisponible : rien ne sera conservé après fermeture.', 'err');
+  }
+
+  if(bd){
+    try{
+      const cons = await bdLire('config','consentement');
+      if(cons && cons.valeur){
+        etat.consentement = cons.valeur;
+        etat.origine = cons.valeur.origine;
+        choisirOrigine(cons.valeur.origine);
+        $('consNom').value   = cons.valeur.nom || '';
+        $('consDate').value  = cons.valeur.date || '';
+        $('consUsage').value = cons.valeur.usage || '';
+        for(let i=1;i<=4;i++) $('cons'+i).checked = true;
+      }
+
+      const voix = await bdLire('config','voix');
+      if(voix && voix.valeur){ etat.voixId = voix.valeur.id; etat.voixNom = voix.valeur.nom; }
+
+      etat.echantillons = await bdTout('echantillons');
+      etat.generations  = (await bdTout('generations')).sort((a,b)=>b.date.localeCompare(a.date));
+      afficherEchantillons();
+      afficherGenerations();
+      afficherTraceConsentement();
+    }catch(e){
+      toast('Données locales illisibles, elles ont été ignorées.', 'err');
+    }
+  }
+
+  /* Reprise de la clé mémorisée */
+  try{
+    const memo = localStorage.getItem('studio_voix_cle');
+    const session = sessionStorage.getItem('studio_voix_cle');
+    if(memo){ $('cleApi').value = memo; $('memoCle').checked = true; }
+    else if(session){ $('cleApi').value = session; }
+  }catch(e){}
+
+  /* Enumération des voix du navigateur pour le mode démonstration */
+  if(window.speechSynthesis && typeof window.speechSynthesis.getVoices === 'function'){
+    window.speechSynthesis.getVoices();
+    window.speechSynthesis.onvoiceschanged = ()=>{};
+  }
+
+  window.addEventListener('beforeunload', e=>{
+    if(enregistrement){ e.preventDefault(); e.returnValue = ''; }
+  });
+
+  majEtat();
+}
+
+document.addEventListener('DOMContentLoaded', demarrer);
+</script>
+</body>
+</html>
