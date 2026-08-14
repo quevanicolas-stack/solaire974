@@ -53,17 +53,11 @@ fonctionne avant d'installer le modèle de deux gigaoctets.
 python serveur.py --moteur test
 ```
 
-Le serveur affiche son adresse, par défaut `http://127.0.0.1:8770`. Laissez cette
-fenêtre de Terminal ouverte.
+Le serveur affiche son adresse et indique où ouvrir l'application, par défaut
+`http://127.0.0.1:8770/app`. Laissez cette fenêtre de Terminal ouverte.
 
-Dans une **seconde** fenêtre de Terminal, servez l'application :
-
-```
-cd ..
-npx http-server . -p 8080
-```
-
-Ouvrez ensuite `http://localhost:8080/clonage_voix.html`, puis :
+**Un seul serveur suffit** : il sert aussi la page. Ouvrez donc simplement
+`http://127.0.0.1:8770/app` dans le navigateur, puis :
 
 1. étape 01, remplissez le consentement ;
 2. étape 02, enregistrez quelques secondes ;

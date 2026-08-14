@@ -29,7 +29,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import FileResponse, JSONResponse, Response
 
 RACINE = Path(__file__).resolve().parent
 DOSSIER_VOIX = RACINE / "donnees" / "voix"
@@ -461,6 +461,30 @@ async def synthese(voix_id: str, requete: Request):
     return Response(content=audio, media_type=mime)
 
 
+def page_application() -> Path | None:
+    """Localise clonage_voix.html, à côté du serveur ou dans le dossier parent."""
+    for candidat in (RACINE.parent / "clonage_voix.html", RACINE / "clonage_voix.html"):
+        if candidat.exists():
+            return candidat
+    return None
+
+
+@app.get("/app")
+def application():
+    """
+    Sert l'application depuis le serveur lui-même.
+
+    Cela évite d'avoir à lancer un second serveur web, et place la page et
+    l'interface de programmation sur la même origine : le navigateur n'a
+    alors plus aucune raison de bloquer les appels.
+    """
+    page = page_application()
+    if not page:
+        return erreur(404, "clonage_voix.html est introuvable. Placez-le dans le dossier "
+                           "parent de voix_locale, ou servez-le par vos propres moyens.")
+    return FileResponse(page, media_type="text/html; charset=utf-8")
+
+
 @app.get("/")
 def accueil():
     moteur = etat["moteur"]
@@ -470,6 +494,7 @@ def accueil():
         "clone_reellement": moteur.clone_reellement,
         "voix": len(lister_fiches()),
         "ffmpeg": ffmpeg_disponible(),
+        "application": "/app" if page_application() else None,
     }
 
 
@@ -501,8 +526,12 @@ def principal():
     binaire = chemin_ffmpeg()
     print(f"  ffmpeg      : {binaire if binaire else 'ABSENT — pip install imageio-ffmpeg'}")
     print()
-    print(f"  Dans l'application, étape 03, choisissez « Serveur local »")
-    print(f"  et indiquez l'adresse http://{args.hote}:{args.port}")
+    if page_application():
+        print(f"  Ouvrez l'application ici : http://{args.hote}:{args.port}/app")
+        print(f"  Aucun autre serveur n'est nécessaire.")
+    else:
+        print(f"  clonage_voix.html est introuvable : servez-le de votre côté, puis")
+        print(f"  à l'étape 03 choisissez « Serveur local » sur http://{args.hote}:{args.port}")
     print()
 
     if args.moteur == "xtts":
