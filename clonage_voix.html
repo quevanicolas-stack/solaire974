@@ -455,6 +455,36 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
       </div>
 
       <div id="zoneApi">
+        <div class="sec">Fournisseur</div>
+        <div class="card">
+          <div class="radios">
+            <label class="radio sel" id="radioDistant" onclick="choisirFournisseur('distant')">
+              <input type="radio" name="fournisseur" id="fournDistant" checked>
+              <div>
+                <div class="radio-t">Service distant</div>
+                <div class="radio-d">Qualité maximale, abonnement payant, les échantillons quittent la machine.</div>
+              </div>
+            </label>
+            <label class="radio" id="radioLocal" onclick="choisirFournisseur('local')">
+              <input type="radio" name="fournisseur" id="fournLocal">
+              <div>
+                <div class="radio-t">Serveur local</div>
+                <div class="radio-d">Gratuit et hors ligne. Rien ne quitte la machine. Exige le serveur lancé.</div>
+              </div>
+            </label>
+          </div>
+          <div class="champ" id="champUrlLocale" style="display:none;margin-top:13px">
+            <label class="lbl">Adresse du serveur local</label>
+            <input type="text" id="urlLocale" value="http://127.0.0.1:8770" oninput="majEtat()" onchange="enregistrerFournisseur()">
+            <div class="aide">
+              Lancez le serveur avec <span class="kv-v">python serveur.py --moteur test</span>
+              depuis le dossier <span class="kv-v">voix_locale</span>, puis testez la connexion.
+              Aucune clé n'est nécessaire dans ce mode.
+            </div>
+          </div>
+        </div>
+
+        <div id="blocCle">
         <div class="sec">Clé d'accès</div>
         <div class="card">
           <div class="champ">
@@ -473,17 +503,28 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
           </div>
           <div id="resTest" style="margin-top:12px"></div>
         </div>
+        </div>
 
-        <div class="sec">Moteur de synthèse</div>
-        <div class="card">
-          <div class="champ">
-            <label class="lbl">Modèle</label>
-            <select id="modele">
-              <option value="eleven_multilingual_v2">Multilingue v2 — meilleure qualité, recommandé en français</option>
-              <option value="eleven_turbo_v2_5">Turbo v2.5 — plus rapide, qualité légèrement inférieure</option>
-              <option value="eleven_flash_v2_5">Flash v2.5 — latence minimale, qualité la plus basse</option>
-            </select>
-            <div class="aide">Le multilingue v2 restitue le mieux les accents et la prosodie du français.</div>
+        <div id="blocTestLocal" style="display:none">
+          <div class="sec">Vérification</div>
+          <div class="card">
+            <button class="btn btn-g" id="btnTestLocal" onclick="testerConnexion()">Tester la connexion au serveur local</button>
+            <div id="resTestLocal" style="margin-top:12px"></div>
+          </div>
+        </div>
+
+        <div id="blocModele">
+          <div class="sec">Moteur de synthèse</div>
+          <div class="card">
+            <div class="champ">
+              <label class="lbl">Modèle</label>
+              <select id="modele">
+                <option value="eleven_multilingual_v2">Multilingue v2 — meilleure qualité, recommandé en français</option>
+                <option value="eleven_turbo_v2_5">Turbo v2.5 — plus rapide, qualité légèrement inférieure</option>
+                <option value="eleven_flash_v2_5">Flash v2.5 — latence minimale, qualité la plus basse</option>
+              </select>
+              <div class="aide">Le multilingue v2 restitue le mieux les accents et la prosodie du français.</div>
+            </div>
           </div>
         </div>
 
@@ -687,7 +728,7 @@ const PAGES = [
   {t:'Bibliothèque'}
 ];
 
-const API = 'https://api.elevenlabs.io/v1';
+const API_DISTANTE = 'https://api.elevenlabs.io/v1';
 const DUREE_CIBLE = 180;   // secondes affichées en pleine jauge
 const DUREE_MINI  = 60;    // secondes en dessous desquelles on avertit
 
@@ -697,6 +738,7 @@ const etat = {
   consentement:null,     // objet figé au moment de la validation
   echantillons:[],       // {id, nom, blob, duree, type}
   mode:'reel',           // 'reel' | 'demo'
+  fournisseur:'distant', // 'distant' | 'local'
   voixId:null,
   voixNom:null,
   generations:[]         // {id, nom, texte, blob, date, voix}
@@ -849,7 +891,7 @@ function verrou(n){
     return "Validez d'abord le consentement.";
   if(n >= 3 && etat.mode === 'reel' && etat.echantillons.length === 0)
     return "Aucun échantillon : enregistrez ou importez au moins un extrait de voix.";
-  if(n >= 3 && etat.mode === 'reel' && !cleCourante())
+  if(n >= 3 && etat.mode === 'reel' && etat.fournisseur === 'distant' && !cleCourante())
     return "Renseignez la clé d'accès du service vocal.";
   return null;
 }
@@ -878,7 +920,7 @@ function go(n){
 
 /* Met en évidence les champs qui bloquent l'accès à la page demandée. */
 function signalerManques(n){
-  if(n >= 3 && etat.mode === 'reel' && !cleCourante() && etat.page === 2){
+  if(n >= 3 && etat.mode === 'reel' && etat.fournisseur === 'distant' && !cleCourante() && etat.page === 2){
     const c = $('cleApi'); if(c) c.classList.add('req-err');
   }
 }
@@ -1245,6 +1287,44 @@ function choisirMode(m){
   majEtat();
 }
 
+function choisirFournisseur(f){
+  etat.fournisseur = f;
+  $('fournDistant').checked = (f === 'distant');
+  $('fournLocal').checked   = (f === 'local');
+  $('radioDistant').classList.toggle('sel', f === 'distant');
+  $('radioLocal').classList.toggle('sel', f === 'local');
+  $('champUrlLocale').style.display = (f === 'local') ? 'block' : 'none';
+  $('blocCle').style.display        = (f === 'local') ? 'none'  : 'block';
+  $('blocModele').style.display     = (f === 'local') ? 'none'  : 'block';
+  $('blocTestLocal').style.display  = (f === 'local') ? 'block' : 'none';
+  enregistrerFournisseur();
+  majEtat();
+}
+
+function enregistrerFournisseur(){
+  if(bd) bdEcrire('config', {cle:'fournisseur', valeur:{nom:etat.fournisseur, url:urlLocale()}});
+}
+
+function urlLocale(){
+  const champ = $('urlLocale');
+  const v = champ ? champ.value.trim() : '';
+  return (v || 'http://127.0.0.1:8770').replace(/\/+$/, '');
+}
+
+/* Adresse de base du service, selon le fournisseur retenu. Les deux exposent
+   les mêmes routes : le reste du code n'a pas à savoir lequel répond. */
+function baseApi(){
+  return etat.fournisseur === 'local' ? urlLocale() + '/v1' : API_DISTANTE;
+}
+
+function zoneResultatTest(){
+  return etat.fournisseur === 'local' ? $('resTestLocal') : $('resTest');
+}
+
+function boutonTest(){
+  return etat.fournisseur === 'local' ? $('btnTestLocal') : $('btnTest');
+}
+
 function cleCourante(){
   const champ = $('cleApi');
   return champ ? champ.value.trim() : '';
@@ -1290,33 +1370,45 @@ async function messageErreur(reponse){
   if(reponse.status === 403) return "Accès refusé : l'offre du compte ne permet pas cette opération. " + brut;
   if(reponse.status === 422) return 'Requête refusée : ' + (brut || 'paramètres invalides.');
   if(reponse.status === 429) return 'Trop de requêtes ou quota de caractères épuisé.';
-  if(reponse.status >= 500) return 'Le service est momentanément indisponible. Réessayez dans un instant.';
+  /* Le serveur local place son diagnostic ici : le transmettre tel quel plutôt
+     que de le remplacer par un message générique. */
+  if(reponse.status >= 500)
+    return brut || 'Le service est momentanément indisponible. Réessayez dans un instant.';
   return brut || ('Erreur ' + reponse.status + '.');
 }
 
 function messageReseau(e){
+  const detail = ' (' + (e && e.message ? e.message : 'échec réseau') + ')';
+  if(etat.fournisseur === 'local'){
+    return "Le serveur local ne répond pas sur " + urlLocale() + ". Vérifiez qu'il est bien lancé " +
+           "(python serveur.py --moteur test dans le dossier voix_locale) et que l'adresse correspond " +
+           "au port affiché à son démarrage." + detail;
+  }
   return "Connexion impossible au service vocal. Deux causes habituelles : la page est ouverte en local " +
          "(adresse file://) et le navigateur bloque l'appel, ou l'accès réseau est filtré. " +
-         "Servez la page via un serveur local, par exemple npx http-server, puis rouvrez-la sur http://localhost:8080/. " +
-         "(" + (e && e.message ? e.message : 'échec réseau') + ")";
+         "Servez la page via un serveur local, par exemple npx http-server, puis rouvrez-la sur http://localhost:8080/." +
+         detail;
 }
 
 async function testerConnexion(){
-  const cle = cleCourante();
-  if(!cle){
-    $('cleApi').classList.add('req-err');
-    toast("Renseignez d'abord la clé d'accès.", 'err');
-    return;
+  const local = (etat.fournisseur === 'local');
+  if(!local){
+    if(!cleCourante()){
+      $('cleApi').classList.add('req-err');
+      toast("Renseignez d'abord la clé d'accès.", 'err');
+      return;
+    }
+    $('cleApi').classList.remove('req-err');
   }
-  $('cleApi').classList.remove('req-err');
-  const bouton = $('btnTest');
+
+  const bouton = boutonTest(), zone = zoneResultatTest();
   occupe(bouton, true, 'Test en cours…');
-  $('resTest').innerHTML = '';
+  zone.innerHTML = '';
 
   try{
-    const r = await fetch(API + '/user', {headers: entetes(false)});
+    const r = await fetch(baseApi() + '/user', {headers: entetes(false)});
     if(!r.ok){
-      $('resTest').innerHTML = '<div class="note n-red">' + echapper(await messageErreur(r)) + '</div>';
+      zone.innerHTML = '<div class="note n-red">' + echapper(await messageErreur(r)) + '</div>';
       return;
     }
     const d = await r.json();
@@ -1326,14 +1418,30 @@ async function testerConnexion(){
     if(typeof utilises === 'number' && typeof plafond === 'number'){
       detail = ligneKv('Caractères consommés', fmtNombre(utilises) + ' / ' + fmtNombre(plafond)) +
                ligneKv('Restant', fmtNombre(Math.max(0, plafond - utilises)));
+    } else if(typeof utilises === 'number'){
+      detail = ligneKv('Caractères produits', fmtNombre(utilises));
     }
-    $('resTest').innerHTML =
+
+    /* Le serveur local annonce s'il clone vraiment ou s'il tourne en moteur de
+       contrôle : l'utilisateur doit le savoir avant d'écouter le résultat. */
+    let avis = '';
+    if(local && d.clone_reellement === false){
+      avis = '<div class="note n-amb" style="margin-top:10px"><div class="note-t">Moteur de contrôle</div>' +
+             'Ce serveur tourne avec le moteur de test : il produit un signal sonore qui ne ressemble ' +
+             'à personne. Il sert uniquement à vérifier la chaîne. Relancez-le avec un moteur réel pour cloner.</div>';
+    }
+    if(local && d.ffmpeg === false){
+      avis += '<div class="note n-red" style="margin-top:10px">ffmpeg est absent du serveur : ' +
+              'la création de voix échouera. Installez-le avec brew install ffmpeg.</div>';
+    }
+
+    zone.innerHTML =
       '<div class="note n-grn"><div class="note-t">Connexion établie</div>' +
-      ligneKv('Offre du compte', abo.tier || 'non communiquée') + detail + '</div>';
-    memoriserCle();
-    toast('Connexion au service vocale établie.', 'ok');
+      ligneKv(local ? 'Serveur' : 'Offre du compte', abo.tier || 'non communiquée') + detail + '</div>' + avis;
+    if(!local) memoriserCle();
+    toast('Connexion établie.', 'ok');
   }catch(e){
-    $('resTest').innerHTML = '<div class="note n-red">' + echapper(messageReseau(e)) + '</div>';
+    zone.innerHTML = '<div class="note n-red">' + echapper(messageReseau(e)) + '</div>';
   }finally{
     occupe(bouton, false);
     majEtat();
@@ -1387,7 +1495,7 @@ async function creerVoix(){
     etat.echantillons.forEach(e=>donnees.append('files', e.blob, e.nom));
 
     /* Content-Type volontairement omis : le navigateur pose lui-même la frontière multipart. */
-    const r = await fetch(API + '/voices/add', {method:'POST', headers:{'xi-api-key':cleCourante()}, body:donnees});
+    const r = await fetch(baseApi() + '/voices/add', {method:'POST', headers:{'xi-api-key':cleCourante()}, body:donnees});
 
     if(!r.ok){
       $('resCreation').innerHTML = '<div class="note n-red">' + echapper(await messageErreur(r)) + '</div>';
@@ -1417,13 +1525,13 @@ async function creerVoix(){
 let voixDistantes = [];   // dernière liste renvoyée par le service
 
 async function listerVoix(){
-  if(etat.mode !== 'reel' || !cleCourante()){
+  if(etat.mode !== 'reel' || (etat.fournisseur === 'distant' && !cleCourante())){
     $('listeVoix').innerHTML = '<div class="vide">Clé d\u2019accès requise pour lister les voix.</div>';
     return;
   }
   $('listeVoix').innerHTML = '<div class="vide">Chargement…</div>';
   try{
-    const r = await fetch(API + '/voices', {headers: entetes(false)});
+    const r = await fetch(baseApi() + '/voices', {headers: entetes(false)});
     if(!r.ok){ $('listeVoix').innerHTML = '<div class="note n-red">' + echapper(await messageErreur(r)) + '</div>'; return; }
     const d = await r.json();
     const voix = (d.voices || []).filter(v=>v.category === 'cloned' || v.category === 'generated' || v.category === 'professional');
@@ -1474,7 +1582,7 @@ async function activerVoix(id, nom){
 async function supprimerVoix(id, nom){
   if(!confirm('Supprimer définitivement la voix « ' + (nom || id) + ' » chez le fournisseur ?')) return;
   try{
-    const r = await fetch(API + '/voices/' + id, {method:'DELETE', headers: entetes(false)});
+    const r = await fetch(baseApi() + '/voices/' + id, {method:'DELETE', headers: entetes(false)});
     if(!r.ok){ toast(await messageErreur(r), 'err'); return; }
     if(etat.voixId === id){
       etat.voixId = null; etat.voixNom = null;
@@ -1554,7 +1662,7 @@ async function synthetiser(){
         use_speaker_boost: $('boost').checked
       }
     };
-    const r = await fetch(API + '/text-to-speech/' + etat.voixId + '?output_format=mp3_44100_128', {
+    const r = await fetch(baseApi() + '/text-to-speech/' + etat.voixId + '?output_format=mp3_44100_128', {
       method:'POST', headers: entetes(true), body: JSON.stringify(corps)
     });
     if(!r.ok){
@@ -1562,9 +1670,12 @@ async function synthetiser(){
       return;
     }
     const blob = await r.blob();
+    /* L'extension suit le format réellement renvoyé : le service distant produit
+       du mp3, le serveur local du wav. Le préfixe reste inchangé. */
     const gen = {
       id: ident(),
-      nom: 'voix-synthetique_' + slug(etat.voixNom || 'voix') + '_' + horodatage() + '.mp3',
+      nom: 'voix-synthetique_' + slug(etat.voixNom || 'voix') + '_' + horodatage() +
+           '.' + extensionDe(blob.type || 'audio/mpeg'),
       texte, blob, date: new Date().toISOString(), voix: etat.voixNom || etat.voixId
     };
     etat.generations.unshift(gen);
@@ -1716,7 +1827,7 @@ function etapeFaite(i){
   switch(i){
     case 0: return !!etat.consentement;
     case 1: return etat.echantillons.length > 0;
-    case 2: return etat.mode === 'demo' || !!cleCourante();
+    case 2: return etat.mode === 'demo' || etat.fournisseur === 'local' || !!cleCourante();
     case 3: return etat.mode === 'demo' || !!etat.voixId;
     case 4: return etat.generations.length > 0;
     default: return false;
@@ -1755,6 +1866,12 @@ async function demarrer(){
 
       const voix = await bdLire('config','voix');
       if(voix && voix.valeur){ etat.voixId = voix.valeur.id; etat.voixNom = voix.valeur.nom; }
+
+      const fourn = await bdLire('config','fournisseur');
+      if(fourn && fourn.valeur){
+        if(fourn.valeur.url) $('urlLocale').value = fourn.valeur.url;
+        choisirFournisseur(fourn.valeur.nom === 'local' ? 'local' : 'distant');
+      }
 
       etat.echantillons = await bdTout('echantillons');
       etat.generations  = (await bdTout('generations')).sort((a,b)=>b.date.localeCompare(a.date));

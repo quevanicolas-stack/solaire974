@@ -1,0 +1,8 @@
+# Socle du serveur — suffisant pour le moteur de test
+fastapi>=0.110
+uvicorn[standard]>=0.27
+python-multipart>=0.0.9
+
+# Moteur de clonage réel — à installer séparément, voir NOTICE.md
+#   pip install coqui-tts
+# Attention : XTTS-v2 est diffusé sous une licence excluant l'usage commercial.
