@@ -1522,7 +1522,7 @@ async function testerConnexion(){
     }
     if(local && d.ffmpeg === false){
       avis += '<div class="note n-red" style="margin-top:10px">ffmpeg est absent du serveur : ' +
-              'la création de voix échouera. Installez-le avec brew install ffmpeg.</div>';
+              'la création de voix échouera. Lancez pip install imageio-ffmpeg puis relancez le serveur.</div>';
     }
 
     zone.innerHTML =

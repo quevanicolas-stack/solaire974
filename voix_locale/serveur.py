@@ -41,18 +41,45 @@ DUREE_REFERENCE_MAX = 120  # secondes de référence conservées par voix
 #   OUTILS AUDIO
 # ══════════════════════════════════════════════════════════════
 
+_ffmpeg_resolu = None
+
+
+def chemin_ffmpeg() -> str | None:
+    """
+    Localise ffmpeg : d'abord celui du système, sinon la copie autonome
+    fournie par le paquet imageio-ffmpeg, ce qui évite d'imposer Homebrew.
+    """
+    global _ffmpeg_resolu
+    if _ffmpeg_resolu is not None:
+        return _ffmpeg_resolu or None
+
+    trouve = shutil.which("ffmpeg")
+    if not trouve:
+        try:
+            import imageio_ffmpeg
+            candidat = imageio_ffmpeg.get_ffmpeg_exe()
+            if candidat and Path(candidat).exists():
+                trouve = candidat
+        except Exception:
+            trouve = None
+
+    _ffmpeg_resolu = trouve or ""
+    return trouve
+
+
 def ffmpeg_disponible() -> bool:
-    return shutil.which("ffmpeg") is not None
+    return chemin_ffmpeg() is not None
 
 
 def convertir_en_wav(source: Path, destination: Path, secondes_max: int = 0) -> None:
     """Normalise un audio quelconque en WAV mono, via ffmpeg."""
-    if not ffmpeg_disponible():
+    binaire = chemin_ffmpeg()
+    if not binaire:
         raise RuntimeError(
-            "ffmpeg est introuvable. Installez-le puis relancez le serveur "
-            "(sur Mac : brew install ffmpeg)."
+            "ffmpeg est introuvable. Installez-le avec « pip install imageio-ffmpeg », "
+            "puis relancez le serveur."
         )
-    commande = ["ffmpeg", "-y", "-loglevel", "error", "-i", str(source)]
+    commande = [binaire, "-y", "-loglevel", "error", "-i", str(source)]
     if secondes_max:
         commande += ["-t", str(secondes_max)]
     commande += ["-ac", "1", "-ar", str(FREQUENCE), "-c:a", "pcm_s16le", str(destination)]
@@ -76,7 +103,7 @@ def assembler_references(fichiers: list[Path], destination: Path) -> None:
     liste.write_text("\n".join(f"file '{p.name}'" for p in intermediaires), encoding="utf-8")
 
     commande = [
-        "ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0",
+        chemin_ffmpeg(), "-y", "-loglevel", "error", "-f", "concat", "-safe", "0",
         "-i", str(liste), "-t", str(DUREE_REFERENCE_MAX),
         "-ac", "1", "-ar", str(FREQUENCE), "-c:a", "pcm_s16le", str(destination),
     ]
@@ -335,7 +362,8 @@ async def ajouter_voix(
     if not files:
         return erreur(422, "Aucun échantillon reçu.")
     if not ffmpeg_disponible():
-        return erreur(500, "ffmpeg est introuvable sur le serveur. Sur Mac : brew install ffmpeg.")
+        return erreur(500, "ffmpeg est introuvable sur le serveur. Lancez « pip install imageio-ffmpeg » "
+                           "dans l'environnement du serveur, puis relancez-le.")
 
     voix_id = uuid.uuid4().hex[:16]
     dossier = DOSSIER_VOIX / voix_id
@@ -470,7 +498,8 @@ def principal():
     print("" if etat["moteur"].clone_reellement else "   (signal de contrôle, ne clone pas)")
     print(f"  Adresse     : http://{args.hote}:{args.port}")
     print(f"  Voix        : {len(lister_fiches())} enregistrée(s)")
-    print(f"  ffmpeg      : {'présent' if ffmpeg_disponible() else 'ABSENT — brew install ffmpeg'}")
+    binaire = chemin_ffmpeg()
+    print(f"  ffmpeg      : {binaire if binaire else 'ABSENT — pip install imageio-ffmpeg'}")
     print()
     print(f"  Dans l'application, étape 03, choisissez « Serveur local »")
     print(f"  et indiquez l'adresse http://{args.hote}:{args.port}")

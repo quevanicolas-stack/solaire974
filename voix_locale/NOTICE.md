@@ -21,13 +21,9 @@ python3 --version
 Il faut la version 3.10 ou supérieure. Si la commande échoue, installez Python depuis
 python.org.
 
-Installez ensuite ffmpeg, qui sert à normaliser les enregistrements :
-
-```
-brew install ffmpeg
-```
-
-Si la commande `brew` n'existe pas, installez d'abord Homebrew depuis brew.sh.
+C'est tout. **Homebrew n'est pas nécessaire** : ffmpeg, qui sert à normaliser les
+enregistrements, est installé par `pip` à l'étape suivante. Si un ffmpeg est déjà présent
+sur le système, le serveur l'utilisera en priorité.
 
 ---
 
@@ -139,7 +135,8 @@ correspondant.
 est toujours ouverte, et que l'adresse de l'étape 03 correspond à celle affichée au
 démarrage.
 
-**« ffmpeg est introuvable »** — `brew install ffmpeg`, puis relancez le serveur.
+**« ffmpeg est introuvable »** — `pip install imageio-ffmpeg`, puis relancez le serveur.
+Au démarrage, le serveur affiche le chemin du ffmpeg qu'il a retenu.
 
 **« Le moteur XTTS n'est pas installé »** — `source venv/bin/activate` puis
 `pip install coqui-tts`.
