@@ -458,18 +458,18 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
         <div class="sec">Fournisseur</div>
         <div class="card">
           <div class="radios">
-            <label class="radio sel" id="radioDistant" onclick="choisirFournisseur('distant')">
-              <input type="radio" name="fournisseur" id="fournDistant" checked>
-              <div>
-                <div class="radio-t">Service distant</div>
-                <div class="radio-d">Qualité maximale, abonnement payant, les échantillons quittent la machine.</div>
-              </div>
-            </label>
-            <label class="radio" id="radioLocal" onclick="choisirFournisseur('local')">
-              <input type="radio" name="fournisseur" id="fournLocal">
+            <label class="radio sel" id="radioLocal" onclick="choisirFournisseur('local')">
+              <input type="radio" name="fournisseur" id="fournLocal" checked>
               <div>
                 <div class="radio-t">Serveur local</div>
                 <div class="radio-d">Gratuit et hors ligne. Rien ne quitte la machine. Exige le serveur lancé.</div>
+              </div>
+            </label>
+            <label class="radio" id="radioDistant" onclick="choisirFournisseur('distant')">
+              <input type="radio" name="fournisseur" id="fournDistant">
+              <div>
+                <div class="radio-t">Service distant</div>
+                <div class="radio-d">Sert de point de comparaison. Abonnement payant, les échantillons quittent la machine.</div>
               </div>
             </label>
           </div>
@@ -738,7 +738,7 @@ const etat = {
   consentement:null,     // objet figé au moment de la validation
   echantillons:[],       // {id, nom, blob, duree, type}
   mode:'reel',           // 'reel' | 'demo'
-  fournisseur:'distant', // 'distant' | 'local'
+  fournisseur:'local',   // 'local' | 'distant' — le serveur local est le défaut
   voixId:null,
   voixNom:null,
   generations:[]         // {id, nom, texte, blob, date, voix}
@@ -1882,6 +1882,10 @@ async function demarrer(){
       toast('Données locales illisibles, elles ont été ignorées.', 'err');
     }
   }
+
+  /* Aligne l'affichage sur le fournisseur retenu, qu'il vienne des données
+     enregistrées ou du choix par défaut. */
+  choisirFournisseur(etat.fournisseur);
 
   /* Reprise de la clé mémorisée */
   try{
