@@ -138,6 +138,12 @@ démarrage.
 **« ffmpeg est introuvable »** — `pip install imageio-ffmpeg`, puis relancez le serveur.
 Au démarrage, le serveur affiche le chemin du ffmpeg qu'il a retenu.
 
+**« Could not load libtorchcodec » ou « Library not loaded: libavutil »** — torchcodec
+réclame les bibliothèques partagées de FFmpeg, qu'un exécutable autonome n'apporte pas.
+Le serveur contourne ce point en lisant lui-même la référence : vous devez voir au
+démarrage la ligne « lecture audio autonome activée ». Si elle manque, votre `serveur.py`
+est antérieur à ce correctif.
+
 **« Le moteur XTTS n'est pas installé »** — `source venv/bin/activate` puis
 `pip install coqui-tts`.
 

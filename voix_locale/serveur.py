@@ -227,6 +227,48 @@ class MoteurXTTS(Moteur):
             pass
         return "cpu"
 
+    def _contourner_torchcodec(self) -> None:
+        """
+        Supprime la dépendance à torchcodec pour la lecture de la référence.
+
+        Depuis PyTorch 2.9, torchaudio délègue la lecture des fichiers à
+        torchcodec, qui réclame les bibliothèques partagées de FFmpeg. Celles-ci
+        n'existent que si FFmpeg est installé sur le système : un exécutable
+        autonome, comme celui fourni par pip, ne les apporte pas.
+
+        Or la référence est toujours un WAV PCM 16 bits que ce serveur a produit
+        lui-même. La lire avec la bibliothèque standard donne exactement le même
+        tenseur, sans réclamer quoi que ce soit au système.
+        """
+        import numpy as np
+        import torch
+        import torchaudio
+        import TTS.tts.models.xtts as xtts
+
+        def lire(chemin, frequence_cible):
+            with wave.open(str(chemin), "rb") as w:
+                canaux, largeur = w.getnchannels(), w.getsampwidth()
+                frequence = w.getframerate()
+                brut = w.readframes(w.getnframes())
+
+            if largeur != 2:
+                raise RuntimeError(
+                    f"Référence en {largeur * 8} bits alors que 16 sont attendus : {chemin}"
+                )
+
+            donnees = np.frombuffer(brut, dtype="<i2").astype(np.float32) / 32768.0
+            if canaux > 1:
+                donnees = donnees.reshape(-1, canaux).mean(axis=1)
+
+            audio = torch.from_numpy(np.ascontiguousarray(donnees)).unsqueeze(0)
+            if frequence != frequence_cible:
+                # Opération purement tensorielle : aucune lecture de fichier.
+                audio = torchaudio.functional.resample(audio, frequence, frequence_cible)
+            return audio.clip_(-1, 1)
+
+        xtts.load_audio = lire
+        print("[moteur] lecture audio autonome activée, torchcodec n'est pas sollicité", flush=True)
+
     def preparer(self) -> None:
         if self.modele is not None:
             return
@@ -245,6 +287,8 @@ class MoteurXTTS(Moteur):
                 "Si le paquet est absent : pip install coqui-tts\n"
                 "Sinon, le message ci-dessus nomme la bibliothèque en cause."
             ) from e
+
+        self._contourner_torchcodec()
 
         peripherique = self._choisir_peripherique()
         print(f"[moteur] chargement de XTTS-v2 sur {peripherique}, patientez…", flush=True)
