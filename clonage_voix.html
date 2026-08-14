@@ -455,6 +455,31 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
       </div>
 
       <div id="zoneApi">
+        <div class="sec">Type de voix</div>
+        <div class="card">
+          <div class="radios">
+            <label class="radio sel" id="radioClonee" onclick="choisirTypeVoix('clonee')">
+              <input type="radio" name="typeVoix" id="typeClonee" checked>
+              <div>
+                <div class="radio-t">Voix clonée</div>
+                <div class="radio-d">Reproduit une voix enregistrée à l'étape 02.</div>
+              </div>
+            </label>
+            <label class="radio" id="radioCatalogue" onclick="choisirTypeVoix('catalogue')">
+              <input type="radio" name="typeVoix" id="typeCatalogue">
+              <div>
+                <div class="radio-t">Voix du catalogue</div>
+                <div class="radio-d">Voix toutes faites du service distant. Aucun enregistrement requis.</div>
+              </div>
+            </label>
+          </div>
+          <div class="note n-blu" id="noteCatalogue" style="display:none;margin-top:13px">
+            Le catalogue appartient au service distant : il exige une clé d'accès, et le serveur local
+            ne le propose pas. Aucune voix n'est clonée dans ce cas, et l'étape 02 devient facultative.
+          </div>
+        </div>
+
+        <div id="blocFournisseur">
         <div class="sec">Fournisseur</div>
         <div class="card">
           <div class="radios">
@@ -482,6 +507,7 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
               Aucune clé n'est nécessaire dans ce mode.
             </div>
           </div>
+        </div>
         </div>
 
         <div id="blocCle">
@@ -548,8 +574,8 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
       <div class="ph">
         <div>
           <div class="ph-tag">Étape 04 / 06</div>
-          <div class="ph-title">Création de la voix</div>
-          <div class="ph-desc">Envoyer les échantillons et obtenir une voix clonée</div>
+          <div class="ph-title" id="titreEtape4">Création de la voix</div>
+          <div class="ph-desc" id="descEtape4">Envoyer les échantillons et obtenir une voix clonée</div>
         </div>
         <div class="ph-btns">
           <button class="btn btn-g" onclick="go(2)">← Retour</button>
@@ -585,6 +611,30 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
         <div class="card">
           <button class="btn btn-g btn-sm" onclick="listerVoix()">Rafraîchir la liste</button>
           <div id="listeVoix" style="margin-top:12px"></div>
+        </div>
+      </div>
+
+      <div id="zoneCatalogue" style="display:none">
+        <div class="note n-blu">
+          <div class="note-t">Voix toutes faites</div>
+          Ces voix appartiennent au service distant. Aucune personne de votre entourage n'est reproduite,
+          et aucun échantillon n'est envoyé. Le rendu reste une voix de synthèse et doit être présenté
+          comme telle. Vérifiez les conditions d'utilisation du fournisseur avant tout usage commercial.
+        </div>
+
+        <div class="sec">Choisir une voix</div>
+        <div class="card">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+            <div class="champ" style="flex:1;min-width:200px;margin-bottom:0">
+              <label class="lbl">Filtrer</label>
+              <input type="text" id="filtreCatalogue" placeholder="Nom, genre, accent, usage" oninput="afficherCatalogue()">
+            </div>
+            <button class="btn btn-g" id="btnCatalogue" onclick="listerCatalogue()">Charger le catalogue</button>
+          </div>
+          <div class="aide" style="margin-top:8px">
+            Écoutez l'extrait avant de choisir. Le nombre de voix dépend de l'offre du compte.
+          </div>
+          <div id="listeCatalogue" style="margin-top:14px"></div>
         </div>
       </div>
 
@@ -739,6 +789,7 @@ const etat = {
   echantillons:[],       // {id, nom, blob, duree, type}
   mode:'reel',           // 'reel' | 'demo'
   fournisseur:'local',   // 'local' | 'distant' — le serveur local est le défaut
+  typeVoix:'clonee',     // 'clonee' | 'catalogue'
   voixId:null,
   voixNom:null,
   generations:[]         // {id, nom, texte, blob, date, voix}
@@ -889,7 +940,7 @@ function construireNav(){
 function verrou(n){
   if(n > 0 && !etat.consentement)
     return "Validez d'abord le consentement.";
-  if(n >= 3 && etat.mode === 'reel' && etat.echantillons.length === 0)
+  if(n >= 3 && etat.mode === 'reel' && etat.typeVoix === 'clonee' && etat.echantillons.length === 0)
     return "Aucun échantillon : enregistrez ou importez au moins un extrait de voix.";
   if(n >= 3 && etat.mode === 'reel' && etat.fournisseur === 'distant' && !cleCourante())
     return "Renseignez la clé d'accès du service vocal.";
@@ -911,7 +962,7 @@ function go(n){
   if(zone) zone.scrollTop = 0;
   window.scrollTo(0,0);
 
-  if(n === 3) majRecapEnvoi();
+  if(n === 3){ majAffichageEtape4(); if(etat.typeVoix === 'catalogue') afficherCatalogue(); else majRecapEnvoi(); }
   if(n === 4){ majVoixActive(); majCompteur(); }
   if(n === 5){ afficherGenerations(); afficherTraceConsentement(); }
 
@@ -1280,10 +1331,49 @@ function choisirMode(m){
   $('radioReel').classList.toggle('sel', m === 'reel');
   $('radioDemo').classList.toggle('sel', m === 'demo');
   $('zoneApi').style.display = (m === 'reel') ? 'block' : 'none';
-  $('zoneCreation').style.display = (m === 'reel') ? 'block' : 'none';
-  $('zoneCreationDemo').style.display = (m === 'reel') ? 'none' : 'block';
   const carte = $('carteReglages');
   if(carte) carte.style.opacity = (m === 'reel') ? '1' : '.45';
+  majAffichageEtape4();
+  majEtat();
+}
+
+/* L'étape 04 sert trois cas : créer une voix clonée, choisir une voix du
+   catalogue, ou rappeler que le mode démonstration ne crée rien. */
+function majAffichageEtape4(){
+  const demo = (etat.mode !== 'reel');
+  const catalogue = (etat.typeVoix === 'catalogue');
+  $('zoneCreation').style.display     = (!demo && !catalogue) ? 'block' : 'none';
+  $('zoneCatalogue').style.display    = (!demo &&  catalogue) ? 'block' : 'none';
+  $('zoneCreationDemo').style.display = demo ? 'block' : 'none';
+
+  const titre = $('titreEtape4'), desc = $('descEtape4');
+  if(titre) titre.textContent = catalogue ? 'Choix de la voix' : 'Création de la voix';
+  if(desc) desc.textContent = catalogue
+    ? 'Retenir une voix toute faite du service distant'
+    : 'Envoyer les échantillons et obtenir une voix clonée';
+}
+
+function choisirTypeVoix(t){
+  const change = (etat.typeVoix !== t);
+  etat.typeVoix = t;
+  $('typeClonee').checked    = (t === 'clonee');
+  $('typeCatalogue').checked = (t === 'catalogue');
+  $('radioClonee').classList.toggle('sel', t === 'clonee');
+  $('radioCatalogue').classList.toggle('sel', t === 'catalogue');
+  $('noteCatalogue').style.display   = (t === 'catalogue') ? 'block' : 'none';
+  /* Le catalogue n'existe que chez le service distant : le choix du
+     fournisseur n'a plus lieu d'être proposé. */
+  $('blocFournisseur').style.display = (t === 'catalogue') ? 'none' : 'block';
+  if(t === 'catalogue' && etat.fournisseur !== 'distant') choisirFournisseur('distant');
+
+  /* Changer de type invalide la voix retenue précédemment, mais rétablir
+     l'affichage au démarrage ne doit rien effacer. */
+  if(change){
+    etat.voixId = null; etat.voixNom = null;
+    if(bd) bdEffacerLigne('config','voix');
+    if(bd) bdEcrire('config', {cle:'typeVoix', valeur:t});
+  }
+  majAffichageEtape4();
   majEtat();
 }
 
@@ -1560,6 +1650,86 @@ async function listerVoix(){
   }
 }
 
+/* ─── Catalogue du service distant ─── */
+
+let voixCatalogue = [];
+
+async function listerCatalogue(){
+  if(etat.fournisseur !== 'distant' || !cleCourante()){
+    $('listeCatalogue').innerHTML =
+      '<div class="vide">Le catalogue exige le service distant et une clé d’accès, à renseigner à l’étape 03.</div>';
+    return;
+  }
+  const bouton = $('btnCatalogue');
+  occupe(bouton, true, 'Chargement…');
+  try{
+    const r = await fetch(baseApi() + '/voices', {headers: entetes(false)});
+    if(!r.ok){
+      $('listeCatalogue').innerHTML = '<div class="note n-red">' + echapper(await messageErreur(r)) + '</div>';
+      return;
+    }
+    const d = await r.json();
+    voixCatalogue = (d.voices || []).filter(v=>v.category === 'premade');
+    if(!voixCatalogue.length){
+      $('listeCatalogue').innerHTML = '<div class="vide">Aucune voix de catalogue renvoyée par le service.</div>';
+      return;
+    }
+    afficherCatalogue();
+    toast(voixCatalogue.length + ' voix de catalogue chargées.', 'ok');
+  }catch(e){
+    $('listeCatalogue').innerHTML = '<div class="note n-red">' + echapper(messageReseau(e)) + '</div>';
+  }finally{
+    occupe(bouton, false);
+  }
+}
+
+/* Résume les étiquettes fournies par le service : genre, accent, usage… */
+function etiquettes(v){
+  const l = v.labels || {};
+  return Object.keys(l).map(k=>l[k]).filter(Boolean).join(' — ');
+}
+
+function afficherCatalogue(){
+  const zone = $('listeCatalogue');
+  if(!voixCatalogue.length){
+    zone.innerHTML = '<div class="vide">Cliquez sur « Charger le catalogue » pour voir les voix disponibles.</div>';
+    return;
+  }
+  const filtre = ($('filtreCatalogue').value || '').trim().toLowerCase();
+  const retenues = voixCatalogue
+    .map((v,i)=>({v, i}))
+    .filter(o => !filtre ||
+      (o.v.name + ' ' + etiquettes(o.v) + ' ' + (o.v.description || '')).toLowerCase().indexOf(filtre) >= 0);
+
+  if(!retenues.length){
+    zone.innerHTML = '<div class="vide">Aucune voix ne correspond à ce filtre.</div>';
+    return;
+  }
+
+  zone.innerHTML = retenues.map(o=>{
+    const v = o.v;
+    const desc = etiquettes(v);
+    return '<div class="item">' +
+      '<div class="item-corps">' +
+        '<div class="item-nom">'+echapper(v.name)+
+          (v.voice_id === etat.voixId ? ' <span class="badge b-grn">retenue</span>' : '')+'</div>' +
+        '<div class="item-meta">'+echapper(desc || 'aucune description')+'</div>' +
+      '</div>' +
+      (v.preview_url ? '<audio controls preload="none" src="'+encodeURI(v.preview_url)+'"></audio>' : '') +
+      '<div class="item-btns">' +
+        '<button class="btn btn-g btn-sm" onclick="activerVoixCatalogue('+o.i+')">Utiliser</button>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function activerVoixCatalogue(i){
+  const v = voixCatalogue[i];
+  if(!v) return;
+  activerVoix(v.voice_id, v.name);
+  afficherCatalogue();
+}
+
 function activerVoixParIndice(i){
   const v = voixDistantes[i];
   if(v) activerVoix(v.voice_id, v.name);
@@ -1574,7 +1744,7 @@ async function activerVoix(id, nom){
   etat.voixId = id;
   etat.voixNom = nom;
   await bdEcrire('config', {cle:'voix', valeur:{id, nom}});
-  listerVoix();
+  if(etat.typeVoix === 'clonee') listerVoix();
   majEtat();
   toast('Voix active : ' + nom + '.', 'ok');
 }
@@ -1622,13 +1792,15 @@ function majVoixActive(){
   }
   if(!etat.voixId){
     zone.innerHTML = '<div class="note n-red" style="margin:0"><div class="note-t">Aucune voix active</div>' +
-      'Revenez à l\u2019étape 04 pour créer la voix ou en activer une existante.</div>';
+      (etat.typeVoix === 'catalogue'
+        ? 'Revenez à l\u2019étape 04 pour retenir une voix du catalogue.'
+        : 'Revenez à l\u2019étape 04 pour créer la voix ou en activer une existante.') + '</div>';
     return;
   }
   zone.innerHTML =
     '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
-      '<span class="badge b-vio">Voix active</span>' +
-      '<strong>'+echapper(etat.voixNom || 'Voix clonée')+'</strong>' +
+      '<span class="badge b-vio">' + (etat.typeVoix === 'catalogue' ? 'Voix du catalogue' : 'Voix clonée') + '</span>' +
+      '<strong>'+echapper(etat.voixNom || 'Voix')+'</strong>' +
       '<span class="item-meta">'+echapper(etat.voixId)+'</span>' +
     '</div>';
 }
@@ -1809,7 +1981,9 @@ function majEtat(){
     $('txtVoix').textContent = 'Mode démonstration';
   } else {
     $('dotVoix').className = 'dot' + (etat.voixId ? ' ok' : '');
-    $('txtVoix').textContent = etat.voixId ? 'Voix : ' + (etat.voixNom || 'clonée') : 'Aucune voix créée';
+    $('txtVoix').textContent = etat.voixId
+      ? 'Voix : ' + (etat.voixNom || 'clonée')
+      : (etat.typeVoix === 'catalogue' ? 'Aucune voix retenue' : 'Aucune voix créée');
   }
 
   /* Nettoyage des marqueurs d'erreur dès que le champ est rempli */
@@ -1867,6 +2041,9 @@ async function demarrer(){
       const voix = await bdLire('config','voix');
       if(voix && voix.valeur){ etat.voixId = voix.valeur.id; etat.voixNom = voix.valeur.nom; }
 
+      const type = await bdLire('config','typeVoix');
+      if(type && type.valeur === 'catalogue') etat.typeVoix = 'catalogue';
+
       const fourn = await bdLire('config','fournisseur');
       if(fourn && fourn.valeur){
         if(fourn.valeur.url) $('urlLocale').value = fourn.valeur.url;
@@ -1883,9 +2060,13 @@ async function demarrer(){
     }
   }
 
-  /* Aligne l'affichage sur le fournisseur retenu, qu'il vienne des données
-     enregistrées ou du choix par défaut. */
+  /* Aligne l'affichage sur les choix retenus, qu'ils viennent des données
+     enregistrées ou des valeurs par défaut. */
+  /* Le fournisseur d'abord : le type « catalogue » impose ensuite le service
+     distant, et doit donc avoir le dernier mot. */
   choisirFournisseur(etat.fournisseur);
+  choisirTypeVoix(etat.typeVoix);
+  majAffichageEtape4();
 
   /* Reprise de la clé mémorisée */
   try{
