@@ -8,10 +8,12 @@ python-multipart>=0.0.9
 imageio-ffmpeg>=0.5
 
 # Moteur de clonage réel — à installer séparément, voir NOTICE.md
-#   pip install torch torchaudio coqui-tts "transformers>=4.57,<5"
+#   pip install torch torchaudio "coqui-tts[codec]" "transformers>=4.57,<5"
 #
-# La borne sur transformers est indispensable : la version 5 a supprimé
-# isin_mps_friendly, que XTTS importe encore. Sans elle, le chargement du
-# moteur échoue sur ImportError.
+# Deux points vérifiés sur Mac Apple Silicon, Python 3.14 :
+#   - la borne sur transformers est indispensable : la version 5 a supprimé
+#     isin_mps_friendly, que XTTS importe encore ;
+#   - l'extra [codec] installe torchcodec, exigé pour la lecture audio depuis
+#     PyTorch 2.9. Sans lui, le chargement échoue au premier import.
 #
 # Attention : XTTS-v2 est diffusé sous une licence excluant l'usage commercial.

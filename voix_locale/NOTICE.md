@@ -73,12 +73,13 @@ Si vous entendez le signal de test, la chaîne est bonne de bout en bout.
 ## 4. Passage au clonage réel
 
 ```
-pip install torch torchaudio coqui-tts "transformers>=4.57,<5"
+pip install torch torchaudio "coqui-tts[codec]" "transformers>=4.57,<5"
 COQUI_TOS_AGREED=1 python serveur.py --moteur xtts
 ```
 
-La borne sur `transformers` n'est pas facultative : la version 5 a supprimé une fonction
-que XTTS importe encore, et le moteur refuse alors de se charger. La variable
+Aucune de ces deux précisions n'est facultative. La borne sur `transformers` évite la
+version 5, qui a supprimé une fonction que XTTS importe encore. L'extra `[codec]`
+installe `torchcodec`, exigé pour la lecture audio depuis PyTorch 2.9. La variable
 `COQUI_TOS_AGREED` répond à la demande d'acceptation de la licence affichée au premier
 téléchargement ; lancez sans elle si vous préférez lire la licence et répondre vous-même.
 
