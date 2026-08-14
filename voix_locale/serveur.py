@@ -230,6 +230,9 @@ class MoteurXTTS(Moteur):
     def preparer(self) -> None:
         if self.modele is not None:
             return
+        # Cet import entraîne PyTorch, transformers et librosa : il prend
+        # facilement une minute, sans rien afficher. On prévient avant.
+        print("[moteur] chargement des bibliothèques, environ une minute…", flush=True)
         try:
             from TTS.api import TTS
         except ImportError as e:
@@ -526,6 +529,10 @@ def principal():
     binaire = chemin_ffmpeg()
     print(f"  ffmpeg      : {binaire if binaire else 'ABSENT — pip install imageio-ffmpeg'}")
     print()
+    if args.moteur == "xtts":
+        print("  Le modèle doit d'abord être chargé : patientez jusqu'au message")
+        print("  « modèle prêt » avant d'ouvrir l'application.")
+        print()
     if page_application():
         print(f"  Ouvrez l'application ici : http://{args.hote}:{args.port}/app")
         print(f"  Aucun autre serveur n'est nécessaire.")
