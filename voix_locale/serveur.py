@@ -236,10 +236,14 @@ class MoteurXTTS(Moteur):
         try:
             from TTS.api import TTS
         except ImportError as e:
+            # Une erreur d'import ne signifie pas forcément que le paquet manque :
+            # une incompatibilité entre bibliothèques produit la même exception.
+            # Le message d'origine est donc transmis tel quel, il nomme la cause.
             raise RuntimeError(
-                "Le moteur XTTS n'est pas installé. Lancez :\n"
-                "    pip install coqui-tts\n"
-                "puis relancez le serveur."
+                "Le moteur XTTS n'a pas pu être chargé.\n"
+                f"    Cause exacte : {e}\n"
+                "Si le paquet est absent : pip install coqui-tts\n"
+                "Sinon, le message ci-dessus nomme la bibliothèque en cause."
             ) from e
 
         peripherique = self._choisir_peripherique()
