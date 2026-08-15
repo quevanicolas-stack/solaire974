@@ -661,9 +661,101 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
             <input type="range" id="style" min="0" max="1" step="0.05" value="0" oninput="majReglages()">
             <div class="aide">Accentue le style de la personne. Au-delà de 0,5 la voix devient instable.</div>
           </div>
+          <div class="champ">
+            <div class="curs-tete"><span>Débit de parole</span><span class="curs-val" id="vDebit">1,00 ×</span></div>
+            <input type="range" id="debit" min="0.6" max="1.6" step="0.05" value="1" oninput="majReglages()">
+            <div class="aide">Étirement appliqué par le moteur : la hauteur de la voix ne change pas. Au-delà de 1,3 l'élocution se dégrade.</div>
+          </div>
+        </div>
+        <label class="check" style="margin-top:4px"><input type="checkbox" id="boost" checked>
+          <span>Renforcement du locuteur : améliore la ressemblance, allonge légèrement le calcul.</span></label>
+      </div>
+
+      <div class="sec">Traitement audio</div>
+      <div class="card">
+        <div class="grid2">
+          <div class="champ">
+            <label class="lbl">Préréglage</label>
+            <select id="preset" onchange="appliquerPreset()">
+              <option value="aucun">Aucun — voix brute du moteur</option>
+              <option value="radio">Radio — présence, corps et niveau constant</option>
+              <option value="podcast">Podcast — naturel, dynamique préservée</option>
+              <option value="annonce">Annonce — voix très en avant, forte compression</option>
+              <option value="telephone">Téléphone — bande passante réduite</option>
+              <option value="perso">Personnalisé</option>
+            </select>
+            <div class="aide">Traitement appliqué dans le navigateur, après la génération.</div>
+          </div>
           <div class="champ" style="display:flex;align-items:flex-end">
-            <label class="check" style="width:100%"><input type="checkbox" id="boost" checked>
-              <span>Renforcement du locuteur : améliore la ressemblance, allonge légèrement le calcul.</span></label>
+            <label class="check" style="width:100%"><input type="checkbox" id="traitementActif" onchange="majTraitement()">
+              <span>Appliquer le traitement à l'audio généré</span></label>
+          </div>
+        </div>
+
+        <div id="reglagesTraitement" style="display:none">
+          <div class="sec" style="margin-top:16px">Filtrage</div>
+          <div class="grid2">
+            <div class="champ">
+              <div class="curs-tete"><span>Coupe-bas</span><span class="curs-val" id="vPasseHaut">80 Hz</span></div>
+              <input type="range" id="passeHaut" min="20" max="400" step="5" value="80" oninput="majTraitement(true)">
+              <div class="aide">Retire les grondements et les bruits de bouche. Monter jusqu'à 300 Hz donne un effet téléphone.</div>
+            </div>
+            <div class="champ">
+              <div class="curs-tete"><span>Coupe-haut</span><span class="curs-val" id="vPasseBas">16000 Hz</span></div>
+              <input type="range" id="passeBas" min="2000" max="16000" step="200" value="16000" oninput="majTraitement(true)">
+              <div class="aide">Descendre vers 3 400 Hz reproduit la bande passante d'une ligne téléphonique.</div>
+            </div>
+          </div>
+
+          <div class="sec" style="margin-top:16px">Égalisation</div>
+          <div class="grid3">
+            <div class="champ">
+              <div class="curs-tete"><span>Graves</span><span class="curs-val" id="vGraves">0,0 dB</span></div>
+              <input type="range" id="graves" min="-12" max="12" step="0.5" value="0" oninput="majTraitement(true)">
+              <div class="aide">Corps de la voix, vers 120 Hz.</div>
+            </div>
+            <div class="champ">
+              <div class="curs-tete"><span>Médiums</span><span class="curs-val" id="vMediums">0,0 dB</span></div>
+              <input type="range" id="mediums" min="-12" max="12" step="0.5" value="0" oninput="majTraitement(true)">
+              <div class="aide">Présence et intelligibilité, vers 1,8 kHz.</div>
+            </div>
+            <div class="champ">
+              <div class="curs-tete"><span>Aigus</span><span class="curs-val" id="vAigus">0,0 dB</span></div>
+              <input type="range" id="aigus" min="-12" max="12" step="0.5" value="0" oninput="majTraitement(true)">
+              <div class="aide">Air et clarté, au-dessus de 6 kHz.</div>
+            </div>
+          </div>
+
+          <div class="champ" style="margin-top:12px">
+            <div class="curs-tete"><span>Anti-sifflantes</span><span class="curs-val" id="vDeess">0,0 dB</span></div>
+            <input type="range" id="deess" min="-15" max="0" step="0.5" value="0" oninput="majTraitement(true)">
+            <div class="aide">Atténue les S trop marqués, vers 7 kHz. À doser : trop fort, la voix devient sourde.</div>
+          </div>
+
+          <div class="sec" style="margin-top:16px">Dynamique</div>
+          <div class="grid2">
+            <div class="champ">
+              <div class="curs-tete"><span>Seuil de compression</span><span class="curs-val" id="vSeuil">-24 dB</span></div>
+              <input type="range" id="seuil" min="-60" max="0" step="1" value="-24" oninput="majTraitement(true)">
+              <div class="aide">En dessous de ce niveau, rien n'est comprimé. Plus bas, plus la voix est tenue.</div>
+            </div>
+            <div class="champ">
+              <div class="curs-tete"><span>Taux de compression</span><span class="curs-val" id="vRatio">4,0 : 1</span></div>
+              <input type="range" id="ratio" min="1" max="20" step="0.5" value="4" oninput="majTraitement(true)">
+              <div class="aide">Écrase les écarts de volume. Au-delà de 8, l'effet devient audible.</div>
+            </div>
+          </div>
+
+          <div class="grid2" style="margin-top:12px">
+            <div class="champ">
+              <div class="curs-tete"><span>Niveau de sortie visé</span><span class="curs-val" id="vCible">-3,0 dB</span></div>
+              <input type="range" id="cible" min="-24" max="-1" step="0.5" value="-3" oninput="majTraitement(true)">
+              <div class="aide">Le fichier est remonté pour que sa crête atteigne ce niveau.</div>
+            </div>
+            <div class="champ" style="display:flex;align-items:flex-end">
+              <label class="check" style="width:100%"><input type="checkbox" id="normaliser" checked onchange="majTraitement(true)">
+                <span>Normaliser le niveau final. Sans cette option, le gain reste tel quel.</span></label>
+            </div>
           </div>
         </div>
       </div>
@@ -1861,6 +1953,170 @@ function majReglages(){
   $('vStab').textContent  = f(parseFloat($('stabilite').value));
   $('vSim').textContent   = f(parseFloat($('similarite').value));
   $('vStyle').textContent = f(parseFloat($('style').value));
+  $('vDebit').textContent = f(parseFloat($('debit').value)) + ' ×';
+}
+
+/* ══════════════════════════════════════════════════════
+   TRAITEMENT AUDIO
+   ══════════════════════════════════════════════════════ */
+
+/* Chaînes toutes faites, dans l'esprit d'une console de diffusion. */
+const PRESETS = {
+  radio:     {passeHaut:90,  passeBas:15000, graves:2.5, mediums:2,   aigus:3.5, deess:-4, seuil:-22, ratio:5,  cible:-3, normaliser:true},
+  podcast:   {passeHaut:75,  passeBas:16000, graves:1,   mediums:1.5, aigus:2,   deess:-3, seuil:-18, ratio:3,  cible:-6, normaliser:true},
+  annonce:   {passeHaut:100, passeBas:14000, graves:4,   mediums:3,   aigus:4,   deess:-5, seuil:-30, ratio:9,  cible:-2, normaliser:true},
+  telephone: {passeHaut:300, passeBas:3400,  graves:-6,  mediums:6,   aigus:-6,  deess:-2, seuil:-20, ratio:6,  cible:-4, normaliser:true}
+};
+
+const CURSEURS_TRAITEMENT = ['passeHaut','passeBas','graves','mediums','aigus','deess','seuil','ratio','cible'];
+
+function traitementActif(){
+  const c = $('traitementActif');
+  return !!(c && c.checked);
+}
+
+function reglagesTraitement(){
+  const v = {};
+  CURSEURS_TRAITEMENT.forEach(id => v[id] = parseFloat($(id).value));
+  v.normaliser = $('normaliser').checked;
+  return v;
+}
+
+function appliquerPreset(){
+  const choix = $('preset').value;
+  if(choix === 'perso') return;
+
+  if(choix === 'aucun'){
+    $('traitementActif').checked = false;
+    majTraitement();
+    return;
+  }
+
+  const p = PRESETS[choix];
+  if(!p) return;
+  CURSEURS_TRAITEMENT.forEach(id => { if(id in p) $(id).value = p[id]; });
+  $('normaliser').checked = p.normaliser;
+  $('traitementActif').checked = true;
+  majTraitement();
+}
+
+/* perso : un curseur a été bougé à la main, le préréglage ne décrit plus l'état. */
+function majTraitement(perso){
+  if(perso && $('preset').value !== 'perso') $('preset').value = 'perso';
+
+  const r = reglagesTraitement();
+  const dec = (n, u) => n.toFixed(1).replace('.', ',') + ' ' + u;
+  $('vPasseHaut').textContent = Math.round(r.passeHaut) + ' Hz';
+  $('vPasseBas').textContent  = Math.round(r.passeBas) + ' Hz';
+  $('vGraves').textContent    = dec(r.graves, 'dB');
+  $('vMediums').textContent   = dec(r.mediums, 'dB');
+  $('vAigus').textContent     = dec(r.aigus, 'dB');
+  $('vDeess').textContent     = dec(r.deess, 'dB');
+  $('vSeuil').textContent     = Math.round(r.seuil) + ' dB';
+  $('vRatio').textContent     = r.ratio.toFixed(1).replace('.', ',') + ' : 1';
+  $('vCible').textContent     = dec(r.cible, 'dB');
+
+  $('reglagesTraitement').style.display = traitementActif() ? 'block' : 'none';
+  if(bd) bdEcrire('config', {cle:'traitement', valeur:{actif: traitementActif(), preset: $('preset').value, ...r}});
+}
+
+/* Encode un signal en WAV 16 bits mono, seul format que l'on produit ici. */
+function encoderWav(donnees, frequence){
+  const n = donnees.length;
+  const tampon = new ArrayBuffer(44 + n * 2);
+  const vue = new DataView(tampon);
+  const texte = (pos, s) => { for(let i=0;i<s.length;i++) vue.setUint8(pos + i, s.charCodeAt(i)); };
+
+  texte(0, 'RIFF');  vue.setUint32(4, 36 + n * 2, true);  texte(8, 'WAVE');
+  texte(12, 'fmt '); vue.setUint32(16, 16, true);
+  vue.setUint16(20, 1, true);          // PCM
+  vue.setUint16(22, 1, true);          // mono
+  vue.setUint32(24, frequence, true);
+  vue.setUint32(28, frequence * 2, true);
+  vue.setUint16(32, 2, true);
+  vue.setUint16(34, 16, true);
+  texte(36, 'data'); vue.setUint32(40, n * 2, true);
+
+  let p = 44;
+  for(let i=0;i<n;i++){
+    const v = Math.max(-1, Math.min(1, donnees[i]));
+    vue.setInt16(p, v * 32767, true);
+    p += 2;
+  }
+  return new Blob([tampon], {type:'audio/wav'});
+}
+
+/* Applique la chaîne de traitement au signal reçu. Le calcul est fait hors
+   temps réel : la durée du rendu ne dépend pas de la durée de l'audio. */
+async function appliquerTraitement(blob){
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  const HorsLigne = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+  if(!Ctx || !HorsLigne) return blob;
+
+  const ctx = new Ctx();
+  let source;
+  try{
+    source = await ctx.decodeAudioData(await blob.arrayBuffer());
+  }catch(e){
+    toast("Audio illisible pour le traitement : fichier laissé brut.", 'err');
+    return blob;
+  }finally{
+    try{ ctx.close(); }catch(e){}
+  }
+
+  const r = reglagesTraitement();
+  const off = new HorsLigne(1, source.length, source.sampleRate);
+  const lecteur = off.createBufferSource();
+  lecteur.buffer = source;
+
+  const filtre = (type, freq, q, gain) => {
+    const f = off.createBiquadFilter();
+    f.type = type;
+    f.frequency.value = freq;
+    if(q !== null) f.Q.value = q;
+    if(gain !== null) f.gain.value = gain;
+    return f;
+  };
+
+  const nyquist = source.sampleRate / 2 - 100;
+  const chaine = [
+    filtre('highpass',  Math.min(r.passeHaut, nyquist), 0.7, null),
+    filtre('lowpass',   Math.min(r.passeBas, nyquist),  0.7, null),
+    filtre('lowshelf',  120,  null, r.graves),
+    filtre('peaking',   1800, 0.9,  r.mediums),
+    filtre('highshelf', 6000, null, r.aigus),
+    filtre('peaking',   7000, 3.5,  r.deess)
+  ];
+
+  const compresseur = off.createDynamicsCompressor();
+  compresseur.threshold.value = r.seuil;
+  compresseur.ratio.value = r.ratio;
+  compresseur.knee.value = 6;
+  compresseur.attack.value = 0.003;
+  compresseur.release.value = 0.25;
+  chaine.push(compresseur);
+
+  let precedent = lecteur;
+  for(const noeud of chaine){ precedent.connect(noeud); precedent = noeud; }
+  precedent.connect(off.destination);
+  lecteur.start();
+
+  const rendu = await off.startRendering();
+  const donnees = rendu.getChannelData(0);
+
+  if(r.normaliser){
+    let crete = 0;
+    for(let i=0;i<donnees.length;i++){
+      const v = Math.abs(donnees[i]);
+      if(v > crete) crete = v;
+    }
+    if(crete > 0.0001){
+      const facteur = Math.pow(10, r.cible / 20) / crete;
+      for(let i=0;i<donnees.length;i++) donnees[i] *= facteur;
+    }
+  }
+
+  return encoderWav(donnees, rendu.sampleRate);
 }
 
 function majCompteur(){
@@ -1919,7 +2175,8 @@ async function synthetiser(){
         stability: parseFloat($('stabilite').value),
         similarity_boost: parseFloat($('similarite').value),
         style: parseFloat($('style').value),
-        use_speaker_boost: $('boost').checked
+        use_speaker_boost: $('boost').checked,
+        speed: parseFloat($('debit').value)
       }
     };
     const r = await fetch(baseApi() + '/text-to-speech/' + etat.voixId + '?output_format=mp3_44100_128', {
@@ -1929,24 +2186,42 @@ async function synthetiser(){
       $('resSynth').innerHTML = '<div class="note n-red">' + echapper(await messageErreur(r)) + '</div>';
       return;
     }
-    const blob = await r.blob();
-    /* L'extension suit le format réellement renvoyé : le service distant produit
-       du mp3, le serveur local du wav. Le préfixe reste inchangé. */
+    const brut = await r.blob();
+    let blob = brut, traite = false;
+    if(traitementActif()){
+      occupe(bouton, true, 'Traitement…');
+      blob = await appliquerTraitement(brut);
+      traite = (blob !== brut);
+    }
+
+    /* L'extension suit le format réellement produit : le service distant renvoie
+       du mp3, le serveur local et le traitement du wav. Le préfixe est conservé. */
     const gen = {
       id: ident(),
       nom: 'voix-synthetique_' + slug(etat.voixNom || 'voix') + '_' + horodatage() +
            '.' + extensionDe(blob.type || 'audio/mpeg'),
-      texte, blob, date: new Date().toISOString(), voix: etat.voixNom || etat.voixId
+      texte, blob, date: new Date().toISOString(), voix: etat.voixNom || etat.voixId,
+      traitement: traite ? $('preset').value : null
     };
     etat.generations.unshift(gen);
     await bdEcrire('generations', gen);
+
+    /* En cas de traitement, les deux versions sont proposées côte à côte :
+       c'est la seule façon de juger le réglage à l'oreille. */
+    const comparaison = traite
+      ? '<div style="margin-top:10px">' +
+          '<div class="item-meta" style="margin-bottom:4px">Sans traitement, pour comparer</div>' +
+          '<audio controls src="'+URL.createObjectURL(brut)+'"></audio>' +
+        '</div>'
+      : '';
 
     $('resSynth').innerHTML =
       '<div class="note n-grn"><div class="note-t">Audio généré</div>' +
         '<div style="display:flex;gap:10px;align-items:center;margin-top:8px;flex-wrap:wrap">' +
           '<audio controls src="'+URL.createObjectURL(blob)+'"></audio>' +
           '<button class="btn btn-g btn-sm" onclick="telechargerGeneration(\''+gen.id+'\')">Télécharger</button>' +
-        '</div>' +
+          (traite ? '<span class="badge b-vio">traité</span>' : '') +
+        '</div>' + comparaison +
         '<div style="margin-top:8px;font-size:11.5px">Le nom du fichier porte la mention « voix-synthetique » : ne la retirez pas.</div>' +
       '</div>';
     toast('Audio généré.', 'ok');
@@ -1992,7 +2267,8 @@ function afficherGenerations(){
     '<div class="item">' +
       '<div class="item-corps">' +
         '<div class="item-nom">'+echapper(g.texte.slice(0,70) + (g.texte.length > 70 ? '…' : ''))+'</div>' +
-        '<div class="item-meta">'+new Date(g.date).toLocaleString('fr-FR')+' — '+echapper(g.voix)+' — '+fmtTaille(g.blob.size)+'</div>' +
+        '<div class="item-meta">'+new Date(g.date).toLocaleString('fr-FR')+' — '+echapper(g.voix)+
+          ' — '+fmtTaille(g.blob.size)+(g.traitement ? ' — traitement ' + echapper(g.traitement) : '')+'</div>' +
       '</div>' +
       '<audio controls preload="none" src="'+URL.createObjectURL(g.blob)+'"></audio>' +
       '<div class="item-btns">' +
@@ -2103,6 +2379,7 @@ async function demarrer(){
   afficherEchantillons();
   afficherGenerations();
   majReglages();
+  majTraitement();
   majCompteur();
 
   try{
@@ -2129,6 +2406,16 @@ async function demarrer(){
 
       const type = await bdLire('config','typeVoix');
       if(type && type.valeur === 'catalogue') etat.typeVoix = 'catalogue';
+
+      const trait = await bdLire('config','traitement');
+      if(trait && trait.valeur){
+        const t = trait.valeur;
+        CURSEURS_TRAITEMENT.forEach(id => { if(typeof t[id] === 'number') $(id).value = t[id]; });
+        if(typeof t.normaliser === 'boolean') $('normaliser').checked = t.normaliser;
+        if(t.preset) $('preset').value = t.preset;
+        $('traitementActif').checked = !!t.actif;
+        majTraitement();
+      }
 
       const fourn = await bdLire('config','fournisseur');
       if(fourn && fourn.valeur){

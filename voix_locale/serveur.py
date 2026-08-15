@@ -171,7 +171,8 @@ class MoteurTest(Moteur):
     def synthetiser(self, texte: str, reference: Path, reglages: dict) -> tuple[bytes, str]:
         # Une syllabe approximative par groupe de trois caractères.
         syllabes = max(1, min(400, len(texte) // 3))
-        duree_syllabe = 0.16
+        vitesse = max(0.5, min(2.0, float(reglages.get("speed") or 1.0)))
+        duree_syllabe = 0.16 / vitesse
         total = int(FREQUENCE * syllabes * duree_syllabe)
         echantillons = []
 
@@ -306,12 +307,16 @@ class MoteurXTTS(Moteur):
             # La stabilité de l'application pilote la température du modèle :
             # une stabilité haute donne une lecture plus régulière.
             stabilite = float(reglages.get("stability", 0.5))
+            # Le débit est un étirement temporel appliqué par le modèle, non un
+            # rééchantillonnage : la hauteur de la voix n'est pas modifiée.
+            vitesse = max(0.5, min(2.0, float(reglages.get("speed") or 1.0)))
             self.modele.tts_to_file(
                 text=texte,
                 speaker_wav=str(reference),
                 language="fr",
                 file_path=str(sortie),
                 temperature=max(0.01, 0.9 - 0.6 * stabilite),
+                speed=vitesse,
             )
             return sortie.read_bytes(), "audio/wav"
         finally:
