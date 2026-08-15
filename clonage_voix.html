@@ -764,9 +764,12 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
               <div class="aide">Retire les grondements et les bruits de bouche. Monter jusqu'à 300 Hz donne un effet téléphone.</div>
             </div>
             <div class="champ">
-              <div class="curs-tete"><span>Coupe-haut</span><span class="curs-val" id="vPasseBas">16000 Hz</span></div>
-              <input type="range" id="passeBas" min="2000" max="16000" step="200" value="16000" oninput="majTraitement(true)">
-              <div class="aide">Descendre vers 3 400 Hz reproduit la bande passante d'une ligne téléphonique.</div>
+              <div class="curs-tete"><span>Coupe-haut</span><span class="curs-val" id="vPasseBas">12000 Hz</span></div>
+              <input type="range" id="passeBas" min="2000" max="12000" step="100" value="12000" oninput="majTraitement(true)">
+              <div class="aide">
+                Le moteur ne produit rien au-delà de 12 kHz : c'est la limite haute réelle, non un choix.
+                Descendre vers 3 400 Hz reproduit la bande passante d'une ligne téléphonique.
+              </div>
             </div>
           </div>
 
@@ -821,6 +824,35 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
             </div>
           </div>
         </div>
+      </div>
+
+      <div class="sec">Export</div>
+      <div class="card">
+        <div class="grid2">
+          <div class="champ">
+            <label class="lbl">Résolution</label>
+            <select id="resolution" onchange="enregistrerExport()">
+              <option value="16">16 bits — poids réduit, suffisant à l'écoute</option>
+              <option value="24">24 bits — marge de retouche en montage</option>
+            </select>
+          </div>
+          <div class="champ">
+            <label class="lbl">Fréquence d'échantillonnage</label>
+            <select id="frequenceExport" onchange="enregistrerExport()">
+              <option value="0">Celle du moteur — aucune conversion</option>
+              <option value="44100">44 100 Hz — standard audio</option>
+              <option value="48000">48 000 Hz — standard vidéo</option>
+            </select>
+          </div>
+        </div>
+        <div class="note n-blu" style="margin-top:12px">
+          <div class="note-t">Ce que ces réglages font, et ne font pas</div>
+          Le moteur produit du 24 kHz : convertir vers 48 kHz <strong>n'ajoute aucune finesse</strong>,
+          le fichier est seulement plus lourd. L'intérêt est ailleurs — si votre logiciel de montage
+          travaille en 48 kHz, il convertira de toute façon, souvent moins bien qu'ici.
+          Convertissez pour épouser votre chaîne de production, pas pour gagner en qualité.
+        </div>
+        <div id="infoFormat" class="item-meta" style="margin-top:10px"></div>
       </div>
 
       <button class="btn btn-p" id="btnSynth" style="width:100%;justify-content:center;margin-top:14px" onclick="synthetiser()">
@@ -1204,17 +1236,61 @@ function exporterConsentement(){
    PAGE 2 — ENREGISTREMENT
    ══════════════════════════════════════════════════════ */
 
-let enregistreur = null, enregistrement = false, flux = null;
-let morceaux = [], debutRec = 0, minuteur = null;
+let enregistrement = false, flux = null;
+let blocsPcm = [], nbEchantillonsPcm = 0, freqCapture = 48000;
+let debutRec = 0, minuteur = null;
 let ctxAudio = null, analyseur = null, animation = null, sourceMicro = null;
+let capteur = null, silencieux = null;
 
-function typeMimeSupporte(){
-  const candidats = ['audio/webm;codecs=opus','audio/webm','audio/mp4','audio/ogg;codecs=opus','audio/ogg'];
-  if(!window.MediaRecorder) return '';
-  for(const m of candidats){
-    try{ if(MediaRecorder.isTypeSupported(m)) return m; }catch(e){}
+/* Module de capture exécuté dans le fil audio : il transmet les échantillons
+   bruts sans jamais les compresser.
+
+   L'enregistrement passait auparavant par MediaRecorder, qui n'offre que des
+   formats compressés — Opus le plus souvent. Le modèle apprenait donc la voix
+   à partir d'un signal déjà dégradé, ce qui plafonnait la ressemblance sans
+   qu'aucun réglage ultérieur ne puisse le rattraper. */
+const CODE_CAPTEUR = `
+class CapteurPcm extends AudioWorkletProcessor {
+  process(entrees){
+    const canal = entrees[0] && entrees[0][0];
+    if(canal && canal.length) this.port.postMessage(new Float32Array(canal));
+    return true;
   }
-  return '';
+}
+registerProcessor('capteur-pcm', CapteurPcm);
+`;
+
+function recevoirBloc(bloc){
+  if(!enregistrement || !bloc || !bloc.length) return;
+  blocsPcm.push(bloc);
+  nbEchantillonsPcm += bloc.length;
+}
+
+/* Renvoie le nœud de capture. L'AudioWorklet est préféré : il travaille dans
+   le fil audio et ne saute pas d'échantillon si l'interface est occupée.
+   ScriptProcessor sert de repli pour les navigateurs plus anciens. */
+async function creerCapteur(){
+  if(ctxAudio.audioWorklet){
+    try{
+      const url = URL.createObjectURL(new Blob([CODE_CAPTEUR], {type:'application/javascript'}));
+      await ctxAudio.audioWorklet.addModule(url);
+      URL.revokeObjectURL(url);
+      const noeud = new AudioWorkletNode(ctxAudio, 'capteur-pcm');
+      noeud.port.onmessage = e => recevoirBloc(e.data);
+      return noeud;
+    }catch(e){ /* repli ci-dessous */ }
+  }
+  const noeud = ctxAudio.createScriptProcessor(4096, 1, 1);
+  noeud.onaudioprocess = e => recevoirBloc(new Float32Array(e.inputBuffer.getChannelData(0)));
+  return noeud;
+}
+
+function assemblerPcm(){
+  const total = new Float32Array(nbEchantillonsPcm);
+  let position = 0;
+  for(const bloc of blocsPcm){ total.set(bloc, position); position += bloc.length; }
+  blocsPcm = []; nbEchantillonsPcm = 0;
+  return total;
 }
 
 function extensionDe(type){
@@ -1236,8 +1312,9 @@ async function demarrerEnregistrement(){
     toast("Ce navigateur ne donne pas accès au micro.", 'err');
     return;
   }
-  if(!window.MediaRecorder){
-    toast("Ce navigateur ne sait pas enregistrer l'audio.", 'err');
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  if(!Ctx){
+    toast("Ce navigateur ne sait pas traiter l'audio.", 'err');
     return;
   }
 
@@ -1255,87 +1332,91 @@ async function demarrerEnregistrement(){
     return;
   }
 
-  const type = typeMimeSupporte();
   try{
-    enregistreur = type ? new MediaRecorder(flux, {mimeType:type}) : new MediaRecorder(flux);
+    ctxAudio = new Ctx();
+    if(ctxAudio.state === 'suspended') await ctxAudio.resume();
+    freqCapture = ctxAudio.sampleRate;
+    sourceMicro = ctxAudio.createMediaStreamSource(flux);
+
+    analyseur = ctxAudio.createAnalyser();
+    analyseur.fftSize = 1024;
+    sourceMicro.connect(analyseur);
+
+    capteur = await creerCapteur();
+    /* Le graphe n'est parcouru que s'il aboutit à la sortie : un gain nul
+       permet de l'y raccorder sans rien faire entendre. */
+    silencieux = ctxAudio.createGain();
+    silencieux.gain.value = 0;
+    sourceMicro.connect(capteur);
+    capteur.connect(silencieux);
+    silencieux.connect(ctxAudio.destination);
   }catch(e){
-    enregistreur = new MediaRecorder(flux);
+    toast("Impossible de démarrer la capture : " + (e && e.message ? e.message : e), 'err');
+    arreterCapture();
+    return;
   }
 
-  morceaux = [];
-  enregistreur.ondataavailable = e=>{ if(e.data && e.data.size > 0) morceaux.push(e.data); };
-  enregistreur.onstop = finaliserEnregistrement;
-  enregistreur.start();
-
+  blocsPcm = []; nbEchantillonsPcm = 0;
   enregistrement = true;
   debutRec = Date.now();
   $('btnRec').classList.add('rec');
   $('recEtat').textContent = 'Enregistrement en cours — parlez normalement';
   minuteur = setInterval(()=>{ $('chrono').textContent = fmtDuree((Date.now()-debutRec)/1000); }, 200);
 
-  demarrerVumetre();
+  dessinerVumetre();
 }
 
-function arreterEnregistrement(){
+/* Démonte le graphe audio et libère le micro. */
+function arreterCapture(){
+  if(animation) cancelAnimationFrame(animation);
+  animation = null;
+  [sourceMicro, capteur, silencieux, analyseur].forEach(n=>{ try{ if(n) n.disconnect(); }catch(e){} });
+  if(capteur && capteur.port) capteur.port.onmessage = null;
+  if(capteur) capteur.onaudioprocess = null;
+  capteur = null; silencieux = null; analyseur = null; sourceMicro = null;
+  if(flux){ flux.getTracks().forEach(t=>t.stop()); flux = null; }
+  const c = $('vu');
+  if(c){ const g = c.getContext('2d'); g.clearRect(0,0,c.width,c.height); }
+  $('alerteSat').style.display = 'none';
+}
+
+async function arreterEnregistrement(){
   if(!enregistrement) return;
   enregistrement = false;
   clearInterval(minuteur);
   $('btnRec').classList.remove('rec');
   $('recEtat').textContent = 'Traitement de la prise…';
-  try{ enregistreur.stop(); }catch(e){}
-  arreterVumetre();
+
+  const donnees = assemblerPcm();
+  const frequence = freqCapture;
+  arreterCapture();
+  if(ctxAudio){ try{ await ctxAudio.close(); }catch(e){} ctxAudio = null; }
+
+  await finaliserEnregistrement(donnees, frequence);
 }
 
-async function finaliserEnregistrement(){
-  const type = (enregistreur && enregistreur.mimeType) || 'audio/webm';
-  const blob = new Blob(morceaux, {type});
-  morceaux = [];
-
-  if(flux){ flux.getTracks().forEach(t=>t.stop()); flux = null; }
-
-  const estimee = (Date.now()-debutRec)/1000;
+async function finaliserEnregistrement(donnees, frequence){
+  const duree = donnees.length / frequence;
   $('chrono').textContent = '00:00';
   $('recEtat').textContent = 'Prise enregistrée';
 
-  if(blob.size < 1200 || estimee < 1){
+  if(duree < 1){
     toast('Prise trop courte, elle a été ignorée.', 'err');
     return;
   }
 
-  const duree = await mesurerDuree(blob, estimee);
+  const blob = encoderWav(donnees, frequence, 16);
   await ajouterEchantillon({
     id: ident(),
-    nom: 'Prise ' + (etat.echantillons.length + 1) + '.' + extensionDe(type),
-    blob, duree, type,
-    source: 'micro'
+    nom: 'Prise ' + (etat.echantillons.length + 1) + '.wav',
+    blob, duree, type: 'audio/wav',
+    source: 'micro',
+    frequence
   });
-  toast('Prise ajoutée : ' + fmtDuree(duree) + '.', 'ok');
+  toast('Prise ajoutée : ' + fmtDuree(duree) + ' en ' + Math.round(frequence/1000) + ' kHz non compressé.', 'ok');
 }
 
 /* ─── Vumètre ─── */
-
-function demarrerVumetre(){
-  try{
-    const Ctx = window.AudioContext || window.webkitAudioContext;
-    if(!Ctx) return;
-    ctxAudio = new Ctx();
-    sourceMicro = ctxAudio.createMediaStreamSource(flux);
-    analyseur = ctxAudio.createAnalyser();
-    analyseur.fftSize = 1024;
-    sourceMicro.connect(analyseur);
-    dessinerVumetre();
-  }catch(e){ /* le vumètre est un confort, son échec ne bloque pas l'enregistrement */ }
-}
-
-function arreterVumetre(){
-  if(animation) cancelAnimationFrame(animation);
-  animation = null;
-  if(ctxAudio){ try{ ctxAudio.close(); }catch(e){} ctxAudio = null; }
-  analyseur = null; sourceMicro = null;
-  const c = $('vu'), g = c.getContext('2d');
-  g.clearRect(0,0,c.width,c.height);
-  $('alerteSat').style.display = 'none';
-}
 
 function dessinerVumetre(){
   const c = $('vu');
@@ -2102,9 +2183,9 @@ function majReglages(perso){
 
 /* Chaînes toutes faites, dans l'esprit d'une console de diffusion. */
 const PRESETS = {
-  radio:     {passeHaut:90,  passeBas:15000, graves:2.5, mediums:2,   aigus:3.5, deess:-4, seuil:-22, ratio:5,  cible:-3, normaliser:true},
-  podcast:   {passeHaut:75,  passeBas:16000, graves:1,   mediums:1.5, aigus:2,   deess:-3, seuil:-18, ratio:3,  cible:-6, normaliser:true},
-  annonce:   {passeHaut:100, passeBas:14000, graves:4,   mediums:3,   aigus:4,   deess:-5, seuil:-30, ratio:9,  cible:-2, normaliser:true},
+  radio:     {passeHaut:90,  passeBas:12000, graves:2.5, mediums:2,   aigus:3.5, deess:-4, seuil:-22, ratio:5,  cible:-3, normaliser:true},
+  podcast:   {passeHaut:75,  passeBas:12000, graves:1,   mediums:1.5, aigus:2,   deess:-3, seuil:-18, ratio:3,  cible:-6, normaliser:true},
+  annonce:   {passeHaut:100, passeBas:12000, graves:4,   mediums:3,   aigus:4,   deess:-5, seuil:-30, ratio:9,  cible:-2, normaliser:true},
   telephone: {passeHaut:300, passeBas:3400,  graves:-6,  mediums:6,   aigus:-6,  deess:-2, seuil:-20, ratio:6,  cible:-4, normaliser:true}
 };
 
@@ -2235,48 +2316,91 @@ function rognerSilences(donnees, frequence, seuilDb){
   return donnees.slice(debut, fin + 1);
 }
 
-/* Encode un signal en WAV 16 bits mono, seul format que l'on produit ici. */
-function encoderWav(donnees, frequence){
+/* Encode un signal en WAV mono non compressé, en 16 ou 24 bits. */
+function encoderWav(donnees, frequence, bits){
+  const resolution = (bits === 24) ? 24 : 16;
+  const octets = resolution / 8;
   const n = donnees.length;
-  const tampon = new ArrayBuffer(44 + n * 2);
+  const tampon = new ArrayBuffer(44 + n * octets);
   const vue = new DataView(tampon);
   const texte = (pos, s) => { for(let i=0;i<s.length;i++) vue.setUint8(pos + i, s.charCodeAt(i)); };
 
-  texte(0, 'RIFF');  vue.setUint32(4, 36 + n * 2, true);  texte(8, 'WAVE');
+  texte(0, 'RIFF');  vue.setUint32(4, 36 + n * octets, true);  texte(8, 'WAVE');
   texte(12, 'fmt '); vue.setUint32(16, 16, true);
-  vue.setUint16(20, 1, true);          // PCM
-  vue.setUint16(22, 1, true);          // mono
+  vue.setUint16(20, 1, true);                    // PCM entier
+  vue.setUint16(22, 1, true);                    // mono
   vue.setUint32(24, frequence, true);
-  vue.setUint32(28, frequence * 2, true);
-  vue.setUint16(32, 2, true);
-  vue.setUint16(34, 16, true);
-  texte(36, 'data'); vue.setUint32(40, n * 2, true);
+  vue.setUint32(28, frequence * octets, true);   // octets par seconde
+  vue.setUint16(32, octets, true);               // alignement de bloc
+  vue.setUint16(34, resolution, true);
+  texte(36, 'data'); vue.setUint32(40, n * octets, true);
 
   let p = 44;
-  for(let i=0;i<n;i++){
-    const v = Math.max(-1, Math.min(1, donnees[i]));
-    vue.setInt16(p, v * 32767, true);
-    p += 2;
+  if(resolution === 16){
+    for(let i=0;i<n;i++){
+      const v = Math.max(-1, Math.min(1, donnees[i]));
+      vue.setInt16(p, v * 32767, true);
+      p += 2;
+    }
+  } else {
+    for(let i=0;i<n;i++){
+      const v = Math.max(-1, Math.min(1, donnees[i]));
+      const e = Math.round(v * 8388607);          // entier signé sur 24 bits
+      vue.setUint8(p,     e & 0xFF);
+      vue.setUint8(p + 1, (e >> 8) & 0xFF);
+      vue.setUint8(p + 2, (e >> 16) & 0xFF);
+      p += 3;
+    }
   }
   return new Blob([tampon], {type:'audio/wav'});
+}
+
+/* Décode sans rééchantillonner.
+
+   Un contexte audio ordinaire tourne à la fréquence de la carte son et convertit
+   d'office ce qu'on lui donne : décoder du 24 kHz sur une machine à 44,1 kHz le
+   rééchantillonnait donc à notre insu, avant même tout traitement. Un contexte
+   hors ligne créé à la fréquence du fichier restitue le signal intact. */
+async function decoderAudio(blob){
+  const HorsLigne = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+  const entete = await lireEnteteWav(blob);
+  /* Hors WAV, il s'agit du mp3 du service distant, demandé en 44 100 Hz. */
+  const frequence = entete ? entete.frequence : 44100;
+  const ctx = new HorsLigne(1, 1, frequence);
+  return await ctx.decodeAudioData(await blob.arrayBuffer());
+}
+
+/* Change la fréquence d'échantillonnage en confiant la conversion au moteur
+   audio du navigateur, dont le rééchantillonneur est de bonne facture. */
+async function reechantillonner(donnees, freqSource, freqCible){
+  if(!freqCible || freqCible === freqSource) return {donnees, frequence: freqSource};
+  const HorsLigne = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+  if(!HorsLigne) return {donnees, frequence: freqSource};
+
+  const longueur = Math.max(1, Math.ceil(donnees.length * freqCible / freqSource));
+  const off = new HorsLigne(1, longueur, freqCible);
+  const tampon = off.createBuffer(1, donnees.length, freqSource);
+  tampon.copyToChannel(donnees, 0);
+  const lecteur = off.createBufferSource();
+  lecteur.buffer = tampon;
+  lecteur.connect(off.destination);
+  lecteur.start();
+  const rendu = await off.startRendering();
+  return {donnees: rendu.getChannelData(0), frequence: freqCible};
 }
 
 /* Applique la chaîne de traitement au signal reçu. Le calcul est fait hors
    temps réel : la durée du rendu ne dépend pas de la durée de l'audio. */
 async function appliquerTraitement(blob){
-  const Ctx = window.AudioContext || window.webkitAudioContext;
   const HorsLigne = window.OfflineAudioContext || window.webkitOfflineAudioContext;
-  if(!Ctx || !HorsLigne) return blob;
+  if(!HorsLigne) return blob;
 
-  const ctx = new Ctx();
   let source;
   try{
-    source = await ctx.decodeAudioData(await blob.arrayBuffer());
+    source = await decoderAudio(blob);
   }catch(e){
     toast("Audio illisible pour le traitement : fichier laissé brut.", 'err');
     return blob;
-  }finally{
-    try{ ctx.close(); }catch(e){}
   }
 
   const r = reglagesTraitement();
@@ -2344,7 +2468,49 @@ async function appliquerTraitement(blob){
     }
   }
 
-  return encoderWav(donnees, rendu.sampleRate);
+  const converti = await reechantillonner(donnees, rendu.sampleRate, frequenceExport());
+  return encoderWav(converti.donnees, converti.frequence, resolutionExport());
+}
+
+/* ─── Export ─── */
+
+function resolutionExport(){ return parseInt($('resolution').value, 10) || 16; }
+function frequenceExport(){ return parseInt($('frequenceExport').value, 10) || 0; }
+
+/* Une conversion est nécessaire dès qu'un réglage s'écarte du format natif. */
+function exportModifie(){
+  return frequenceExport() > 0 || resolutionExport() !== 16;
+}
+
+function enregistrerExport(){
+  if(bd) bdEcrire('config', {cle:'export', valeur:{
+    resolution: resolutionExport(), frequence: frequenceExport()
+  }});
+}
+
+/* Lit l'en-tête du fichier produit plutôt que de faire confiance aux réglages :
+   c'est le seul moyen d'annoncer le format réel. */
+async function lireEnteteWav(blob){
+  try{
+    const tete = new DataView(await blob.slice(0, 44).arrayBuffer());
+    const signature = String.fromCharCode(tete.getUint8(0), tete.getUint8(1), tete.getUint8(2), tete.getUint8(3));
+    if(signature !== 'RIFF') return null;
+    return {
+      frequence: tete.getUint32(24, true),
+      bits: tete.getUint16(34, true),
+      canaux: tete.getUint16(22, true)
+    };
+  }catch(e){ return null; }
+}
+
+async function majInfoFormat(blob){
+  const zone = $('infoFormat');
+  if(!zone) return;
+  const e = await lireEnteteWav(blob);
+  zone.textContent = e
+    ? 'Dernier fichier produit : ' + fmtNombre(e.frequence) + ' Hz · ' + e.bits + ' bits · '
+      + (e.canaux > 1 ? 'stéréo' : 'mono') + ' · sans compression'
+    : 'Dernier fichier produit : format compressé du service distant';
 }
 
 function majCompteur(){
@@ -2426,11 +2592,12 @@ async function synthetiser(){
     }
     const brut = await r.blob();
     let blob = brut, traite = false;
-    if(traitementActif() || nettoyageActif()){
+    if(traitementActif() || nettoyageActif() || exportModifie()){
       occupe(bouton, true, 'Traitement…');
       blob = await appliquerTraitement(brut);
       traite = (blob !== brut);
     }
+    await majInfoFormat(blob);
 
     /* L'extension suit le format réellement produit : le service distant renvoie
        du mp3, le serveur local et le traitement du wav. Le préfixe est conservé. */
@@ -2655,6 +2822,12 @@ async function demarrer(){
         $('elocution').value = eloc.valeur;
         const e = ELOCUTIONS[eloc.valeur];
         $('descElocution').textContent = e ? e.desc : DESC_PERSO;
+      }
+
+      const exp = await bdLire('config','export');
+      if(exp && exp.valeur){
+        if(exp.valeur.resolution) $('resolution').value = String(exp.valeur.resolution);
+        $('frequenceExport').value = String(exp.valeur.frequence || 0);
       }
 
       const net = await bdLire('config','nettoyage');
