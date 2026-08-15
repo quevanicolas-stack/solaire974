@@ -963,7 +963,10 @@ function occupe(bouton, actif, texte){
   if(!bouton) return;
   bouton.disabled = actif;
   if(actif){
-    bouton.dataset.libelle = bouton.innerHTML;
+    /* Le libellé d'origine n'est mémorisé qu'une fois : un second appel pendant
+       la même attente écraserait la mémoire par le bouton déjà occupé, et la
+       restauration finale laisserait la roue tourner indéfiniment. */
+    if(!bouton.dataset.libelle) bouton.dataset.libelle = bouton.innerHTML;
     bouton.innerHTML = '<span class="spin"></span>' + echapper(texte||'Traitement…');
   } else if(bouton.dataset.libelle){
     bouton.innerHTML = bouton.dataset.libelle;
