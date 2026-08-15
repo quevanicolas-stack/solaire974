@@ -88,10 +88,25 @@ def convertir_en_wav(source: Path, destination: Path, secondes_max: int = 0) -> 
         raise RuntimeError("Conversion audio impossible : " + resultat.stderr.strip()[:400])
 
 
-def assembler_references(fichiers: list[Path], destination: Path) -> None:
+"""
+Débruitage de la référence.
+
+Un souffle ou un bruit de fond présent dans l'échantillon est appris par le
+modèle au même titre que le timbre : il ressort ensuite sur chaque phrase
+produite. Nettoyer la référence est donc plus efficace que nettoyer la sortie.
+
+Le réglage reste modéré à dessein : un débruitage agressif abîme les aigus de
+la voix et dégrade la ressemblance.
+"""
+FILTRE_DEBRUITAGE = "highpass=f=70,afftdn=nr=12:nf=-30"
+
+
+def assembler_references(fichiers: list[Path], destination: Path, debruiter: bool = False) -> None:
     """Concatène les échantillons en une seule référence, tronquée à la durée utile."""
     if len(fichiers) == 1:
         convertir_en_wav(fichiers[0], destination, DUREE_REFERENCE_MAX)
+        if debruiter:
+            debruiter_wav(destination)
         return
 
     liste = destination.parent / "liste.txt"
@@ -114,6 +129,27 @@ def assembler_references(fichiers: list[Path], destination: Path) -> None:
     for p in intermediaires:
         p.unlink(missing_ok=True)
     liste.unlink(missing_ok=True)
+
+    if debruiter:
+        debruiter_wav(destination)
+
+
+def debruiter_wav(chemin: Path) -> None:
+    """Applique le filtre de débruitage sur place, en passant par un fichier temporaire."""
+    temporaire = chemin.parent / f"debruite_{uuid.uuid4().hex}.wav"
+    commande = [
+        chemin_ffmpeg(), "-y", "-loglevel", "error", "-i", str(chemin),
+        "-af", FILTRE_DEBRUITAGE,
+        "-ac", "1", "-ar", str(FREQUENCE), "-c:a", "pcm_s16le", str(temporaire),
+    ]
+    resultat = subprocess.run(commande, capture_output=True, text=True)
+    if resultat.returncode != 0:
+        # Le débruitage est un confort : son échec ne doit pas perdre la référence.
+        temporaire.unlink(missing_ok=True)
+        print("[voix] débruitage impossible, référence conservée telle quelle", flush=True)
+        return
+    temporaire.replace(chemin)
+    print("[voix] référence débruitée", flush=True)
 
 
 def duree_wav(chemin: Path) -> float:
@@ -413,6 +449,7 @@ def voix():
 async def ajouter_voix(
     name: str = Form(...),
     description: str = Form(""),
+    remove_background_noise: str = Form(""),
     files: list[UploadFile] = File(...),
 ):
     if not files:
@@ -441,8 +478,9 @@ async def ajouter_voix(
             shutil.rmtree(dossier, ignore_errors=True)
             return erreur(422, "Les échantillons reçus sont vides.")
 
+        debruiter = str(remove_background_noise).lower() in ("1", "true", "vrai", "on", "yes")
         reference = dossier / "reference.wav"
-        assembler_references(chemins, reference)
+        assembler_references(chemins, reference, debruiter)
 
         secondes = duree_wav(reference)
         if secondes < 3:
@@ -455,6 +493,7 @@ async def ajouter_voix(
             "description": description,
             "duree_reference": round(secondes, 1),
             "nb_echantillons": len(chemins),
+            "debruitee": debruiter,
             "cree_le": time.strftime("%Y-%m-%dT%H:%M:%S"),
             "moteur": etat["moteur"].nom,
         }
