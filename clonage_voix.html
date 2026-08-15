@@ -692,7 +692,12 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
           </div>
         </div>
 
-        <div id="reglagesTraitement" style="display:none">
+        <div class="note n-amb" id="rappelTraitement" style="margin-top:12px">
+          Ces réglages sont sans effet tant que la case ci-dessus n'est pas cochée.
+          Choisir un préréglage l'active automatiquement.
+        </div>
+
+        <div id="reglagesTraitement" style="opacity:.45">
           <div class="sec" style="margin-top:16px">Filtrage</div>
           <div class="grid2">
             <div class="champ">
@@ -2016,7 +2021,11 @@ function majTraitement(perso){
   $('vRatio').textContent     = r.ratio.toFixed(1).replace('.', ',') + ' : 1';
   $('vCible').textContent     = dec(r.cible, 'dB');
 
-  $('reglagesTraitement').style.display = traitementActif() ? 'block' : 'none';
+  /* Les curseurs restent visibles même inactifs : masquer ce qui existe le rend
+     introuvable. Ils sont seulement estompés tant que rien n'est appliqué. */
+  const actif = traitementActif();
+  $('reglagesTraitement').style.opacity = actif ? '1' : '.45';
+  $('rappelTraitement').style.display = actif ? 'none' : 'block';
   if(bd) bdEcrire('config', {cle:'traitement', valeur:{actif: traitementActif(), preset: $('preset').value, ...r}});
 }
 
