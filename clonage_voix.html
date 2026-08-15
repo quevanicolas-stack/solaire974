@@ -641,6 +641,37 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
           La ponctuation guide l'intonation : un point marque une pause franche, les virgules aèrent le débit,
           les points de suspension créent une hésitation. Écrire les nombres en toutes lettres améliore la prononciation.
         </div>
+
+        <div id="blocApercu" style="display:none;margin-top:14px">
+          <label class="lbl">Texte réellement transmis au moteur</label>
+          <div class="phrase" id="apercuTexte" style="white-space:pre-wrap"></div>
+          <div class="aide">
+            Le style découpe le texte pour guider les pauses. Rien n'est ajouté ni retiré aux mots :
+            seule la mise en forme change. Choisissez « Personnalisé » pour transmettre votre texte tel quel.
+          </div>
+        </div>
+      </div>
+
+      <div class="sec">Style d'élocution</div>
+      <div class="card">
+        <div class="champ">
+          <select id="elocution" onchange="appliquerElocution()">
+            <option value="perso">Personnalisé — réglages libres</option>
+            <option value="narrateur">Narrateur — posé, régulier, sans relief appuyé</option>
+            <option value="enseignant">Enseignant — articulé, phrases détachées, rythme soutenu</option>
+            <option value="short">Présentateur de vidéo courte — très dynamique et rapide</option>
+            <option value="publicite">Publicité — énergique, percutant, très en avant</option>
+            <option value="journal">Journal — neutre, clair, débit constant</option>
+            <option value="livre">Livre audio — chaleureux, plus lent, respirations marquées</option>
+            <option value="documentaire">Documentaire — grave, posé, autorité tranquille</option>
+            <option value="accueil">Accueil téléphonique — très articulé, bande téléphonique</option>
+            <option value="conversation">Conversation — naturel, familier, peu appuyé</option>
+          </select>
+          <div class="aide" id="descElocution">
+            Chaque style règle d'un coup le moteur, la préparation du texte et le traitement audio.
+            Modifier un curseur ensuite bascule en personnalisé.
+          </div>
+        </div>
       </div>
 
       <div class="sec">Réglages de rendu</div>
@@ -648,22 +679,22 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
         <div class="grid2">
           <div class="champ">
             <div class="curs-tete"><span>Stabilité</span><span class="curs-val" id="vStab">0,50</span></div>
-            <input type="range" id="stabilite" min="0" max="1" step="0.05" value="0.5" oninput="majReglages()">
+            <input type="range" id="stabilite" min="0" max="1" step="0.05" value="0.5" oninput="majReglages(true)">
             <div class="aide">Bas : plus d'émotion et de variation. Haut : ton monotone mais constant.</div>
           </div>
           <div class="champ">
             <div class="curs-tete"><span>Similarité</span><span class="curs-val" id="vSim">0,75</span></div>
-            <input type="range" id="similarite" min="0" max="1" step="0.05" value="0.75" oninput="majReglages()">
+            <input type="range" id="similarite" min="0" max="1" step="0.05" value="0.75" oninput="majReglages(true)">
             <div class="aide">Haut : colle au timbre d'origine, y compris ses défauts d'enregistrement.</div>
           </div>
           <div class="champ">
             <div class="curs-tete"><span>Expressivité</span><span class="curs-val" id="vStyle">0,00</span></div>
-            <input type="range" id="style" min="0" max="1" step="0.05" value="0" oninput="majReglages()">
+            <input type="range" id="style" min="0" max="1" step="0.05" value="0" oninput="majReglages(true)">
             <div class="aide">Accentue le style de la personne. Au-delà de 0,5 la voix devient instable.</div>
           </div>
           <div class="champ">
             <div class="curs-tete"><span>Débit de parole</span><span class="curs-val" id="vDebit">1,00 ×</span></div>
-            <input type="range" id="debit" min="0.6" max="1.6" step="0.05" value="1" oninput="majReglages()">
+            <input type="range" id="debit" min="0.6" max="1.6" step="0.05" value="1" oninput="majReglages(true)">
             <div class="aide">Étirement appliqué par le moteur : la hauteur de la voix ne change pas. Au-delà de 1,3 l'élocution se dégrade.</div>
           </div>
         </div>
@@ -1956,12 +1987,86 @@ async function supprimerVoix(id, nom){
    PAGE 5 — SYNTHÈSE
    ══════════════════════════════════════════════════════ */
 
-function majReglages(){
+/* ══════════════════════════════════════════════════════
+   STYLES D'ÉLOCUTION
+   ══════════════════════════════════════════════════════
+
+   Un style n'est pas un simple curseur : il règle ensemble le moteur
+   (régularité, expressivité, débit), la préparation du texte qui guide les
+   pauses, et la chaîne de traitement audio. Les trois plans se répondent.
+
+   pauses     : aucune | moderees | marquees — découpage après la ponctuation forte
+   segmenter  : découpe aussi aux virgules, pour une élocution détachée          */
+
+const ELOCUTIONS = {
+  narrateur:    {stab:.80, expr:.10, debit:0.95, preset:'podcast',   pauses:'marquees', segmenter:false,
+                 desc:"Débit régulier, peu de relief, respirations franches entre les phrases. Pour un texte long qu'on écoute sans se concentrer."},
+  enseignant:   {stab:.50, expr:.35, debit:1.10, preset:'radio',     pauses:'marquees', segmenter:true,
+                 desc:"Propositions détachées les unes des autres, ce qui appuie les débuts et fins de phrase. Rythme soutenu, articulation marquée."},
+  short:        {stab:.25, expr:.70, debit:1.30, preset:'annonce',   pauses:'aucune',   segmenter:true,
+                 desc:"Très rapide, très expressif, sans temps mort. Pour des formats courts où l'attention se perd en deux secondes."},
+  publicite:    {stab:.30, expr:.60, debit:1.15, preset:'annonce',   pauses:'moderees', segmenter:true,
+                 desc:"Énergique et percutant, voix très en avant par une compression forte. Pour une annonce de trente secondes."},
+  journal:      {stab:.80, expr:.15, debit:1.00, preset:'radio',     pauses:'moderees', segmenter:false,
+                 desc:"Neutre et crédible, débit constant, aucune emphase. Le style attendu pour une information factuelle."},
+  livre:        {stab:.65, expr:.35, debit:0.90, preset:'podcast',   pauses:'marquees', segmenter:false,
+                 desc:"Plus lent, chaleureux, avec de vraies respirations. Tient à l'écoute sur la durée sans fatiguer."},
+  documentaire: {stab:.75, expr:.25, debit:0.90, preset:'podcast',   pauses:'marquees', segmenter:false,
+                 desc:"Grave et posé, silences assumés. L'autorité vient de la lenteur, pas de l'insistance."},
+  accueil:      {stab:.85, expr:.10, debit:0.95, preset:'telephone', pauses:'marquees', segmenter:true,
+                 desc:"Très articulé, chaque information détachée, bande passante réduite comme au téléphone. Pour un message d'accueil ou un serveur vocal."},
+  conversation: {stab:.40, expr:.45, debit:1.05, preset:'podcast',   pauses:'moderees', segmenter:false,
+                 desc:"Naturel et familier, variations libres. Pour s'adresser à quelqu'un plutôt que de lui lire un texte."}
+};
+
+const DESC_PERSO = "Réglages libres. Choisissez un style pour tout ajuster d'un coup.";
+
+function appliquerElocution(){
+  const cle = $('elocution').value;
+  const e = ELOCUTIONS[cle];
+  $('descElocution').textContent = e ? e.desc : DESC_PERSO;
+
+  if(e){
+    $('stabilite').value = e.stab;
+    $('style').value     = e.expr;
+    $('debit').value     = e.debit;
+    majReglages();
+    $('preset').value = e.preset;
+    appliquerPreset();
+  }
+  majCompteur();
+  enregistrerElocution();
+}
+
+function enregistrerElocution(){
+  if(bd) bdEcrire('config', {cle:'elocution', valeur:$('elocution').value});
+}
+
+/* Met le texte en forme selon le style. Aucun mot n'est ajouté ni retiré :
+   seuls des retours à la ligne sont introduits, que le moteur interprète
+   comme des pauses. L'aperçu affiché permet de le vérifier. */
+function preparerTexte(brut, cle){
+  const e = ELOCUTIONS[cle];
+  let t = String(brut).replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
+  if(!e) return t;
+  if(e.segmenter)              t = t.replace(/,[ ]+/g, ',\n');
+  if(e.pauses === 'moderees')  t = t.replace(/([.!?…])[ ]+/g, '$1\n');
+  if(e.pauses === 'marquees')  t = t.replace(/([.!?…])[ ]+/g, '$1\n\n');
+  return t;
+}
+
+function majReglages(perso){
+  if(perso && $('elocution').value !== 'perso'){
+    $('elocution').value = 'perso';
+    $('descElocution').textContent = DESC_PERSO;
+    enregistrerElocution();
+  }
   const f = n => n.toFixed(2).replace('.', ',');
   $('vStab').textContent  = f(parseFloat($('stabilite').value));
   $('vSim').textContent   = f(parseFloat($('similarite').value));
   $('vStyle').textContent = f(parseFloat($('style').value));
   $('vDebit').textContent = f(parseFloat($('debit').value)) + ' ×';
+  majCompteur();
 }
 
 /* ══════════════════════════════════════════════════════
@@ -2011,6 +2116,12 @@ function appliquerPreset(){
 /* perso : un curseur a été bougé à la main, le préréglage ne décrit plus l'état. */
 function majTraitement(perso){
   if(perso && $('preset').value !== 'perso') $('preset').value = 'perso';
+  /* Le traitement fait partie du style : le retoucher rend le style caduc. */
+  if(perso && $('elocution') && $('elocution').value !== 'perso'){
+    $('elocution').value = 'perso';
+    $('descElocution').textContent = DESC_PERSO;
+    enregistrerElocution();
+  }
 
   const r = reglagesTraitement();
   const dec = (n, u) => n.toFixed(1).replace('.', ',') + ' ' + u;
@@ -2132,10 +2243,18 @@ async function appliquerTraitement(blob){
 }
 
 function majCompteur(){
-  const n = $('texte').value.length;
+  const brut = $('texte').value;
+  const prepare = preparerTexte(brut, $('elocution').value);
+  const n = prepare.length;
+
   const c = $('compteur');
   c.textContent = fmtNombre(n) + (n > 1 ? ' caractères' : ' caractère') + ' sur 5 000';
   c.classList.toggle('trop', n > 5000);
+
+  /* L'aperçu n'apparaît que si la préparation modifie réellement le texte. */
+  const different = brut.trim() && prepare !== brut.trim();
+  $('blocApercu').style.display = different ? 'block' : 'none';
+  if(different) $('apercuTexte').textContent = prepare;
 }
 
 function majVoixActive(){
@@ -2162,8 +2281,10 @@ function majVoixActive(){
 }
 
 async function synthetiser(){
-  const texte = $('texte').value.trim();
-  if(!texte){
+  const saisi = $('texte').value.trim();
+  /* Le texte transmis est celui préparé par le style, pas la saisie brute. */
+  const texte = preparerTexte(saisi, $('elocution').value);
+  if(!saisi){
     $('texte').classList.add('req-err');
     toast('Saisissez le texte à prononcer.', 'err');
     return;
@@ -2212,8 +2333,9 @@ async function synthetiser(){
       id: ident(),
       nom: 'voix-synthetique_' + slug(etat.voixNom || 'voix') + '_' + horodatage() +
            '.' + extensionDe(blob.type || 'audio/mpeg'),
-      texte, blob, date: new Date().toISOString(), voix: etat.voixNom || etat.voixId,
-      traitement: traite ? $('preset').value : null
+      texte: saisi, blob, date: new Date().toISOString(), voix: etat.voixNom || etat.voixId,
+      traitement: traite ? $('preset').value : null,
+      elocution: $('elocution').value
     };
     etat.generations.unshift(gen);
     await bdEcrire('generations', gen);
@@ -2280,7 +2402,9 @@ function afficherGenerations(){
       '<div class="item-corps">' +
         '<div class="item-nom">'+echapper(g.texte.slice(0,70) + (g.texte.length > 70 ? '…' : ''))+'</div>' +
         '<div class="item-meta">'+new Date(g.date).toLocaleString('fr-FR')+' — '+echapper(g.voix)+
-          ' — '+fmtTaille(g.blob.size)+(g.traitement ? ' — traitement ' + echapper(g.traitement) : '')+'</div>' +
+          ' — '+fmtTaille(g.blob.size)+
+          (g.elocution && g.elocution !== 'perso' ? ' — style ' + echapper(g.elocution) : '')+
+          (g.traitement ? ' — traitement ' + echapper(g.traitement) : '')+'</div>' +
       '</div>' +
       '<audio controls preload="none" src="'+URL.createObjectURL(g.blob)+'"></audio>' +
       '<div class="item-btns">' +
@@ -2418,6 +2542,13 @@ async function demarrer(){
 
       const type = await bdLire('config','typeVoix');
       if(type && type.valeur === 'catalogue') etat.typeVoix = 'catalogue';
+
+      const eloc = await bdLire('config','elocution');
+      if(eloc && eloc.valeur && $('elocution').querySelector('option[value="'+eloc.valeur+'"]')){
+        $('elocution').value = eloc.valeur;
+        const e = ELOCUTIONS[eloc.valeur];
+        $('descElocution').textContent = e ? e.desc : DESC_PERSO;
+      }
 
       const trait = await bdLire('config','traitement');
       if(trait && trait.valeur){
