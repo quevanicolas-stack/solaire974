@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Contact — Aurélie, anglais professionnel</title>
+<meta name="description" content="Demander une séance découverte de 30 minutes ou un devis pour une formation d'anglais professionnel en visioconférence.">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<header class="entete">
+  <div class="contenu barre">
+    <a class="logo" href="index.html">
+      Aurélie <span class="a-completer">Nom</span>
+      <span class="logo-baseline">Anglais professionnel</span>
+    </a>
+    <button class="bouton-menu" type="button" aria-expanded="false" aria-controls="navigation-principale">Menu</button>
+    <nav class="navigation" id="navigation-principale" aria-label="Navigation principale">
+      <ul>
+        <li><a href="index.html">Accueil</a></li>
+        <li><a href="cours.html">Les cours</a></li>
+        <li><a href="tarifs.html">Tarifs</a></li>
+        <li><a href="a-propos.html">À propos</a></li>
+        <li class="lien-action"><a href="contact.html" class="actif">Séance découverte</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+  <section class="banniere-page">
+    <div class="contenu">
+      <span class="surtitre">Contact</span>
+      <h1>Réserver une séance découverte</h1>
+      <p class="chapeau">
+        Trente minutes en visio, sans engagement : point sur votre niveau, vos objectifs
+        et la formule la plus adaptée. Réponse sous <span class="a-completer">48 heures ouvrées</span>.
+      </p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="contenu">
+      <div class="grille grille-2">
+
+        <div>
+          <h2>Votre demande</h2>
+          <p>
+            Les champs marqués d'un astérisque sont obligatoires. Plus votre message
+            est précis sur le contexte, plus la proposition sera adaptée dès le premier échange.
+          </p>
+
+          <form class="formulaire" id="formulaire-contact" data-destinataire="contact@exemple.fr" novalidate>
+            <div class="champ-duo">
+              <div class="champ">
+                <label for="nom">Nom et prénom *</label>
+                <input type="text" id="nom" name="nom" required autocomplete="name">
+              </div>
+              <div class="champ">
+                <label for="societe">Société</label>
+                <input type="text" id="societe" name="societe" autocomplete="organization">
+              </div>
+            </div>
+
+            <div class="champ-duo">
+              <div class="champ">
+                <label for="courriel">Courriel *</label>
+                <input type="email" id="courriel" name="courriel" required autocomplete="email">
+              </div>
+              <div class="champ">
+                <label for="telephone">Téléphone</label>
+                <input type="tel" id="telephone" name="telephone" autocomplete="tel">
+              </div>
+            </div>
+
+            <div class="champ-duo">
+              <div class="champ">
+                <label for="besoin">Votre besoin *</label>
+                <select id="besoin" name="besoin" required>
+                  <option value="">Choisir…</option>
+                  <option>Cours individuel en visio</option>
+                  <option>Session en petit groupe</option>
+                  <option>Formation intra-entreprise</option>
+                  <option>Préparation TOEIC</option>
+                  <option>Préparation d'un entretien</option>
+                  <option>Autre demande</option>
+                </select>
+              </div>
+              <div class="champ">
+                <label for="effectif">Nombre de participants</label>
+                <select id="effectif" name="effectif">
+                  <option value="">Choisir…</option>
+                  <option>1 personne</option>
+                  <option>2 à 5 personnes</option>
+                  <option>6 à 10 personnes</option>
+                  <option>Plus de 10 personnes</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="champ">
+              <label for="message">Votre message *</label>
+              <textarea id="message" name="message" required
+                placeholder="Votre niveau approximatif, vos objectifs, vos disponibilités, l'échéance éventuelle…"></textarea>
+            </div>
+
+            <div class="champ">
+              <label class="case-a-cocher" for="consentement">
+                <input type="checkbox" id="consentement" name="consentement" required>
+                <span>
+                  J'accepte que les informations transmises soient utilisées pour répondre
+                  à ma demande. Elles ne font l'objet d'aucune transmission à des tiers. *
+                </span>
+              </label>
+            </div>
+
+            <button type="submit" class="bouton bouton-principal">Envoyer la demande</button>
+            <p class="message-formulaire" id="message-formulaire" role="status" aria-live="polite"></p>
+            <p class="aide">
+              Le site étant statique, ce formulaire ouvre votre messagerie avec la demande
+              pré-remplie. Vous gardez ainsi une copie de ce que vous envoyez.
+            </p>
+          </form>
+        </div>
+
+        <div>
+          <h2>Coordonnées</h2>
+
+          <div class="bloc-contact">
+            <h3>Courriel</h3>
+            <p><a href="mailto:contact@exemple.fr" class="a-completer">contact@exemple.fr</a></p>
+            <p class="aide">Moyen de contact à privilégier pour les demandes d'entreprise.</p>
+          </div>
+
+          <div class="bloc-contact">
+            <h3>Téléphone</h3>
+            <p><a href="tel:+33000000000" class="a-completer">00 00 00 00 00</a></p>
+            <p class="aide a-completer">Préciser les horaires d'appel et le fuseau horaire de référence.</p>
+          </div>
+
+          <div class="bloc-contact">
+            <h3>Réseaux</h3>
+            <p class="a-completer">Ajouter ici le lien LinkedIn et, le cas échéant, les autres profils professionnels.</p>
+          </div>
+
+          <div class="bloc-contact">
+            <h3>Disponibilités</h3>
+            <p class="a-completer">
+              Exemple à ajuster : du lundi au vendredi, de 8 h à 20 h, ainsi que
+              le samedi matin sur demande.
+            </p>
+          </div>
+
+          <div class="bloc-contact">
+            <h3>Zone d'intervention</h3>
+            <p>
+              Les cours ayant lieu exclusivement en visioconférence, il n'y a aucune
+              contrainte de localisation. Pour les groupes, les créneaux sont arrêtés
+              en tenant compte des fuseaux horaires des participants.
+            </p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <section class="section section-douce">
+    <div class="contenu">
+      <div class="centre">
+        <span class="surtitre">Avant de nous parler</span>
+        <h2>Comment se passe le premier échange</h2>
+      </div>
+      <div class="grille grille-3" style="margin-top:40px">
+        <article class="carte">
+          <div class="carte-numero">1</div>
+          <h3>Vous envoyez la demande</h3>
+          <p>Une réponse vous parvient avec deux ou trois créneaux possibles.</p>
+        </article>
+        <article class="carte">
+          <div class="carte-numero">2</div>
+          <h3>Trente minutes en visio</h3>
+          <p>Une partie de l'échange se fait en anglais, pour situer le niveau sans test formel.</p>
+        </article>
+        <article class="carte">
+          <div class="carte-numero">3</div>
+          <h3>Vous recevez une proposition</h3>
+          <p>Format, rythme, objectifs et tarif, par écrit. Vous décidez ensuite, sans relance insistante.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="pied">
+  <div class="contenu">
+    <div class="pied-grille">
+      <div>
+        <h4>Aurélie <span class="a-completer">Nom</span></h4>
+        <p>
+          Cours d'anglais professionnel en visioconférence, en individuel,
+          en petit groupe et en intra-entreprise.
+        </p>
+        <p>
+          <span class="a-completer">SIRET 000 000 000 00000</span><br>
+          <span class="a-completer">Numéro de déclaration d'activité de formation : à compléter</span>
+        </p>
+      </div>
+      <div>
+        <h4>Navigation</h4>
+        <ul>
+          <li><a href="index.html">Accueil</a></li>
+          <li><a href="cours.html">Les cours</a></li>
+          <li><a href="tarifs.html">Tarifs</a></li>
+          <li><a href="a-propos.html">À propos</a></li>
+          <li><a href="contact.html">Contact</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Contact</h4>
+        <ul>
+          <li><a href="mailto:contact@exemple.fr" class="a-completer">contact@exemple.fr</a></li>
+          <li><a href="tel:+33000000000" class="a-completer">00 00 00 00 00</a></li>
+          <li><span class="a-completer">Profil LinkedIn à ajouter</span></li>
+        </ul>
+      </div>
+    </div>
+    <div class="pied-bas">
+      <span>&copy; <span class="annee-courante">2026</span> Aurélie <span class="a-completer">Nom</span>. Tous droits réservés.</span>
+      <span><a href="mentions-legales.html">Mentions légales</a></span>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/script.js"></script>
+</body>
+</html>
