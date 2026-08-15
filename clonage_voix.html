@@ -121,6 +121,7 @@ select{cursor:pointer;appearance:none;background-image:linear-gradient(45deg,tra
 .n-amb{background:var(--amb-d);border-color:rgba(240,180,41,.28);color:#F5D48A}
 .n-red{background:var(--red-d);border-color:rgba(248,81,73,.28);color:#FFC2BE}
 .n-grn{background:var(--grn-d);border-color:rgba(29,158,117,.28);color:#9FE3C7}
+.n-vio{background:var(--vio-d);border-color:rgba(163,113,247,.3);color:#D6C2FB}
 
 /* ─── ENREGISTREUR ─── */
 .rec-zone{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
@@ -249,7 +250,7 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
     <div class="page on" id="p0">
       <div class="ph">
         <div>
-          <div class="ph-tag">Étape 01 / 06</div>
+          <div class="ph-tag">Étape 01 / 04</div>
           <div class="ph-title">Consentement</div>
           <div class="ph-desc">Identifier la personne dont la voix va être reproduite</div>
         </div>
@@ -324,7 +325,7 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
 
       <div class="nav-btns">
         <span></span>
-        <button class="btn btn-p" onclick="go(1)">Enregistrement des échantillons →</button>
+        <button class="btn btn-p" onclick="go(1)">Voix →</button>
       </div>
     </div>
 
@@ -332,296 +333,160 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
     <div class="page" id="p1">
       <div class="ph">
         <div>
-          <div class="ph-tag">Étape 02 / 06</div>
-          <div class="ph-title">Enregistrement des échantillons</div>
-          <div class="ph-desc">Constituer la banque de voix qui servira de modèle</div>
+          <div class="ph-tag">Étape 02 / 04</div>
+          <div class="ph-title" id="titreEtape4">Voix</div>
+          <div class="ph-desc" id="descEtape4">Reprendre une voix existante, ou en créer une à partir de vos enregistrements</div>
         </div>
         <div class="ph-btns">
           <button class="btn btn-g" onclick="go(0)">← Retour</button>
-          <button class="btn btn-p" onclick="go(2)">Service vocal →</button>
+          <button class="btn btn-p" onclick="go(2)">Synthèse →</button>
         </div>
       </div>
 
-      <div class="note n-blu">
-        <div class="note-t">Conditions d'un bon clonage</div>
-        Une à deux minutes d'audio propre suffisent, et au-delà de trois minutes le gain devient négligeable.
-        Ce qui compte : une seule voix, aucun bruit de fond, aucune musique, pas d'écho, un débit naturel,
-        un micro à quinze centimètres de la bouche. Un enregistrement saturé ou lointain dégrade davantage
-        le résultat qu'un enregistrement court.
-      </div>
-
-      <div class="sec">Enregistrer</div>
-      <div class="card">
-        <div class="rec-zone">
-          <button class="rec-btn" id="btnRec" onclick="basculerEnregistrement()" title="Démarrer ou arrêter l'enregistrement">
-            <div class="forme"></div>
-          </button>
-          <div class="rec-info">
-            <div class="rec-chrono" id="chrono">00:00</div>
-            <div class="rec-etat" id="recEtat">Micro en attente d'autorisation</div>
+      <!-- ─── Connexion, réduite à une ligne tant qu'elle se passe bien ─── -->
+      <div class="card" id="carteConnexion">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <span class="dot" id="dotConnexion"></span>
+          <div style="flex:1;min-width:180px">
+            <div id="titreConnexion" style="font-size:12.5px;font-weight:600">Serveur local</div>
+            <div class="item-meta" id="detailConnexion">Connexion non vérifiée</div>
+          </div>
+          <div class="item-btns">
+            <button class="btn btn-g btn-sm" id="btnTest" onclick="testerConnexion()">Vérifier</button>
+            <button class="btn btn-g btn-sm" id="btnReglages" onclick="basculerReglages()">Réglages</button>
           </div>
         </div>
-        <canvas class="vu" id="vu"></canvas>
-        <div class="aide" id="alerteSat" style="display:none;color:var(--red-l)">
-          Niveau saturé : la voix est trop forte ou trop proche du micro. Reculez légèrement.
-        </div>
-
-        <div class="grid2" style="margin-top:14px">
-          <label class="check"><input type="checkbox" id="optTraitement" checked>
-            <span>Réduction de bruit et suppression d'écho du navigateur</span></label>
-          <label class="check"><input type="checkbox" id="optGain">
-            <span>Contrôle automatique du gain (à éviter pour le clonage)</span></label>
-        </div>
+        <div id="resTest" style="margin-top:12px"></div>
       </div>
 
-      <div class="sec">Ou importer des fichiers audio existants</div>
-      <div class="card">
-        <input type="file" id="fichiers" accept="audio/*" multiple style="display:none" onchange="importerFichiers(event)">
-        <button class="btn btn-g" style="width:100%;justify-content:center" onclick="document.getElementById('fichiers').click()">
-          Choisir des fichiers audio
-        </button>
-        <div class="aide">Formats acceptés : mp3, wav, m4a, ogg, webm. La même exigence de qualité s'applique.</div>
-      </div>
-
-      <div class="sec">Texte suggéré à lire</div>
-      <div class="card">
-        <div class="phrase">Le vent du sud-est souffle sur les hauts de l'île, et la pluie fine finit toujours par descendre sur la ville avant midi.</div>
-        <div class="phrase">Combien coûte réellement une installation de ce type, et en combien d'années devient-elle rentable ?</div>
-        <div class="phrase">Attention : ce chiffre n'est pas définitif. Il faudra le vérifier avant de signer quoi que ce soit.</div>
-        <div class="phrase">J'ai relu le dossier hier soir. Franchement, c'est du très bon travail, je n'ai presque rien à redire.</div>
-        <div class="phrase">Zéro, un, deux, trois, quatre, cinq, six, sept, huit, neuf, dix. Lundi, mardi, mercredi, jeudi, vendredi.</div>
-        <div class="aide">Ces phrases couvrent les sons du français, plusieurs intonations (neutre, interrogative, avertissement, enthousiaste) et les chiffres. Lisez-les naturellement, sans forcer l'articulation.</div>
-      </div>
-
-      <div class="sec">Échantillons collectés</div>
-      <div class="card">
-        <div class="jauge">
-          <div class="jauge-tete">
-            <span>Durée totale utile</span>
-            <span class="curs-val" id="dureeTotale">0 s</span>
-          </div>
-          <div class="jauge-piste"><div class="jauge-plein" id="jaugePlein" style="width:0%"></div></div>
-          <div class="jauge-reperes"><span>0</span><span>60 s — minimum conseillé</span><span>180 s</span></div>
-        </div>
-        <div id="listeEch" style="margin-top:14px"></div>
-      </div>
-
-      <div class="nav-btns">
-        <button class="btn btn-g" onclick="go(0)">← Retour</button>
-        <button class="btn btn-p" onclick="go(2)">Service vocal →</button>
-      </div>
-    </div>
-
-    <!-- ─────────── PAGE 3 : SERVICE VOCAL ─────────── -->
-    <div class="page" id="p2">
-      <div class="ph">
-        <div>
-          <div class="ph-tag">Étape 03 / 06</div>
-          <div class="ph-title">Service vocal</div>
-          <div class="ph-desc">Connexion au moteur de clonage</div>
-        </div>
-        <div class="ph-btns">
-          <button class="btn btn-g" onclick="go(1)">← Retour</button>
-          <button class="btn btn-p" onclick="go(3)">Création de la voix →</button>
-        </div>
-      </div>
-
-      <div class="note n-amb">
-        <div class="note-t">Pourquoi un service externe</div>
-        Le clonage vocal exige un modèle de plusieurs gigaoctets qu'un navigateur ne peut pas faire tourner.
-        L'enregistrement et le stockage restent sur votre machine, mais la création de la voix et la synthèse
-        passent par une interface de programmation distante. Un compte payant est nécessaire chez le fournisseur :
-        le clonage instantané n'est pas disponible sur les offres gratuites.
-      </div>
-
-      <div class="sec">Mode de fonctionnement</div>
-      <div class="card">
-        <div class="radios">
-          <label class="radio sel" id="radioReel" onclick="choisirMode('reel')">
-            <input type="radio" name="mode" id="modeReel" checked>
-            <div>
-              <div class="radio-t">Clonage réel</div>
-              <div class="radio-d">Reproduit la voix enregistrée. Nécessite une clé d'accès.</div>
-            </div>
-          </label>
-          <label class="radio" id="radioDemo" onclick="choisirMode('demo')">
-            <input type="radio" name="mode" id="modeDemo">
-            <div>
-              <div class="radio-t">Mode démonstration</div>
-              <div class="radio-d">Voix générique du navigateur, sans clé ni réseau. Ce n'est pas la voix enregistrée.</div>
-            </div>
-          </label>
-        </div>
-      </div>
-
-      <div id="zoneApi">
-        <div class="sec">Type de voix</div>
+      <div id="reglagesConnexion" style="display:none">
+        <div class="sec">Mode de fonctionnement</div>
         <div class="card">
           <div class="radios">
-            <label class="radio sel" id="radioClonee" onclick="choisirTypeVoix('clonee')">
-              <input type="radio" name="typeVoix" id="typeClonee" checked>
+            <label class="radio sel" id="radioReel" onclick="choisirMode('reel')">
+              <input type="radio" name="mode" id="modeReel" checked>
               <div>
-                <div class="radio-t">Voix clonée</div>
-                <div class="radio-d">Reproduit une voix enregistrée à l'étape 02.</div>
+                <div class="radio-t">Clonage réel</div>
+                <div class="radio-d">Reproduit une voix enregistrée.</div>
               </div>
             </label>
-            <label class="radio" id="radioCatalogue" onclick="choisirTypeVoix('catalogue')">
-              <input type="radio" name="typeVoix" id="typeCatalogue">
+            <label class="radio" id="radioDemo" onclick="choisirMode('demo')">
+              <input type="radio" name="mode" id="modeDemo">
               <div>
-                <div class="radio-t">Voix du catalogue</div>
-                <div class="radio-d">Voix toutes faites du service distant. Aucun enregistrement requis.</div>
+                <div class="radio-t">Mode démonstration</div>
+                <div class="radio-d">Voix générique du navigateur, sans clé ni réseau. Ce n'est pas la voix enregistrée.</div>
               </div>
             </label>
-          </div>
-          <div class="note n-blu" id="noteCatalogue" style="display:none;margin-top:13px">
-            Le catalogue appartient au service distant : il exige une clé d'accès, et le serveur local
-            ne le propose pas. Aucune voix n'est clonée dans ce cas, et l'étape 02 devient facultative.
           </div>
         </div>
 
-        <div id="blocFournisseur">
-        <div class="sec">Fournisseur</div>
-        <div class="card">
-          <div class="radios">
-            <label class="radio sel" id="radioLocal" onclick="choisirFournisseur('local')">
-              <input type="radio" name="fournisseur" id="fournLocal" checked>
-              <div>
-                <div class="radio-t">Serveur local</div>
-                <div class="radio-d">Gratuit et hors ligne. Rien ne quitte la machine. Exige le serveur lancé.</div>
-              </div>
-            </label>
-            <label class="radio" id="radioDistant" onclick="choisirFournisseur('distant')">
-              <input type="radio" name="fournisseur" id="fournDistant">
-              <div>
-                <div class="radio-t">Service distant</div>
-                <div class="radio-d">Sert de point de comparaison. Abonnement payant, les échantillons quittent la machine.</div>
-              </div>
-            </label>
-          </div>
-          <div class="champ" id="champUrlLocale" style="display:none;margin-top:13px">
-            <label class="lbl">Adresse du serveur local</label>
-            <input type="text" id="urlLocale" value="http://127.0.0.1:8770" oninput="majEtat()" onchange="enregistrerFournisseur()">
-            <div class="aide">
-              Lancez le serveur avec <span class="kv-v">python serveur.py --moteur test</span>
-              depuis le dossier <span class="kv-v">voix_locale</span>, puis testez la connexion.
-              Aucune clé n'est nécessaire dans ce mode.
-            </div>
-          </div>
-        </div>
-        </div>
-
-        <div id="blocCle">
-        <div class="sec">Clé d'accès</div>
-        <div class="card">
-          <div class="champ">
-            <label class="lbl">Clé d'interface de programmation<span class="obl">*</span></label>
-            <input type="password" id="cleApi" placeholder="Collez votre clé ici" autocomplete="off" oninput="majEtat()">
-            <div class="aide">
-              La clé reste dans ce navigateur et n'est envoyée qu'au fournisseur du service.
-              Elle n'est transmise à aucun autre serveur et ne figure dans aucun fichier du projet.
-            </div>
-          </div>
-          <label class="check"><input type="checkbox" id="memoCle">
-            <span>Mémoriser la clé sur cet appareil. Sans cette option elle est oubliée à la fermeture de l'onglet.</span></label>
-          <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
-            <button class="btn btn-g" id="btnTest" onclick="testerConnexion()">Tester la connexion</button>
-            <button class="btn btn-g" onclick="oublierCle()">Oublier la clé</button>
-          </div>
-          <div id="resTest" style="margin-top:12px"></div>
-        </div>
-        </div>
-
-        <div id="blocTestLocal" style="display:none">
-          <div class="sec">Vérification</div>
+        <div id="zoneApi">
+          <div class="sec">Type de voix</div>
           <div class="card">
-            <button class="btn btn-g" id="btnTestLocal" onclick="testerConnexion()">Tester la connexion au serveur local</button>
-            <div id="resTestLocal" style="margin-top:12px"></div>
+            <div class="radios">
+              <label class="radio sel" id="radioClonee" onclick="choisirTypeVoix('clonee')">
+                <input type="radio" name="typeVoix" id="typeClonee" checked>
+                <div>
+                  <div class="radio-t">Voix clonée</div>
+                  <div class="radio-d">Reproduit une voix que vous enregistrez.</div>
+                </div>
+              </label>
+              <label class="radio" id="radioCatalogue" onclick="choisirTypeVoix('catalogue')">
+                <input type="radio" name="typeVoix" id="typeCatalogue">
+                <div>
+                  <div class="radio-t">Voix du catalogue</div>
+                  <div class="radio-d">Voix toutes faites du service distant. Aucun enregistrement requis.</div>
+                </div>
+              </label>
+            </div>
+            <div class="note n-blu" id="noteCatalogue" style="display:none;margin-top:13px">
+              Le catalogue appartient au service distant : il exige une clé d'accès, et le serveur local
+              ne le propose pas. Aucune voix n'est clonée dans ce cas.
+            </div>
           </div>
-        </div>
 
-        <div id="blocModele">
-          <div class="sec">Moteur de synthèse</div>
-          <div class="card">
-            <div class="champ">
-              <label class="lbl">Modèle</label>
-              <select id="modele">
-                <option value="eleven_multilingual_v2">Multilingue v2 — meilleure qualité, recommandé en français</option>
-                <option value="eleven_turbo_v2_5">Turbo v2.5 — plus rapide, qualité légèrement inférieure</option>
-                <option value="eleven_flash_v2_5">Flash v2.5 — latence minimale, qualité la plus basse</option>
-              </select>
-              <div class="aide">Le multilingue v2 restitue le mieux les accents et la prosodie du français.</div>
+          <div id="blocFournisseur">
+            <div class="sec">Fournisseur</div>
+            <div class="card">
+              <div class="radios">
+                <label class="radio sel" id="radioLocal" onclick="choisirFournisseur('local')">
+                  <input type="radio" name="fournisseur" id="fournLocal" checked>
+                  <div>
+                    <div class="radio-t">Serveur local</div>
+                    <div class="radio-d">Gratuit et hors ligne. Rien ne quitte la machine. Exige le serveur lancé.</div>
+                  </div>
+                </label>
+                <label class="radio" id="radioDistant" onclick="choisirFournisseur('distant')">
+                  <input type="radio" name="fournisseur" id="fournDistant">
+                  <div>
+                    <div class="radio-t">Service distant</div>
+                    <div class="radio-d">Sert de point de comparaison. Abonnement payant, les échantillons quittent la machine.</div>
+                  </div>
+                </label>
+              </div>
+              <div class="champ" id="champUrlLocale" style="display:none;margin-top:13px">
+                <label class="lbl">Adresse du serveur local</label>
+                <input type="text" id="urlLocale" value="http://127.0.0.1:8770" oninput="majEtat()" onchange="enregistrerFournisseur()">
+                <div class="aide">
+                  Lancez le serveur avec <span class="kv-v">python serveur.py --moteur xtts</span>
+                  depuis le dossier <span class="kv-v">voix_locale</span>, puis vérifiez la connexion.
+                  Aucune clé n'est nécessaire dans ce mode.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="blocCle">
+            <div class="sec">Clé d'accès</div>
+            <div class="card">
+              <div class="champ">
+                <label class="lbl">Clé d'interface de programmation<span class="obl">*</span></label>
+                <input type="password" id="cleApi" placeholder="Collez votre clé ici" autocomplete="off" oninput="majEtat()">
+                <div class="aide">
+                  La clé reste dans ce navigateur et n'est envoyée qu'au fournisseur du service.
+                  Elle n'est transmise à aucun autre serveur et ne figure dans aucun fichier du projet.
+                </div>
+              </div>
+              <label class="check"><input type="checkbox" id="memoCle">
+                <span>Mémoriser la clé sur cet appareil. Sans cette option elle est oubliée à la fermeture de l'onglet.</span></label>
+              <button class="btn btn-g btn-sm" style="margin-top:12px" onclick="oublierCle()">Oublier la clé</button>
+            </div>
+          </div>
+
+          <div id="blocModele">
+            <div class="sec">Moteur de synthèse</div>
+            <div class="card">
+              <div class="champ">
+                <label class="lbl">Modèle</label>
+                <select id="modele">
+                  <option value="eleven_multilingual_v2">Multilingue v2 — meilleure qualité, recommandé en français</option>
+                  <option value="eleven_turbo_v2_5">Turbo v2.5 — plus rapide, qualité légèrement inférieure</option>
+                  <option value="eleven_flash_v2_5">Flash v2.5 — latence minimale, qualité la plus basse</option>
+                </select>
+                <div class="aide">Le multilingue v2 restitue le mieux les accents et la prosodie du français.</div>
+              </div>
             </div>
           </div>
         </div>
+      </div>
 
-        <div class="note n-blu">
-          <div class="note-t">Si la connexion échoue</div>
-          Un navigateur bloque les appels distants émis depuis un fichier ouvert en local (adresse commençant par
-          <span class="kv-v">file://</span>). Servez la page par un petit serveur local, par exemple
-          <span class="kv-v">npx http-server</span> dans le dossier du projet, puis ouvrez
-          <span class="kv-v">http://localhost:8080/clonage_voix.html</span>.
+      <!-- ─── Mode démonstration ─── -->
+      <div id="zoneCreationDemo" style="display:none">
+        <div class="note n-amb">
+          <div class="note-t">Mode démonstration actif</div>
+          Aucune voix n'est clonée dans ce mode : la synthèse utilisera une voix générique du navigateur.
+          Repassez en clonage réel dans les réglages pour reproduire une voix enregistrée.
         </div>
       </div>
 
-      <div class="nav-btns">
-        <button class="btn btn-g" onclick="go(1)">← Retour</button>
-        <button class="btn btn-p" onclick="go(3)">Création de la voix →</button>
-      </div>
-    </div>
-
-    <!-- ─────────── PAGE 4 : CRÉATION DE LA VOIX ─────────── -->
-    <div class="page" id="p3">
-      <div class="ph">
-        <div>
-          <div class="ph-tag">Étape 04 / 06</div>
-          <div class="ph-title" id="titreEtape4">Création de la voix</div>
-          <div class="ph-desc" id="descEtape4">Envoyer les échantillons et obtenir une voix clonée</div>
-        </div>
-        <div class="ph-btns">
-          <button class="btn btn-g" onclick="go(2)">← Retour</button>
-          <button class="btn btn-p" onclick="go(4)">Synthèse →</button>
-        </div>
-      </div>
-
-      <div id="zoneCreation">
-        <div class="sec">Récapitulatif avant envoi</div>
-        <div class="card" id="recapEnvoi"></div>
-
-        <div class="sec">Paramètres de la voix</div>
-        <div class="card">
-          <div class="grid2">
-            <div class="champ">
-              <label class="lbl">Nom de la voix<span class="obl">*</span></label>
-              <input type="text" id="voixNom" placeholder="Exemple : Voix Nicolas" oninput="majEtat()">
-            </div>
-            <div class="champ">
-              <label class="lbl">Description</label>
-              <input type="text" id="voixDesc" placeholder="Exemple : voix masculine, ton posé, français">
-            </div>
-          </div>
-          <label class="check"><input type="checkbox" id="optBruit">
-            <span>Retirer le bruit de fond des échantillons avant l'analyse. Utile en environnement bruyant, inutile sur un enregistrement déjà propre.</span></label>
-          <button class="btn btn-p" id="btnCreer" style="width:100%;justify-content:center;margin-top:14px" onclick="creerVoix()">
-            Créer la voix clonée
-          </button>
-          <div id="resCreation" style="margin-top:12px"></div>
-        </div>
-
-        <div class="sec">Voix disponibles sur le compte</div>
-        <div class="card">
-          <button class="btn btn-g btn-sm" onclick="listerVoix()">Rafraîchir la liste</button>
-          <div id="listeVoix" style="margin-top:12px"></div>
-        </div>
-      </div>
-
+      <!-- ─── Catalogue du service distant ─── -->
       <div id="zoneCatalogue" style="display:none">
         <div class="note n-blu">
           <div class="note-t">Voix toutes faites</div>
           Ces voix appartiennent au service distant. Aucune personne de votre entourage n'est reproduite,
           et aucun échantillon n'est envoyé. Le rendu reste une voix de synthèse et doit être présenté
-          comme telle. Vérifiez les conditions d'utilisation du fournisseur avant tout usage commercial.
+          comme tel. Vérifiez les conditions d'utilisation du fournisseur avant tout usage commercial.
         </div>
-
         <div class="sec">Choisir une voix</div>
         <div class="card">
           <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
@@ -638,31 +503,131 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
         </div>
       </div>
 
-      <div id="zoneCreationDemo" style="display:none">
-        <div class="note n-amb">
-          <div class="note-t">Mode démonstration actif</div>
-          Aucune voix n'est clonée dans ce mode : la synthèse utilisera une voix générique du navigateur.
-          Passez en clonage réel à l'étape précédente pour reproduire la voix enregistrée.
+      <!-- ─── Voix clonées ─── -->
+      <div id="zoneCreation">
+
+        <div class="sec">Vos voix</div>
+        <div class="card">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+            <button class="btn btn-g btn-sm" onclick="listerVoix()">Rafraîchir</button>
+            <button class="btn btn-g btn-sm" onclick="nouvelleVoix()">Créer une nouvelle voix</button>
+          </div>
+          <div id="listeVoix"></div>
+        </div>
+
+        <div class="sec" id="titreFabrication">Créer une voix</div>
+
+        <div class="note n-vio" id="banniereAmelioration" style="display:none">
+          <div class="note-t">Amélioration en cours</div>
+          <span id="texteAmelioration"></span>
+          <div style="margin-top:9px">
+            <button class="btn btn-g btn-sm" onclick="annulerAmelioration()">Abandonner l'amélioration</button>
+          </div>
+        </div>
+
+        <div class="note n-blu">
+          <div class="note-t">Conditions d'un bon clonage</div>
+          Une à deux minutes d'audio propre suffisent, et au-delà de trois minutes le gain devient négligeable.
+          Ce qui compte : une seule voix, aucun bruit de fond, aucune musique, pas d'écho, un débit naturel,
+          un micro à quinze centimètres de la bouche. Un enregistrement saturé ou lointain dégrade davantage
+          le résultat qu'un enregistrement court.
+        </div>
+
+        <div class="card">
+          <div class="rec-zone">
+            <button class="rec-btn" id="btnRec" onclick="basculerEnregistrement()" title="Démarrer ou arrêter l'enregistrement">
+              <div class="forme"></div>
+            </button>
+            <div class="rec-info">
+              <div class="rec-chrono" id="chrono">00:00</div>
+              <div class="rec-etat" id="recEtat">Micro en attente d'autorisation</div>
+            </div>
+          </div>
+          <canvas class="vu" id="vu"></canvas>
+          <div class="aide" id="alerteSat" style="display:none;color:var(--red-l)">
+            Niveau saturé : la voix est trop forte ou trop proche du micro. Reculez légèrement.
+          </div>
+
+          <div class="jauge">
+            <div class="jauge-tete">
+              <span>Durée totale utile</span>
+              <span class="curs-val" id="dureeTotale">0 s</span>
+            </div>
+            <div class="jauge-piste"><div class="jauge-plein" id="jaugePlein" style="width:0%"></div></div>
+            <div class="jauge-reperes"><span>0</span><span>60 s — minimum conseillé</span><span>180 s</span></div>
+          </div>
+
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
+            <input type="file" id="fichiers" accept="audio/*" multiple style="display:none" onchange="importerFichiers(event)">
+            <button class="btn btn-g btn-sm" onclick="document.getElementById('fichiers').click()">Importer des fichiers audio</button>
+            <button class="btn btn-g btn-sm" onclick="basculerOptionsMicro()">Options du micro</button>
+            <button class="btn btn-g btn-sm" onclick="basculerPhrases()">Texte à lire</button>
+          </div>
+
+          <div id="optionsMicro" style="display:none;margin-top:12px">
+            <div class="grid2">
+              <label class="check"><input type="checkbox" id="optTraitement" checked>
+                <span>Réduction de bruit et suppression d'écho du navigateur</span></label>
+              <label class="check"><input type="checkbox" id="optGain">
+                <span>Contrôle automatique du gain (à éviter pour le clonage)</span></label>
+            </div>
+            <div class="aide" style="margin-top:8px">Formats importés acceptés : mp3, wav, m4a, ogg, webm.</div>
+          </div>
+
+          <div id="zonePhrases" style="display:none;margin-top:12px">
+            <div class="phrase">Le vent du sud-est souffle sur les hauts de l'île, et la pluie fine finit toujours par descendre sur la ville avant midi.</div>
+            <div class="phrase">Combien coûte réellement une installation de ce type, et en combien d'années devient-elle rentable ?</div>
+            <div class="phrase">Attention : ce chiffre n'est pas définitif. Il faudra le vérifier avant de signer quoi que ce soit.</div>
+            <div class="phrase">J'ai relu le dossier hier soir. Franchement, c'est du très bon travail, je n'ai presque rien à redire.</div>
+            <div class="phrase">Zéro, un, deux, trois, quatre, cinq, six, sept, huit, neuf, dix. Lundi, mardi, mercredi, jeudi, vendredi.</div>
+            <div class="aide">Ces phrases couvrent les sons du français, plusieurs intonations et les chiffres. Lisez-les naturellement, sans forcer l'articulation.</div>
+          </div>
+
+          <div id="listeEch" style="margin-top:14px"></div>
+        </div>
+
+        <div class="card">
+          <div class="grid2">
+            <div class="champ">
+              <label class="lbl">Nom de la voix<span class="obl">*</span></label>
+              <input type="text" id="voixNom" placeholder="Exemple : Voix Nicolas" oninput="majEtat()">
+            </div>
+            <div class="champ">
+              <label class="lbl">Description</label>
+              <input type="text" id="voixDesc" placeholder="Exemple : voix masculine, ton posé, français">
+            </div>
+          </div>
+          <label class="check"><input type="checkbox" id="optBruit">
+            <span>Retirer le bruit de fond des échantillons avant l'analyse. Utile en environnement bruyant, inutile sur un enregistrement déjà propre.</span></label>
+          <div id="recapEnvoi" style="margin-top:12px"></div>
+          <button class="btn btn-p" id="btnCreer" style="width:100%;justify-content:center;margin-top:14px" onclick="creerVoix(false)">
+            Créer la voix clonée
+          </button>
+          <button class="btn btn-v" id="btnRemplacer" style="width:100%;justify-content:center;margin-top:8px;display:none" onclick="creerVoix(true)">
+            Remplacer par cette nouvelle version
+          </button>
+          <div id="resCreation" style="margin-top:12px"></div>
         </div>
       </div>
 
       <div class="nav-btns">
-        <button class="btn btn-g" onclick="go(2)">← Retour</button>
-        <button class="btn btn-p" onclick="go(4)">Synthèse →</button>
+        <button class="btn btn-g" onclick="go(0)">← Retour</button>
+        <button class="btn btn-p" onclick="go(2)">Synthèse →</button>
       </div>
     </div>
 
+
     <!-- ─────────── PAGE 5 : SYNTHÈSE ─────────── -->
-    <div class="page" id="p4">
+    <div class="page" id="p2">
       <div class="ph">
         <div>
-          <div class="ph-tag">Étape 05 / 06</div>
+          <div class="ph-tag">Étape 03 / 04</div>
           <div class="ph-title">Synthèse</div>
           <div class="ph-desc">Écrire un texte et l'entendre dans la voix reproduite</div>
         </div>
         <div class="ph-btns">
-          <button class="btn btn-g" onclick="go(3)">← Retour</button>
-          <button class="btn btn-p" onclick="go(5)">Bibliothèque →</button>
+          <button class="btn btn-g" onclick="go(1)">← Retour</button>
+          <button class="btn btn-p" onclick="go(3)">Bibliothèque →</button>
         </div>
       </div>
 
@@ -709,21 +674,21 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
       <div id="resSynth" style="margin-top:12px"></div>
 
       <div class="nav-btns">
-        <button class="btn btn-g" onclick="go(3)">← Retour</button>
-        <button class="btn btn-p" onclick="go(5)">Bibliothèque →</button>
+        <button class="btn btn-g" onclick="go(1)">← Retour</button>
+        <button class="btn btn-p" onclick="go(3)">Bibliothèque →</button>
       </div>
     </div>
 
     <!-- ─────────── PAGE 6 : BIBLIOTHÈQUE ─────────── -->
-    <div class="page" id="p5">
+    <div class="page" id="p3">
       <div class="ph">
         <div>
-          <div class="ph-tag">Étape 06 / 06</div>
+          <div class="ph-tag">Étape 04 / 04</div>
           <div class="ph-title">Bibliothèque</div>
           <div class="ph-desc">Audios produits, traçabilité et suppression</div>
         </div>
         <div class="ph-btns">
-          <button class="btn btn-g" onclick="go(4)">← Retour</button>
+          <button class="btn btn-g" onclick="go(2)">← Retour</button>
         </div>
       </div>
 
@@ -752,7 +717,7 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
       </div>
 
       <div class="nav-btns">
-        <button class="btn btn-g" onclick="go(4)">← Retour</button>
+        <button class="btn btn-g" onclick="go(2)">← Retour</button>
         <span></span>
       </div>
     </div>
@@ -771,9 +736,7 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
 
 const PAGES = [
   {t:'Consentement'},
-  {t:'Enregistrement'},
-  {t:'Service vocal'},
-  {t:'Création voix'},
+  {t:'Voix'},
   {t:'Synthèse'},
   {t:'Bibliothèque'}
 ];
@@ -790,6 +753,8 @@ const etat = {
   mode:'reel',           // 'reel' | 'demo'
   fournisseur:'local',   // 'local' | 'distant' — le serveur local est le défaut
   typeVoix:'clonee',     // 'clonee' | 'catalogue'
+  voixAAmeliorer:null,   // voix dont on prépare une nouvelle version
+  connexion:null,        // dernier résultat de vérification du service
   voixId:null,
   voixNom:null,
   generations:[]         // {id, nom, texte, blob, date, voix}
@@ -936,14 +901,12 @@ function construireNav(){
     '</div>').join('');
 }
 
-/* Renvoie un message si la page demandée est inaccessible, sinon null. */
+/* Renvoie un message si la page demandée est inaccessible, sinon null.
+   Seul le consentement bloque : les autres étapes signalent ce qui manque
+   sur place plutôt que d'interdire la navigation. */
 function verrou(n){
   if(n > 0 && !etat.consentement)
     return "Validez d'abord le consentement.";
-  if(n >= 3 && etat.mode === 'reel' && etat.typeVoix === 'clonee' && etat.echantillons.length === 0)
-    return "Aucun échantillon : enregistrez ou importez au moins un extrait de voix.";
-  if(n >= 3 && etat.mode === 'reel' && etat.fournisseur === 'distant' && !cleCourante())
-    return "Renseignez la clé d'accès du service vocal.";
   return null;
 }
 
@@ -951,7 +914,7 @@ function go(n){
   if(n > 0 && !etat.consentement && !validerConsentement()) return;
 
   const message = verrou(n);
-  if(message){ toast(message, 'err'); signalerManques(n); return; }
+  if(message){ toast(message, 'err'); return; }
 
   if(enregistrement) arreterEnregistrement();
 
@@ -962,18 +925,19 @@ function go(n){
   if(zone) zone.scrollTop = 0;
   window.scrollTo(0,0);
 
-  if(n === 3){ majAffichageEtape4(); if(etat.typeVoix === 'catalogue') afficherCatalogue(); else majRecapEnvoi(); }
-  if(n === 4){ majVoixActive(); majCompteur(); }
-  if(n === 5){ afficherGenerations(); afficherTraceConsentement(); }
+  if(n === 1){
+    majAffichageEtape4();
+    if(etat.typeVoix === 'catalogue'){
+      afficherCatalogue();
+    } else {
+      majRecapEnvoi();
+      listerVoix();   // la bibliothèque de voix est le point d'entrée de l'étape
+    }
+  }
+  if(n === 2){ majVoixActive(); majCompteur(); }
+  if(n === 3){ afficherGenerations(); afficherTraceConsentement(); }
 
   majEtat();
-}
-
-/* Met en évidence les champs qui bloquent l'accès à la page demandée. */
-function signalerManques(n){
-  if(n >= 3 && etat.mode === 'reel' && etat.fournisseur === 'distant' && !cleCourante() && etat.page === 2){
-    const c = $('cleApi'); if(c) c.classList.add('req-err');
-  }
 }
 
 /* ══════════════════════════════════════════════════════
@@ -1346,11 +1310,14 @@ function majAffichageEtape4(){
   $('zoneCatalogue').style.display    = (!demo &&  catalogue) ? 'block' : 'none';
   $('zoneCreationDemo').style.display = demo ? 'block' : 'none';
 
-  const titre = $('titreEtape4'), desc = $('descEtape4');
-  if(titre) titre.textContent = catalogue ? 'Choix de la voix' : 'Création de la voix';
-  if(desc) desc.textContent = catalogue
-    ? 'Retenir une voix toute faite du service distant'
-    : 'Envoyer les échantillons et obtenir une voix clonée';
+  const desc = $('descEtape4');
+  if(desc) desc.textContent =
+    demo ? 'Le mode démonstration ne reproduit aucune voix enregistrée'
+    : catalogue ? 'Retenir une voix toute faite du service distant'
+    : 'Reprendre une voix existante, ou en créer une à partir de vos enregistrements';
+
+  majConnexion();
+  majAffichageAmelioration();
 }
 
 function choisirTypeVoix(t){
@@ -1386,8 +1353,9 @@ function choisirFournisseur(f){
   $('champUrlLocale').style.display = (f === 'local') ? 'block' : 'none';
   $('blocCle').style.display        = (f === 'local') ? 'none'  : 'block';
   $('blocModele').style.display     = (f === 'local') ? 'none'  : 'block';
-  $('blocTestLocal').style.display  = (f === 'local') ? 'block' : 'none';
+  etat.connexion = null;   // changer de fournisseur invalide la vérification
   enregistrerFournisseur();
+  majConnexion();
   majEtat();
 }
 
@@ -1407,12 +1375,49 @@ function baseApi(){
   return etat.fournisseur === 'local' ? urlLocale() + '/v1' : API_DISTANTE;
 }
 
-function zoneResultatTest(){
-  return etat.fournisseur === 'local' ? $('resTestLocal') : $('resTest');
+function zoneResultatTest(){ return $('resTest'); }
+function boutonTest(){ return $('btnTest'); }
+
+/* ─── Replis de l'étape 02 ─── */
+
+function basculer(id, bouton){
+  const el = $(id);
+  if(!el) return;
+  const ouvert = (el.style.display !== 'none');
+  el.style.display = ouvert ? 'none' : 'block';
+  if(bouton) bouton.classList.toggle('btn-p', !ouvert);
 }
 
-function boutonTest(){
-  return etat.fournisseur === 'local' ? $('btnTestLocal') : $('btnTest');
+function basculerReglages(){ basculer('reglagesConnexion', $('btnReglages')); }
+function basculerOptionsMicro(){ basculer('optionsMicro'); }
+function basculerPhrases(){ basculer('zonePhrases'); }
+
+/* Ligne d'état de la connexion, en tête de l'étape 02. */
+function majConnexion(){
+  const titre = $('titreConnexion'), detail = $('detailConnexion'), pastille = $('dotConnexion');
+  if(!titre) return;
+
+  if(etat.mode === 'demo'){
+    titre.textContent = 'Mode démonstration';
+    detail.textContent = "Voix générique du navigateur, aucune voix n'est reproduite";
+    pastille.className = 'dot att';
+    return;
+  }
+
+  titre.textContent = (etat.fournisseur === 'local')
+    ? 'Serveur local — ' + urlLocale()
+    : 'Service distant' + (etat.typeVoix === 'catalogue' ? ' — catalogue' : '');
+
+  if(etat.connexion && etat.connexion.ok){
+    detail.textContent = etat.connexion.texte;
+    pastille.className = 'dot ok';
+  } else if(etat.connexion){
+    detail.textContent = 'Dernière vérification en échec';
+    pastille.className = 'dot att';
+  } else {
+    detail.textContent = 'Connexion non vérifiée';
+    pastille.className = 'dot';
+  }
 }
 
 function cleCourante(){
@@ -1499,6 +1504,7 @@ async function testerConnexion(){
     const r = await fetch(baseApi() + '/user', {headers: entetes(false)});
     if(!r.ok){
       zone.innerHTML = '<div class="note n-red">' + echapper(await messageErreur(r)) + '</div>';
+      etat.connexion = {ok:false, texte:''};
       return;
     }
     const d = await r.json();
@@ -1528,12 +1534,15 @@ async function testerConnexion(){
     zone.innerHTML =
       '<div class="note n-grn"><div class="note-t">Connexion établie</div>' +
       ligneKv(local ? 'Serveur' : 'Offre du compte', abo.tier || 'non communiquée') + detail + '</div>' + avis;
+    etat.connexion = {ok:true, texte: abo.tier || 'connecté'};
     if(!local) memoriserCle();
     toast('Connexion établie.', 'ok');
   }catch(e){
     zone.innerHTML = '<div class="note n-red">' + echapper(messageReseau(e)) + '</div>';
+    etat.connexion = {ok:false, texte:''};
   }finally{
     occupe(bouton, false);
+    majConnexion();
     majEtat();
   }
 }
@@ -1560,9 +1569,65 @@ function majRecapEnvoi(){
     avis;
 }
 
-async function creerVoix(){
+/* ─── Reprise et amélioration d'une voix existante ─── */
+
+function nouvelleVoix(){
+  annulerAmelioration();
+  $('voixNom').value = '';
+  $('voixDesc').value = '';
+  $('resCreation').innerHTML = '';
+  $('titreFabrication').scrollIntoView({behavior:'smooth', block:'start'});
+  toast("Enregistrez, puis créez la voix.");
+}
+
+/* Prépare le remplacement d'une voix par une version refaite à partir des
+   échantillons présents. Les échantillons déjà collectés sont conservés :
+   on peut donc en ajouter pour enrichir la référence plutôt que tout refaire. */
+function ameliorerVoix(i){
+  const v = voixDistantes[i];
+  if(!v) return;
+  etat.voixAAmeliorer = {id: v.voice_id, nom: v.name};
+  $('voixNom').value = v.name;
+  $('texteAmelioration').textContent =
+    'La voix « ' + v.name + ' » sera remplacée par une nouvelle version construite à partir des '
+    + 'échantillons ci-dessous. Ajoutez des prises pour enrichir la référence, puis validez. '
+    + "Tant que vous n'avez pas validé, la voix actuelle reste utilisable telle quelle.";
+  majAffichageAmelioration();
+  $('titreFabrication').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function annulerAmelioration(){
+  etat.voixAAmeliorer = null;
+  majAffichageAmelioration();
+}
+
+function majAffichageAmelioration(){
+  const enCours = !!etat.voixAAmeliorer;
+  const banniere = $('banniereAmelioration');
+  if(!banniere) return;
+  banniere.style.display = enCours ? 'block' : 'none';
+  $('btnRemplacer').style.display = enCours ? 'inline-flex' : 'none';
+  $('btnCreer').textContent = enCours ? 'Créer une voix séparée à la place' : 'Créer la voix clonée';
+  $('btnCreer').className = enCours
+    ? 'btn btn-g' : 'btn btn-p';
+  $('btnCreer').style.width = '100%';
+  $('btnCreer').style.justifyContent = 'center';
+  $('btnCreer').style.marginTop = '14px';
+  $('titreFabrication').textContent = enCours
+    ? 'Améliorer « ' + etat.voixAAmeliorer.nom + ' »'
+    : 'Créer une voix';
+  if(enCours) $('btnRemplacer').textContent = 'Remplacer « ' + etat.voixAAmeliorer.nom + ' »';
+}
+
+async function creerVoix(remplacer){
   if(etat.mode !== 'reel'){ toast('Le mode démonstration ne crée pas de voix.', 'err'); return; }
   if(!etat.echantillons.length){ toast("Aucun échantillon à envoyer.", 'err'); return; }
+
+  const ancienne = remplacer ? etat.voixAAmeliorer : null;
+  if(ancienne && !confirm(
+      'Remplacer « ' + ancienne.nom + " » par cette nouvelle version ?\n\n"
+      + "L'ancienne voix sera supprimée du service. Les audios déjà générés avec elle "
+      + 'restent dans votre bibliothèque.')) return;
 
   const nom = $('voixNom').value.trim();
   if(!nom){
@@ -1572,7 +1637,7 @@ async function creerVoix(){
   }
   $('voixNom').classList.remove('req-err');
 
-  const bouton = $('btnCreer');
+  const bouton = ancienne ? $('btnRemplacer') : $('btnCreer');
   occupe(bouton, true, 'Envoi et analyse…');
   $('resCreation').innerHTML = '';
 
@@ -1596,12 +1661,29 @@ async function creerVoix(){
     etat.voixNom = nom;
     await bdEcrire('config', {cle:'voix', valeur:{id: d.voice_id, nom}});
 
+    /* Le remplacement ne supprime l'ancienne voix qu'une fois la nouvelle
+       obtenue : un échec en cours de route ne fait donc rien perdre. */
+    let mention = '';
+    if(ancienne && ancienne.id !== d.voice_id){
+      try{
+        const s = await fetch(baseApi() + '/voices/' + ancienne.id, {method:'DELETE', headers: entetes(false)});
+        mention = s.ok
+          ? ligneKv('Ancienne version', 'supprimée')
+          : ligneKv('Ancienne version', 'conservée, suppression refusée par le service');
+      }catch(e){
+        mention = ligneKv('Ancienne version', 'conservée, le service n’a pas répondu');
+      }
+      etat.voixAAmeliorer = null;
+      majAffichageAmelioration();
+    }
+
     $('resCreation').innerHTML =
-      '<div class="note n-grn"><div class="note-t">Voix créée</div>' +
-      ligneKv('Nom', nom) + ligneKv('Identifiant', d.voice_id) +
+      '<div class="note n-grn"><div class="note-t">' +
+      (ancienne ? 'Voix remplacée' : 'Voix créée') + '</div>' +
+      ligneKv('Nom', nom) + ligneKv('Identifiant', d.voice_id) + mention +
       (d.requires_verification ? ligneKv('Vérification', 'Le fournisseur demande une vérification vocale') : '') +
       '</div>';
-    toast('Voix clonée avec succès.', 'ok');
+    toast(ancienne ? 'Nouvelle version en place.' : 'Voix clonée avec succès.', 'ok');
     memoriserCle();
     listerVoix();
   }catch(e){
@@ -1625,8 +1707,11 @@ async function listerVoix(){
     if(!r.ok){ $('listeVoix').innerHTML = '<div class="note n-red">' + echapper(await messageErreur(r)) + '</div>'; return; }
     const d = await r.json();
     const voix = (d.voices || []).filter(v=>v.category === 'cloned' || v.category === 'generated' || v.category === 'professional');
+    voixDistantes = voix;
     if(!voix.length){
-      $('listeVoix').innerHTML = '<div class="vide">Aucune voix personnelle sur ce compte.</div>';
+      $('listeVoix').innerHTML =
+        '<div class="vide">Aucune voix pour le moment. Enregistrez-vous ci-dessous, ' +
+        'puis créez votre première voix.</div>';
       return;
     }
     /* Les noms de voix viennent du service : on les garde en mémoire et on ne
@@ -1641,7 +1726,9 @@ async function listerVoix(){
           '<div class="item-meta">'+echapper(v.voice_id)+'</div>' +
         '</div>' +
         '<div class="item-btns">' +
-          '<button class="btn btn-g btn-sm" onclick="activerVoixParIndice('+i+')">Utiliser</button>' +
+          '<button class="btn ' + (v.voice_id === etat.voixId ? 'btn-g' : 'btn-v') +
+            ' btn-sm" onclick="activerVoixParIndice('+i+')">Utiliser cette version</button>' +
+          '<button class="btn btn-g btn-sm" onclick="ameliorerVoix('+i+')">Améliorer</button>' +
           '<button class="btn btn-r btn-sm" onclick="supprimerVoixParIndice('+i+')">Supprimer</button>' +
         '</div>' +
       '</div>').join('');
@@ -1758,6 +1845,7 @@ async function supprimerVoix(id, nom){
       etat.voixId = null; etat.voixNom = null;
       await bdEffacerLigne('config', 'voix');
     }
+    if(etat.voixAAmeliorer && etat.voixAAmeliorer.id === id) annulerAmelioration();
     listerVoix();
     majEtat();
     toast('Voix supprimée.', 'ok');
@@ -2000,10 +2088,8 @@ function majEtat(){
 function etapeFaite(i){
   switch(i){
     case 0: return !!etat.consentement;
-    case 1: return etat.echantillons.length > 0;
-    case 2: return etat.mode === 'demo' || etat.fournisseur === 'local' || !!cleCourante();
-    case 3: return etat.mode === 'demo' || !!etat.voixId;
-    case 4: return etat.generations.length > 0;
+    case 1: return etat.mode === 'demo' || !!etat.voixId;
+    case 2: return etat.generations.length > 0;
     default: return false;
   }
 }
@@ -2067,6 +2153,8 @@ async function demarrer(){
   choisirFournisseur(etat.fournisseur);
   choisirTypeVoix(etat.typeVoix);
   majAffichageEtape4();
+  majAffichageAmelioration();
+  majConnexion();
 
   /* Reprise de la clé mémorisée */
   try{
