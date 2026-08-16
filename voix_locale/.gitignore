@@ -1,0 +1,7 @@
+# Voix et échantillons : données personnelles, jamais versionnées
+donnees/
+
+# Environnement Python local
+venv/
+__pycache__/
+*.pyc

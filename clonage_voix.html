@@ -1,0 +1,2903 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Studio Voix — Clonage et synthèse vocale</title>
+<!-- Vignette intégrée : évite une requête réseau et une erreur dans la console. -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23161B22'/%3E%3Cg fill='%23A371F7'%3E%3Crect x='10' y='11' width='3' height='10' rx='1.5'/%3E%3Crect x='15' y='8' width='3' height='16' rx='1.5'/%3E%3Crect x='20' y='13' width='3' height='6' rx='1.5'/%3E%3C/g%3E%3C/svg%3E">
+<style>
+:root{
+  --bg:#0D1117;--bg2:#161B22;--bg3:#1C2330;--bg4:#222A38;
+  --bdr:rgba(255,255,255,0.07);--bdr2:rgba(255,255,255,0.13);
+  --txt:#E6EDF3;--txt2:#8B949E;--txt3:#484F58;
+  --grn:#1D9E75;--grn-l:#5DCAA5;--grn-d:rgba(29,158,117,0.15);
+  --amb:#D29922;--amb-l:#F0B429;--amb-d:rgba(240,180,41,0.12);
+  --blu:#388BFD;--blu-l:#79B8FF;--blu-d:rgba(56,139,253,0.12);
+  --red:#F85149;--red-l:#FF8B82;--red-d:rgba(248,81,73,0.12);
+  --vio:#A371F7;--vio-d:rgba(163,113,247,0.12);
+  --r:10px;--r2:14px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg);color:var(--txt);
+  font-family:'DM Sans',-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+  font-size:14px;line-height:1.5;overflow:hidden}
+
+/* ─── SHELL ─── */
+.shell{display:grid;grid-template-columns:224px 1fr;height:100vh}
+
+/* ─── SIDEBAR ─── */
+.sidebar{background:var(--bg2);border-right:1px solid var(--bdr);display:flex;flex-direction:column}
+.s-logo{padding:22px 18px 16px;border-bottom:1px solid var(--bdr)}
+.s-mark{width:34px;height:34px;background:var(--vio-d);border:1px solid rgba(163,113,247,.3);border-radius:8px;display:flex;align-items:center;justify-content:center;gap:2px;margin-bottom:9px}
+.s-bar{width:3px;border-radius:2px;background:var(--vio)}
+.s-title{font-size:15px;font-weight:700;color:var(--txt);letter-spacing:.03em;line-height:1.2}
+.s-sub{font-size:10px;color:var(--txt3);letter-spacing:.07em;text-transform:uppercase;margin-top:1px}
+.s-nav{flex:1;padding:14px 10px;display:flex;flex-direction:column;gap:2px;overflow-y:auto}
+.s-nav-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer;transition:background .12s}
+.s-nav-item:hover{background:rgba(255,255,255,.04)}
+.s-nav-item.active{background:var(--vio-d)}
+.s-nav-item.bloque{opacity:.4;cursor:not-allowed}
+.s-num{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-family:'DM Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:10px;font-weight:500;flex-shrink:0;
+  background:var(--bg3);color:var(--txt3);border:1px solid var(--bdr);transition:all .15s}
+.s-nav-item.active .s-num{background:var(--vio-d);border-color:var(--vio);color:var(--vio)}
+.s-nav-item.done .s-num{background:var(--grn);border-color:var(--grn);color:#fff}
+.s-nav-lbl{font-size:12px;color:var(--txt2)}
+.s-nav-item.active .s-nav-lbl{color:var(--txt);font-weight:500}
+.s-foot{padding:12px 14px;border-top:1px solid var(--bdr)}
+.s-etat{font-size:10px;color:var(--txt3);letter-spacing:.05em;text-transform:uppercase;margin-bottom:5px}
+.s-pastille{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--txt2)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--txt3);flex-shrink:0}
+.dot.ok{background:var(--grn);box-shadow:0 0 0 3px var(--grn-d)}
+.dot.att{background:var(--amb);box-shadow:0 0 0 3px var(--amb-d)}
+
+/* ─── ZONE PRINCIPALE ─── */
+.main{overflow-y:auto;padding:26px 30px 60px;position:relative}
+.page{display:none;max-width:980px;margin:0 auto}
+.page.on{display:block}
+.ph{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;padding-bottom:18px;margin-bottom:22px;border-bottom:1px solid var(--bdr);flex-wrap:wrap}
+.ph-tag{font-size:10px;color:var(--vio);letter-spacing:.1em;text-transform:uppercase;font-weight:600;margin-bottom:4px}
+.ph-title{font-size:23px;font-weight:700;letter-spacing:-.01em;line-height:1.15}
+.ph-desc{font-size:13px;color:var(--txt2);margin-top:3px}
+.ph-btns{display:flex;gap:8px;flex-shrink:0}
+
+.sec{font-size:11px;color:var(--txt2);letter-spacing:.09em;text-transform:uppercase;font-weight:600;margin:24px 0 10px}
+.sec:first-of-type{margin-top:0}
+.card{background:var(--bg2);border:1px solid var(--bdr);border-radius:var(--r2);padding:18px}
+.card+.card{margin-top:10px}
+
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+
+/* ─── CHAMPS ─── */
+.champ{margin-bottom:13px}
+.champ:last-child{margin-bottom:0}
+.lbl{display:block;font-size:11px;color:var(--txt2);margin-bottom:5px;letter-spacing:.02em}
+.lbl .obl{color:var(--red);margin-left:2px}
+input[type=text],input[type=password],input[type=date],textarea,select{
+  width:100%;background:var(--bg3);border:1px solid var(--bdr);border-radius:var(--r);
+  padding:9px 11px;color:var(--txt);font-size:13px;font-family:inherit;transition:border-color .15s,background .15s}
+input:focus,textarea:focus,select:focus{outline:none;border-color:var(--vio);background:var(--bg4)}
+textarea{resize:vertical;min-height:120px;line-height:1.6}
+select{cursor:pointer;appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--txt3) 50%),linear-gradient(135deg,var(--txt3) 50%,transparent 50%);
+  background-position:calc(100% - 16px) 50%,calc(100% - 11px) 50%;background-size:5px 5px,5px 5px;background-repeat:no-repeat;padding-right:32px}
+.req-err{border-color:var(--red) !important;background:var(--red-d) !important}
+.aide{font-size:11px;color:var(--txt3);margin-top:5px;line-height:1.45}
+
+.check{display:flex;align-items:flex-start;gap:9px;padding:10px 12px;background:var(--bg3);border:1px solid var(--bdr);border-radius:var(--r);cursor:pointer;transition:border-color .15s}
+.check:hover{border-color:var(--bdr2)}
+.check+.check{margin-top:7px}
+.check.req-err{border-color:var(--red) !important;background:var(--red-d) !important}
+.check input{margin-top:2px;accent-color:var(--vio);width:15px;height:15px;flex-shrink:0;cursor:pointer}
+.check span{font-size:12.5px;line-height:1.5;color:var(--txt)}
+
+.radios{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.radio{display:flex;align-items:flex-start;gap:9px;padding:13px;background:var(--bg3);border:1px solid var(--bdr);border-radius:var(--r);cursor:pointer;transition:all .15s}
+.radio:hover{border-color:var(--bdr2)}
+.radio.sel{border-color:var(--vio);background:var(--vio-d)}
+.radio input{margin-top:2px;accent-color:var(--vio);width:15px;height:15px;flex-shrink:0;cursor:pointer}
+.radio-t{font-size:13px;font-weight:600}
+.radio-d{font-size:11px;color:var(--txt2);margin-top:2px;line-height:1.4}
+
+/* ─── BOUTONS ─── */
+.btn{display:inline-flex;align-items:center;gap:7px;padding:9px 15px;border-radius:var(--r);border:1px solid transparent;
+  font-size:12.5px;font-weight:600;font-family:inherit;cursor:pointer;transition:all .15s;white-space:nowrap}
+.btn-p{background:var(--vio);color:#fff}
+.btn-p:hover{filter:brightness(1.12)}
+.btn-g{background:var(--bg3);color:var(--txt2);border-color:var(--bdr2)}
+.btn-g:hover{background:var(--bg4);color:var(--txt)}
+.btn-r{background:var(--red-d);color:var(--red-l);border-color:rgba(248,81,73,.3)}
+.btn-r:hover{background:rgba(248,81,73,.2)}
+.btn-v{background:var(--grn);color:#fff}
+.btn-v:hover{filter:brightness(1.12)}
+.btn:disabled{opacity:.4;cursor:not-allowed;filter:none}
+.btn-sm{padding:6px 10px;font-size:11.5px}
+.nav-btns{display:flex;gap:8px;justify-content:space-between;margin-top:28px;padding-top:18px;border-top:1px solid var(--bdr)}
+
+/* ─── ENCARTS ─── */
+.note{border-radius:var(--r);padding:12px 14px;font-size:12.5px;line-height:1.55;border:1px solid}
+.note+.note,.card+.note,.note+.card{margin-top:10px}
+.note-t{font-weight:600;margin-bottom:3px;font-size:12.5px}
+.n-blu{background:var(--blu-d);border-color:rgba(56,139,253,.28);color:#C4DDFF}
+.n-amb{background:var(--amb-d);border-color:rgba(240,180,41,.28);color:#F5D48A}
+.n-red{background:var(--red-d);border-color:rgba(248,81,73,.28);color:#FFC2BE}
+.n-grn{background:var(--grn-d);border-color:rgba(29,158,117,.28);color:#9FE3C7}
+.n-vio{background:var(--vio-d);border-color:rgba(163,113,247,.3);color:#D6C2FB}
+
+/* ─── ENREGISTREUR ─── */
+.rec-zone{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.rec-btn{width:72px;height:72px;border-radius:50%;border:2px solid var(--bdr2);background:var(--bg3);
+  cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .18s;flex-shrink:0}
+.rec-btn:hover{border-color:var(--red);background:var(--red-d)}
+.rec-btn .forme{width:26px;height:26px;border-radius:50%;background:var(--red);transition:all .18s}
+.rec-btn.rec{border-color:var(--red);background:var(--red-d);animation:pulse 1.6s ease-in-out infinite}
+.rec-btn.rec .forme{border-radius:4px;width:22px;height:22px}
+.rec-btn:disabled{opacity:.4;cursor:not-allowed;animation:none}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(248,81,73,.28)}50%{box-shadow:0 0 0 12px rgba(248,81,73,0)}}
+.rec-info{flex:1;min-width:220px}
+.rec-chrono{font-family:'DM Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:27px;font-weight:500;letter-spacing:.02em;line-height:1.1}
+.rec-etat{font-size:11.5px;color:var(--txt2);margin-top:3px}
+.vu{height:34px;background:var(--bg3);border:1px solid var(--bdr);border-radius:var(--r);width:100%;margin-top:12px;display:block}
+
+.jauge{margin-top:14px}
+.jauge-tete{display:flex;justify-content:space-between;font-size:11px;color:var(--txt2);margin-bottom:5px}
+.jauge-piste{height:7px;background:var(--bg3);border-radius:4px;overflow:hidden;position:relative}
+.jauge-plein{height:100%;background:var(--amb);border-radius:4px;transition:width .3s,background .3s}
+.jauge-plein.ok{background:var(--grn)}
+.jauge-reperes{display:flex;justify-content:space-between;font-size:10px;color:var(--txt3);margin-top:4px}
+
+/* ─── LISTES ─── */
+.item{display:flex;align-items:center;gap:12px;padding:11px 13px;background:var(--bg3);border:1px solid var(--bdr);border-radius:var(--r)}
+.item+.item{margin-top:7px}
+.item-corps{flex:1;min-width:0}
+.item-nom{font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item-meta{font-size:11px;color:var(--txt3);margin-top:2px;font-family:'DM Mono',ui-monospace,Menlo,Consolas,monospace}
+.item-btns{display:flex;gap:6px;flex-shrink:0}
+audio{height:32px;max-width:190px;flex-shrink:0}
+.vide{text-align:center;padding:26px 16px;color:var(--txt3);font-size:12.5px;border:1px dashed var(--bdr2);border-radius:var(--r)}
+
+.phrase{padding:11px 13px;background:var(--bg3);border-left:2px solid var(--vio);border-radius:0 var(--r) var(--r) 0;font-size:13px;line-height:1.6;color:var(--txt)}
+.phrase+.phrase{margin-top:7px}
+
+/* ─── CURSEURS ─── */
+.curs-tete{display:flex;justify-content:space-between;font-size:11px;margin-bottom:6px}
+.curs-val{font-family:'DM Mono',ui-monospace,Menlo,Consolas,monospace;color:var(--vio)}
+input[type=range]{width:100%;height:4px;background:var(--bg4);border-radius:3px;appearance:none;cursor:pointer;outline:none}
+input[type=range]::-webkit-slider-thumb{appearance:none;width:15px;height:15px;border-radius:50%;background:var(--vio);cursor:pointer;border:2px solid var(--bg2)}
+input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;background:var(--vio);cursor:pointer;border:2px solid var(--bg2)}
+
+/* ─── DIVERS ─── */
+.badge{display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:20px;font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase}
+.b-vio{background:var(--vio-d);color:var(--vio);border:1px solid rgba(163,113,247,.3)}
+.b-grn{background:var(--grn-d);color:var(--grn-l);border:1px solid rgba(29,158,117,.3)}
+.b-amb{background:var(--amb-d);color:var(--amb-l);border:1px solid rgba(240,180,41,.3)}
+.b-red{background:var(--red-d);color:var(--red-l);border:1px solid rgba(248,81,73,.3)}
+
+.kv{display:flex;justify-content:space-between;padding:7px 0;font-size:12.5px;border-bottom:1px solid var(--bdr)}
+.kv:last-child{border-bottom:none}
+.kv-c{color:var(--txt2)}
+.kv-v{font-family:'DM Mono',ui-monospace,Menlo,Consolas,monospace;color:var(--txt)}
+
+.compteur{font-size:11px;color:var(--txt3);text-align:right;margin-top:5px;font-family:'DM Mono',ui-monospace,Menlo,Consolas,monospace}
+.compteur.trop{color:var(--red)}
+
+.spin{width:13px;height:13px;border:2px solid rgba(255,255,255,.25);border-top-color:#fff;border-radius:50%;animation:tourne .7s linear infinite;flex-shrink:0}
+@keyframes tourne{to{transform:rotate(360deg)}}
+
+.toast-zone{position:fixed;bottom:20px;right:20px;z-index:900;display:flex;flex-direction:column;gap:8px;max-width:min(380px,calc(100vw - 40px))}
+.toast{background:var(--bg4);border:1px solid var(--bdr2);border-radius:var(--r);padding:11px 14px;font-size:12.5px;
+  box-shadow:0 8px 24px rgba(0,0,0,.45);animation:entre .22s ease;border-left:3px solid var(--vio)}
+.toast.err{border-left-color:var(--red)}
+.toast.ok{border-left-color:var(--grn)}
+@keyframes entre{from{opacity:0;transform:translateX(14px)}to{opacity:1;transform:none}}
+
+.bandeau{position:sticky;top:-26px;z-index:50;margin:-26px -30px 20px;padding:8px 30px;
+  background:var(--amb-d);border-bottom:1px solid rgba(240,180,41,.28);font-size:11.5px;color:#F5D48A;
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+
+/* ─── RESPONSIVE ─── */
+@media(max-width:860px){
+  html,body{overflow:auto}
+  .shell{grid-template-columns:1fr;height:auto}
+  .sidebar{border-right:none;border-bottom:1px solid var(--bdr)}
+  .s-nav{flex-direction:row;overflow-x:auto;padding:10px}
+  .s-nav-item{flex-shrink:0}
+  .s-nav-lbl{display:none}
+  .s-foot{display:none}
+  .main{padding:18px 16px 50px;overflow:visible}
+  .bandeau{margin:-18px -16px 16px;padding:8px 16px;position:static}
+  .grid2,.grid3,.radios{grid-template-columns:1fr}
+  .ph{flex-direction:column}
+  .ph-btns{width:100%}
+  .ph-btns .btn{flex:1;justify-content:center}
+  .item{flex-wrap:wrap}
+  audio{max-width:100%;width:100%}
+}
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- ══════════════ SIDEBAR ══════════════ -->
+  <div class="sidebar">
+    <div class="s-logo">
+      <div class="s-mark">
+        <div class="s-bar" style="height:9px"></div>
+        <div class="s-bar" style="height:17px"></div>
+        <div class="s-bar" style="height:13px"></div>
+      </div>
+      <div class="s-title">Studio Voix</div>
+      <div class="s-sub">Clonage et synthèse</div>
+    </div>
+    <div class="s-nav" id="navLat"></div>
+    <div class="s-foot">
+      <div class="s-etat">État</div>
+      <div class="s-pastille"><span class="dot" id="dotCons"></span><span id="txtCons">Consentement requis</span></div>
+      <div class="s-pastille" style="margin-top:4px"><span class="dot" id="dotEch"></span><span id="txtEch">Aucun échantillon</span></div>
+      <div class="s-pastille" style="margin-top:4px"><span class="dot" id="dotVoix"></span><span id="txtVoix">Aucune voix créée</span></div>
+    </div>
+  </div>
+
+  <!-- ══════════════ PRINCIPAL ══════════════ -->
+  <div class="main" id="zonePrincipale">
+
+    <div class="bandeau">
+      <span class="badge b-amb">Contenu synthétique</span>
+      <span>Tout audio produit ici est une imitation générée par ordinateur. Il doit être signalé comme tel à quiconque l'écoute.</span>
+    </div>
+
+    <!-- ─────────── PAGE 1 : CONSENTEMENT ─────────── -->
+    <div class="page on" id="p0">
+      <div class="ph">
+        <div>
+          <div class="ph-tag">Étape 01 / 04</div>
+          <div class="ph-title">Consentement</div>
+          <div class="ph-desc">Identifier la personne dont la voix va être reproduite</div>
+        </div>
+      </div>
+
+      <div class="note n-blu">
+        <div class="note-t">Pourquoi cette étape</div>
+        Reproduire la voix d'une personne permet de lui faire dire des choses qu'elle n'a jamais dites.
+        En France, la voix est un attribut de la personnalité protégé par l'article 9 du Code civil : sa reproduction
+        exige l'accord de l'intéressé. Cette page enregistre cet accord et conditionne l'accès au reste de l'application.
+      </div>
+
+      <div class="sec">Origine de la voix</div>
+      <div class="card">
+        <div class="radios" id="zoneOrigine">
+          <label class="radio" onclick="choisirOrigine('moi')">
+            <input type="radio" name="origine" id="origMoi">
+            <div>
+              <div class="radio-t">C'est ma propre voix</div>
+              <div class="radio-d">J'enregistre et je clone ma voix, pour mon propre usage.</div>
+            </div>
+          </label>
+          <label class="radio" onclick="choisirOrigine('autre')">
+            <input type="radio" name="origine" id="origAutre">
+            <div>
+              <div class="radio-t">C'est la voix d'une autre personne</div>
+              <div class="radio-d">Son accord explicite et préalable est obligatoire.</div>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <div id="zoneIdentite" style="display:none">
+        <div class="sec">Identité et accord</div>
+        <div class="card">
+          <div class="grid2">
+            <div class="champ">
+              <label class="lbl">Nom de la personne concernée<span class="obl">*</span></label>
+              <input type="text" id="consNom" placeholder="Nom et prénom" oninput="majEtat()">
+            </div>
+            <div class="champ">
+              <label class="lbl">Date de recueil de l'accord<span class="obl">*</span></label>
+              <input type="date" id="consDate" oninput="majEtat()">
+            </div>
+          </div>
+          <div class="champ">
+            <label class="lbl">Usage prévu de la voix reproduite<span class="obl">*</span></label>
+            <input type="text" id="consUsage" placeholder="Exemple : narration de la vidéo de présentation interne" oninput="majEtat()">
+            <div class="aide">Décrire précisément l'usage. L'accord porte sur cet usage et non sur un usage illimité.</div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:10px">
+          <label class="check" id="chk1"><input type="checkbox" id="cons1" onchange="majEtat()">
+            <span id="lblCons1">La personne concernée a donné son accord explicite et préalable à la reproduction de sa voix pour l'usage décrit ci-dessus.</span></label>
+          <label class="check" id="chk2"><input type="checkbox" id="cons2" onchange="majEtat()">
+            <span>Les enregistrements produits seront présentés comme des voix de synthèse et jamais comme des enregistrements authentiques de la personne.</span></label>
+          <label class="check" id="chk3"><input type="checkbox" id="cons3" onchange="majEtat()">
+            <span>Cette voix ne servira pas à usurper une identité, à obtenir un paiement ou une information, ni à contourner une authentification vocale.</span></label>
+          <label class="check" id="chk4"><input type="checkbox" id="cons4" onchange="majEtat()">
+            <span>La personne concernée peut retirer son accord à tout moment ; la voix et les enregistrements seront alors supprimés.</span></label>
+        </div>
+      </div>
+
+      <div class="note n-red" style="margin-top:14px">
+        <div class="note-t">Usages interdits</div>
+        Imiter la voix d'un tiers sans son accord, d'une personnalité publique, ou s'en servir pour tromper
+        un interlocuteur (fraude au président, faux appel d'un proche, contournement d'une authentification vocale)
+        est illicite. L'usurpation d'identité est punie d'un an d'emprisonnement et de 15 000 euros d'amende
+        (article 226-4-1 du Code pénal). Cette application ne doit pas servir à cela.
+      </div>
+
+      <div class="nav-btns">
+        <span></span>
+        <button class="btn btn-p" onclick="go(1)">Voix →</button>
+      </div>
+    </div>
+
+    <!-- ─────────── PAGE 2 : ENREGISTREMENT ─────────── -->
+    <div class="page" id="p1">
+      <div class="ph">
+        <div>
+          <div class="ph-tag">Étape 02 / 04</div>
+          <div class="ph-title" id="titreEtape4">Voix</div>
+          <div class="ph-desc" id="descEtape4">Reprendre une voix existante, ou en créer une à partir de vos enregistrements</div>
+        </div>
+        <div class="ph-btns">
+          <button class="btn btn-g" onclick="go(0)">← Retour</button>
+          <button class="btn btn-p" onclick="go(2)">Synthèse →</button>
+        </div>
+      </div>
+
+      <!-- ─── Connexion, réduite à une ligne tant qu'elle se passe bien ─── -->
+      <div class="card" id="carteConnexion">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <span class="dot" id="dotConnexion"></span>
+          <div style="flex:1;min-width:180px">
+            <div id="titreConnexion" style="font-size:12.5px;font-weight:600">Serveur local</div>
+            <div class="item-meta" id="detailConnexion">Connexion non vérifiée</div>
+          </div>
+          <div class="item-btns">
+            <button class="btn btn-g btn-sm" id="btnTest" onclick="testerConnexion()">Vérifier</button>
+            <button class="btn btn-g btn-sm" id="btnReglages" onclick="basculerReglages()">Réglages</button>
+          </div>
+        </div>
+        <div id="resTest" style="margin-top:12px"></div>
+      </div>
+
+      <div id="reglagesConnexion" style="display:none">
+        <div class="sec">Mode de fonctionnement</div>
+        <div class="card">
+          <div class="radios">
+            <label class="radio sel" id="radioReel" onclick="choisirMode('reel')">
+              <input type="radio" name="mode" id="modeReel" checked>
+              <div>
+                <div class="radio-t">Clonage réel</div>
+                <div class="radio-d">Reproduit une voix enregistrée.</div>
+              </div>
+            </label>
+            <label class="radio" id="radioDemo" onclick="choisirMode('demo')">
+              <input type="radio" name="mode" id="modeDemo">
+              <div>
+                <div class="radio-t">Mode démonstration</div>
+                <div class="radio-d">Voix générique du navigateur, sans clé ni réseau. Ce n'est pas la voix enregistrée.</div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <div id="zoneApi">
+          <div class="sec">Type de voix</div>
+          <div class="card">
+            <div class="radios">
+              <label class="radio sel" id="radioClonee" onclick="choisirTypeVoix('clonee')">
+                <input type="radio" name="typeVoix" id="typeClonee" checked>
+                <div>
+                  <div class="radio-t">Voix clonée</div>
+                  <div class="radio-d">Reproduit une voix que vous enregistrez.</div>
+                </div>
+              </label>
+              <label class="radio" id="radioCatalogue" onclick="choisirTypeVoix('catalogue')">
+                <input type="radio" name="typeVoix" id="typeCatalogue">
+                <div>
+                  <div class="radio-t">Voix du catalogue</div>
+                  <div class="radio-d">Voix toutes faites du service distant. Aucun enregistrement requis.</div>
+                </div>
+              </label>
+            </div>
+            <div class="note n-blu" id="noteCatalogue" style="display:none;margin-top:13px">
+              Le catalogue appartient au service distant : il exige une clé d'accès, et le serveur local
+              ne le propose pas. Aucune voix n'est clonée dans ce cas.
+            </div>
+          </div>
+
+          <div id="blocFournisseur">
+            <div class="sec">Fournisseur</div>
+            <div class="card">
+              <div class="radios">
+                <label class="radio sel" id="radioLocal" onclick="choisirFournisseur('local')">
+                  <input type="radio" name="fournisseur" id="fournLocal" checked>
+                  <div>
+                    <div class="radio-t">Serveur local</div>
+                    <div class="radio-d">Gratuit et hors ligne. Rien ne quitte la machine. Exige le serveur lancé.</div>
+                  </div>
+                </label>
+                <label class="radio" id="radioDistant" onclick="choisirFournisseur('distant')">
+                  <input type="radio" name="fournisseur" id="fournDistant">
+                  <div>
+                    <div class="radio-t">Service distant</div>
+                    <div class="radio-d">Sert de point de comparaison. Abonnement payant, les échantillons quittent la machine.</div>
+                  </div>
+                </label>
+              </div>
+              <div class="champ" id="champUrlLocale" style="display:none;margin-top:13px">
+                <label class="lbl">Adresse du serveur local</label>
+                <input type="text" id="urlLocale" value="http://127.0.0.1:8770" oninput="majEtat()" onchange="enregistrerFournisseur()">
+                <div class="aide">
+                  Lancez le serveur avec <span class="kv-v">python serveur.py --moteur xtts</span>
+                  depuis le dossier <span class="kv-v">voix_locale</span>, puis vérifiez la connexion.
+                  Aucune clé n'est nécessaire dans ce mode.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="blocCle">
+            <div class="sec">Clé d'accès</div>
+            <div class="card">
+              <div class="champ">
+                <label class="lbl">Clé d'interface de programmation<span class="obl">*</span></label>
+                <input type="password" id="cleApi" placeholder="Collez votre clé ici" autocomplete="off" oninput="majEtat()">
+                <div class="aide">
+                  La clé reste dans ce navigateur et n'est envoyée qu'au fournisseur du service.
+                  Elle n'est transmise à aucun autre serveur et ne figure dans aucun fichier du projet.
+                </div>
+              </div>
+              <label class="check"><input type="checkbox" id="memoCle">
+                <span>Mémoriser la clé sur cet appareil. Sans cette option elle est oubliée à la fermeture de l'onglet.</span></label>
+              <button class="btn btn-g btn-sm" style="margin-top:12px" onclick="oublierCle()">Oublier la clé</button>
+            </div>
+          </div>
+
+          <div id="blocModele">
+            <div class="sec">Moteur de synthèse</div>
+            <div class="card">
+              <div class="champ">
+                <label class="lbl">Modèle</label>
+                <select id="modele">
+                  <option value="eleven_multilingual_v2">Multilingue v2 — meilleure qualité, recommandé en français</option>
+                  <option value="eleven_turbo_v2_5">Turbo v2.5 — plus rapide, qualité légèrement inférieure</option>
+                  <option value="eleven_flash_v2_5">Flash v2.5 — latence minimale, qualité la plus basse</option>
+                </select>
+                <div class="aide">Le multilingue v2 restitue le mieux les accents et la prosodie du français.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── Mode démonstration ─── -->
+      <div id="zoneCreationDemo" style="display:none">
+        <div class="note n-amb">
+          <div class="note-t">Mode démonstration actif</div>
+          Aucune voix n'est clonée dans ce mode : la synthèse utilisera une voix générique du navigateur.
+          Repassez en clonage réel dans les réglages pour reproduire une voix enregistrée.
+        </div>
+      </div>
+
+      <!-- ─── Catalogue du service distant ─── -->
+      <div id="zoneCatalogue" style="display:none">
+        <div class="note n-blu">
+          <div class="note-t">Voix toutes faites</div>
+          Ces voix appartiennent au service distant. Aucune personne de votre entourage n'est reproduite,
+          et aucun échantillon n'est envoyé. Le rendu reste une voix de synthèse et doit être présenté
+          comme tel. Vérifiez les conditions d'utilisation du fournisseur avant tout usage commercial.
+        </div>
+        <div class="sec">Choisir une voix</div>
+        <div class="card">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+            <div class="champ" style="flex:1;min-width:200px;margin-bottom:0">
+              <label class="lbl">Filtrer</label>
+              <input type="text" id="filtreCatalogue" placeholder="Nom, genre, accent, usage" oninput="afficherCatalogue()">
+            </div>
+            <button class="btn btn-g" id="btnCatalogue" onclick="listerCatalogue()">Charger le catalogue</button>
+          </div>
+          <div class="aide" style="margin-top:8px">
+            Écoutez l'extrait avant de choisir. Le nombre de voix dépend de l'offre du compte.
+          </div>
+          <div id="listeCatalogue" style="margin-top:14px"></div>
+        </div>
+      </div>
+
+      <!-- ─── Voix clonées ─── -->
+      <div id="zoneCreation">
+
+        <div class="sec">Vos voix</div>
+        <div class="card">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+            <button class="btn btn-g btn-sm" onclick="listerVoix()">Rafraîchir</button>
+            <button class="btn btn-g btn-sm" onclick="nouvelleVoix()">Créer une nouvelle voix</button>
+          </div>
+          <div id="listeVoix"></div>
+        </div>
+
+        <div class="sec" id="titreFabrication">Créer une voix</div>
+
+        <div class="note n-vio" id="banniereAmelioration" style="display:none">
+          <div class="note-t">Amélioration en cours</div>
+          <span id="texteAmelioration"></span>
+          <div style="margin-top:9px">
+            <button class="btn btn-g btn-sm" onclick="annulerAmelioration()">Abandonner l'amélioration</button>
+          </div>
+        </div>
+
+        <div class="note n-blu">
+          <div class="note-t">Conditions d'un bon clonage</div>
+          Une à deux minutes d'audio propre suffisent, et au-delà de trois minutes le gain devient négligeable.
+          Ce qui compte : une seule voix, aucun bruit de fond, aucune musique, pas d'écho, un débit naturel,
+          un micro à quinze centimètres de la bouche. Un enregistrement saturé ou lointain dégrade davantage
+          le résultat qu'un enregistrement court.
+        </div>
+
+        <div class="card">
+          <div class="rec-zone">
+            <button class="rec-btn" id="btnRec" onclick="basculerEnregistrement()" title="Démarrer ou arrêter l'enregistrement">
+              <div class="forme"></div>
+            </button>
+            <div class="rec-info">
+              <div class="rec-chrono" id="chrono">00:00</div>
+              <div class="rec-etat" id="recEtat">Micro en attente d'autorisation</div>
+            </div>
+          </div>
+          <canvas class="vu" id="vu"></canvas>
+          <div class="aide" id="alerteSat" style="display:none;color:var(--red-l)">
+            Niveau saturé : la voix est trop forte ou trop proche du micro. Reculez légèrement.
+          </div>
+
+          <div class="jauge">
+            <div class="jauge-tete">
+              <span>Durée totale utile</span>
+              <span class="curs-val" id="dureeTotale">0 s</span>
+            </div>
+            <div class="jauge-piste"><div class="jauge-plein" id="jaugePlein" style="width:0%"></div></div>
+            <div class="jauge-reperes"><span>0</span><span>60 s — minimum conseillé</span><span>180 s</span></div>
+          </div>
+
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
+            <input type="file" id="fichiers" accept="audio/*" multiple style="display:none" onchange="importerFichiers(event)">
+            <button class="btn btn-g btn-sm" onclick="document.getElementById('fichiers').click()">Importer des fichiers audio</button>
+            <button class="btn btn-g btn-sm" onclick="basculerOptionsMicro()">Options du micro</button>
+            <button class="btn btn-g btn-sm" onclick="basculerPhrases()">Texte à lire</button>
+          </div>
+
+          <div id="optionsMicro" style="display:none;margin-top:12px">
+            <div class="grid2">
+              <label class="check"><input type="checkbox" id="optTraitement" checked>
+                <span>Réduction de bruit et suppression d'écho du navigateur</span></label>
+              <label class="check"><input type="checkbox" id="optGain">
+                <span>Contrôle automatique du gain (à éviter pour le clonage)</span></label>
+            </div>
+            <div class="aide" style="margin-top:8px">Formats importés acceptés : mp3, wav, m4a, ogg, webm.</div>
+          </div>
+
+          <div id="zonePhrases" style="display:none;margin-top:12px">
+            <div class="phrase">Le vent du sud-est souffle sur les hauts de l'île, et la pluie fine finit toujours par descendre sur la ville avant midi.</div>
+            <div class="phrase">Combien coûte réellement une installation de ce type, et en combien d'années devient-elle rentable ?</div>
+            <div class="phrase">Attention : ce chiffre n'est pas définitif. Il faudra le vérifier avant de signer quoi que ce soit.</div>
+            <div class="phrase">J'ai relu le dossier hier soir. Franchement, c'est du très bon travail, je n'ai presque rien à redire.</div>
+            <div class="phrase">Zéro, un, deux, trois, quatre, cinq, six, sept, huit, neuf, dix. Lundi, mardi, mercredi, jeudi, vendredi.</div>
+            <div class="aide">Ces phrases couvrent les sons du français, plusieurs intonations et les chiffres. Lisez-les naturellement, sans forcer l'articulation.</div>
+          </div>
+
+          <div id="listeEch" style="margin-top:14px"></div>
+        </div>
+
+        <div class="card">
+          <div class="grid2">
+            <div class="champ">
+              <label class="lbl">Nom de la voix<span class="obl">*</span></label>
+              <input type="text" id="voixNom" placeholder="Exemple : Voix Nicolas" oninput="majEtat()">
+            </div>
+            <div class="champ">
+              <label class="lbl">Description</label>
+              <input type="text" id="voixDesc" placeholder="Exemple : voix masculine, ton posé, français">
+            </div>
+          </div>
+          <label class="check"><input type="checkbox" id="optBruit">
+            <span>Retirer le bruit de fond des échantillons avant l'analyse. Utile en environnement bruyant, inutile sur un enregistrement déjà propre.</span></label>
+          <div id="recapEnvoi" style="margin-top:12px"></div>
+          <button class="btn btn-p" id="btnCreer" style="width:100%;justify-content:center;margin-top:14px" onclick="creerVoix(false)">
+            Créer la voix clonée
+          </button>
+          <button class="btn btn-v" id="btnRemplacer" style="width:100%;justify-content:center;margin-top:8px;display:none" onclick="creerVoix(true)">
+            Remplacer par cette nouvelle version
+          </button>
+          <div id="resCreation" style="margin-top:12px"></div>
+        </div>
+      </div>
+
+      <div class="nav-btns">
+        <button class="btn btn-g" onclick="go(0)">← Retour</button>
+        <button class="btn btn-p" onclick="go(2)">Synthèse →</button>
+      </div>
+    </div>
+
+
+    <!-- ─────────── PAGE 5 : SYNTHÈSE ─────────── -->
+    <div class="page" id="p2">
+      <div class="ph">
+        <div>
+          <div class="ph-tag">Étape 03 / 04</div>
+          <div class="ph-title">Synthèse</div>
+          <div class="ph-desc">Écrire un texte et l'entendre dans la voix reproduite</div>
+        </div>
+        <div class="ph-btns">
+          <button class="btn btn-g" onclick="go(1)">← Retour</button>
+          <button class="btn btn-p" onclick="go(3)">Bibliothèque →</button>
+        </div>
+      </div>
+
+      <div class="card" id="voixActive"></div>
+
+      <div class="sec">Texte à prononcer</div>
+      <div class="card">
+        <textarea id="texte" placeholder="Saisissez ici le texte que la voix doit prononcer." oninput="majCompteur()"></textarea>
+        <div class="compteur" id="compteur">0 caractère</div>
+        <div class="aide">
+          La ponctuation guide l'intonation : un point marque une pause franche, les virgules aèrent le débit,
+          les points de suspension créent une hésitation. Écrire les nombres en toutes lettres améliore la prononciation.
+        </div>
+
+        <div id="blocApercu" style="display:none;margin-top:14px">
+          <label class="lbl">Texte réellement transmis au moteur</label>
+          <div class="phrase" id="apercuTexte" style="white-space:pre-wrap"></div>
+          <div class="aide">
+            Le style découpe le texte pour guider les pauses. Rien n'est ajouté ni retiré aux mots :
+            seule la mise en forme change. Choisissez « Personnalisé » pour transmettre votre texte tel quel.
+          </div>
+        </div>
+      </div>
+
+      <div class="sec">Style d'élocution</div>
+      <div class="card">
+        <div class="champ">
+          <select id="elocution" onchange="appliquerElocution()">
+            <option value="perso">Personnalisé — réglages libres</option>
+            <option value="narrateur">Narrateur — posé, régulier, sans relief appuyé</option>
+            <option value="enseignant">Enseignant — articulé, phrases détachées, rythme soutenu</option>
+            <option value="short">Présentateur de vidéo courte — très dynamique et rapide</option>
+            <option value="publicite">Publicité — énergique, percutant, très en avant</option>
+            <option value="journal">Journal — neutre, clair, débit constant</option>
+            <option value="livre">Livre audio — chaleureux, plus lent, respirations marquées</option>
+            <option value="documentaire">Documentaire — grave, posé, autorité tranquille</option>
+            <option value="accueil">Accueil téléphonique — très articulé, bande téléphonique</option>
+            <option value="conversation">Conversation — naturel, familier, peu appuyé</option>
+          </select>
+          <div class="aide" id="descElocution">
+            Chaque style règle d'un coup le moteur, la préparation du texte et le traitement audio.
+            Modifier un curseur ensuite bascule en personnalisé.
+          </div>
+        </div>
+      </div>
+
+      <div class="sec">Réglages de rendu</div>
+      <div class="card" id="carteReglages">
+        <div class="grid2">
+          <div class="champ">
+            <div class="curs-tete"><span>Stabilité</span><span class="curs-val" id="vStab">0,50</span></div>
+            <input type="range" id="stabilite" min="0" max="1" step="0.05" value="0.5" oninput="majReglages(true)">
+            <div class="aide">Bas : plus d'émotion et de variation. Haut : ton monotone mais constant.</div>
+          </div>
+          <div class="champ">
+            <div class="curs-tete"><span>Similarité</span><span class="curs-val" id="vSim">0,75</span></div>
+            <input type="range" id="similarite" min="0" max="1" step="0.05" value="0.75" oninput="majReglages(true)">
+            <div class="aide">Haut : colle au timbre d'origine, y compris ses défauts d'enregistrement.</div>
+          </div>
+          <div class="champ">
+            <div class="curs-tete"><span>Expressivité</span><span class="curs-val" id="vStyle">0,00</span></div>
+            <input type="range" id="style" min="0" max="1" step="0.05" value="0" oninput="majReglages(true)">
+            <div class="aide">Accentue le style de la personne. Au-delà de 0,5 la voix devient instable.</div>
+          </div>
+          <div class="champ">
+            <div class="curs-tete"><span>Débit de parole</span><span class="curs-val" id="vDebit">1,00 ×</span></div>
+            <input type="range" id="debit" min="0.6" max="1.6" step="0.05" value="1" oninput="majReglages(true)">
+            <div class="aide">Étirement appliqué par le moteur : la hauteur de la voix ne change pas. Au-delà de 1,3 l'élocution se dégrade.</div>
+          </div>
+        </div>
+        <label class="check" style="margin-top:4px"><input type="checkbox" id="boost" checked>
+          <span>Renforcement du locuteur : améliore la ressemblance, allonge légèrement le calcul.</span></label>
+      </div>
+
+      <div class="sec">Nettoyage du signal</div>
+      <div class="card">
+        <label class="check"><input type="checkbox" id="nettoyageActif" checked onchange="majNettoyage()">
+          <span>Faire taire ce qui n'est pas de la parole : souffle, clics et bruits entre les mots.</span></label>
+        <div id="reglagesNettoyage" style="margin-top:13px">
+          <div class="grid2">
+            <div class="champ">
+              <div class="curs-tete"><span>Seuil de la porte</span><span class="curs-val" id="vPorte">-42 dB</span></div>
+              <input type="range" id="porte" min="-75" max="-15" step="1" value="-42" oninput="majNettoyage()">
+              <div class="aide">
+                En dessous de ce niveau, le signal est ramené au silence. Monter le seuil coupe
+                davantage de bruit, mais finit par rogner les fins de mots.
+              </div>
+            </div>
+            <div class="champ" style="display:flex;align-items:flex-end">
+              <label class="check" style="width:100%"><input type="checkbox" id="rogner" checked onchange="majNettoyage()">
+                <span>Rogner le silence au début et à la fin, où le moteur laisse souvent une traîne.</span></label>
+            </div>
+          </div>
+          <div class="aide">
+            Ce nettoyage agit sur l'audio produit. Il ne remplace pas une référence propre :
+            un souffle présent dans l'enregistrement est appris par le moteur et ressort à chaque phrase.
+            Pour le traiter à la source, cochez « Retirer le bruit de fond » à l'étape Voix et recréez la voix.
+          </div>
+        </div>
+      </div>
+
+      <div class="sec">Traitement audio</div>
+      <div class="card">
+        <div class="grid2">
+          <div class="champ">
+            <label class="lbl">Préréglage</label>
+            <select id="preset" onchange="appliquerPreset()">
+              <option value="aucun">Aucun — voix brute du moteur</option>
+              <option value="radio">Radio — présence, corps et niveau constant</option>
+              <option value="podcast">Podcast — naturel, dynamique préservée</option>
+              <option value="annonce">Annonce — voix très en avant, forte compression</option>
+              <option value="telephone">Téléphone — bande passante réduite</option>
+              <option value="perso">Personnalisé</option>
+            </select>
+            <div class="aide">Traitement appliqué dans le navigateur, après la génération.</div>
+          </div>
+          <div class="champ" style="display:flex;align-items:flex-end">
+            <label class="check" style="width:100%"><input type="checkbox" id="traitementActif" onchange="majTraitement()">
+              <span>Appliquer le traitement à l'audio généré</span></label>
+          </div>
+        </div>
+
+        <div class="note n-amb" id="rappelTraitement" style="margin-top:12px">
+          Ces réglages sont sans effet tant que la case ci-dessus n'est pas cochée.
+          Choisir un préréglage l'active automatiquement.
+        </div>
+
+        <div id="reglagesTraitement" style="opacity:.45">
+          <div class="sec" style="margin-top:16px">Filtrage</div>
+          <div class="grid2">
+            <div class="champ">
+              <div class="curs-tete"><span>Coupe-bas</span><span class="curs-val" id="vPasseHaut">80 Hz</span></div>
+              <input type="range" id="passeHaut" min="20" max="400" step="5" value="80" oninput="majTraitement(true)">
+              <div class="aide">Retire les grondements et les bruits de bouche. Monter jusqu'à 300 Hz donne un effet téléphone.</div>
+            </div>
+            <div class="champ">
+              <div class="curs-tete"><span>Coupe-haut</span><span class="curs-val" id="vPasseBas">12000 Hz</span></div>
+              <input type="range" id="passeBas" min="2000" max="12000" step="100" value="12000" oninput="majTraitement(true)">
+              <div class="aide">
+                Le moteur ne produit rien au-delà de 12 kHz : c'est la limite haute réelle, non un choix.
+                Descendre vers 3 400 Hz reproduit la bande passante d'une ligne téléphonique.
+              </div>
+            </div>
+          </div>
+
+          <div class="sec" style="margin-top:16px">Égalisation</div>
+          <div class="grid3">
+            <div class="champ">
+              <div class="curs-tete"><span>Graves</span><span class="curs-val" id="vGraves">0,0 dB</span></div>
+              <input type="range" id="graves" min="-12" max="12" step="0.5" value="0" oninput="majTraitement(true)">
+              <div class="aide">Corps de la voix, vers 120 Hz.</div>
+            </div>
+            <div class="champ">
+              <div class="curs-tete"><span>Médiums</span><span class="curs-val" id="vMediums">0,0 dB</span></div>
+              <input type="range" id="mediums" min="-12" max="12" step="0.5" value="0" oninput="majTraitement(true)">
+              <div class="aide">Présence et intelligibilité, vers 1,8 kHz.</div>
+            </div>
+            <div class="champ">
+              <div class="curs-tete"><span>Aigus</span><span class="curs-val" id="vAigus">0,0 dB</span></div>
+              <input type="range" id="aigus" min="-12" max="12" step="0.5" value="0" oninput="majTraitement(true)">
+              <div class="aide">Air et clarté, au-dessus de 6 kHz.</div>
+            </div>
+          </div>
+
+          <div class="champ" style="margin-top:12px">
+            <div class="curs-tete"><span>Anti-sifflantes</span><span class="curs-val" id="vDeess">0,0 dB</span></div>
+            <input type="range" id="deess" min="-15" max="0" step="0.5" value="0" oninput="majTraitement(true)">
+            <div class="aide">Atténue les S trop marqués, vers 7 kHz. À doser : trop fort, la voix devient sourde.</div>
+          </div>
+
+          <div class="sec" style="margin-top:16px">Dynamique</div>
+          <div class="grid2">
+            <div class="champ">
+              <div class="curs-tete"><span>Seuil de compression</span><span class="curs-val" id="vSeuil">-24 dB</span></div>
+              <input type="range" id="seuil" min="-60" max="0" step="1" value="-24" oninput="majTraitement(true)">
+              <div class="aide">En dessous de ce niveau, rien n'est comprimé. Plus bas, plus la voix est tenue.</div>
+            </div>
+            <div class="champ">
+              <div class="curs-tete"><span>Taux de compression</span><span class="curs-val" id="vRatio">4,0 : 1</span></div>
+              <input type="range" id="ratio" min="1" max="20" step="0.5" value="4" oninput="majTraitement(true)">
+              <div class="aide">Écrase les écarts de volume. Au-delà de 8, l'effet devient audible.</div>
+            </div>
+          </div>
+
+          <div class="grid2" style="margin-top:12px">
+            <div class="champ">
+              <div class="curs-tete"><span>Niveau de sortie visé</span><span class="curs-val" id="vCible">-3,0 dB</span></div>
+              <input type="range" id="cible" min="-24" max="-1" step="0.5" value="-3" oninput="majTraitement(true)">
+              <div class="aide">Le fichier est remonté pour que sa crête atteigne ce niveau.</div>
+            </div>
+            <div class="champ" style="display:flex;align-items:flex-end">
+              <label class="check" style="width:100%"><input type="checkbox" id="normaliser" checked onchange="majTraitement(true)">
+                <span>Normaliser le niveau final. Sans cette option, le gain reste tel quel.</span></label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sec">Export</div>
+      <div class="card">
+        <div class="grid2">
+          <div class="champ">
+            <label class="lbl">Résolution</label>
+            <select id="resolution" onchange="enregistrerExport()">
+              <option value="16">16 bits — poids réduit, suffisant à l'écoute</option>
+              <option value="24">24 bits — marge de retouche en montage</option>
+            </select>
+          </div>
+          <div class="champ">
+            <label class="lbl">Fréquence d'échantillonnage</label>
+            <select id="frequenceExport" onchange="enregistrerExport()">
+              <option value="0">Celle du moteur — aucune conversion</option>
+              <option value="44100">44 100 Hz — standard audio</option>
+              <option value="48000">48 000 Hz — standard vidéo</option>
+            </select>
+          </div>
+        </div>
+        <div class="note n-blu" style="margin-top:12px">
+          <div class="note-t">Ce que ces réglages font, et ne font pas</div>
+          Le moteur produit du 24 kHz : convertir vers 48 kHz <strong>n'ajoute aucune finesse</strong>,
+          le fichier est seulement plus lourd. L'intérêt est ailleurs — si votre logiciel de montage
+          travaille en 48 kHz, il convertira de toute façon, souvent moins bien qu'ici.
+          Convertissez pour épouser votre chaîne de production, pas pour gagner en qualité.
+        </div>
+        <div id="infoFormat" class="item-meta" style="margin-top:10px"></div>
+      </div>
+
+      <button class="btn btn-p" id="btnSynth" style="width:100%;justify-content:center;margin-top:14px" onclick="synthetiser()">
+        Générer l'audio
+      </button>
+      <div id="resSynth" style="margin-top:12px"></div>
+
+      <div class="nav-btns">
+        <button class="btn btn-g" onclick="go(1)">← Retour</button>
+        <button class="btn btn-p" onclick="go(3)">Bibliothèque →</button>
+      </div>
+    </div>
+
+    <!-- ─────────── PAGE 6 : BIBLIOTHÈQUE ─────────── -->
+    <div class="page" id="p3">
+      <div class="ph">
+        <div>
+          <div class="ph-tag">Étape 04 / 04</div>
+          <div class="ph-title">Bibliothèque</div>
+          <div class="ph-desc">Audios produits, traçabilité et suppression</div>
+        </div>
+        <div class="ph-btns">
+          <button class="btn btn-g" onclick="go(2)">← Retour</button>
+        </div>
+      </div>
+
+      <div class="sec">Audios générés</div>
+      <div class="card"><div id="listeGen"></div></div>
+
+      <div class="sec">Trace du consentement</div>
+      <div class="card">
+        <div id="traceConsentement"></div>
+        <button class="btn btn-g btn-sm" style="margin-top:12px" onclick="exporterConsentement()">
+          Exporter la trace du consentement
+        </button>
+      </div>
+
+      <div class="sec">Retrait du consentement</div>
+      <div class="card">
+        <div class="note n-red" style="margin:0">
+          <div class="note-t">Effacement total</div>
+          Si la personne retire son accord, tout doit disparaître : échantillons, audios générés et voix
+          chez le fournisseur. La suppression locale est immédiate ; la voix distante doit être supprimée
+          depuis l'étape 04 ou depuis le compte du fournisseur.
+        </div>
+        <button class="btn btn-r" style="width:100%;justify-content:center;margin-top:12px" onclick="toutEffacer()">
+          Effacer toutes les données locales
+        </button>
+      </div>
+
+      <div class="nav-btns">
+        <button class="btn btn-g" onclick="go(2)">← Retour</button>
+        <span></span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast-zone" id="toasts"></div>
+
+<script>
+'use strict';
+
+/* ══════════════════════════════════════════════════════
+   ÉTAT GLOBAL
+   ══════════════════════════════════════════════════════ */
+
+const PAGES = [
+  {t:'Consentement'},
+  {t:'Voix'},
+  {t:'Synthèse'},
+  {t:'Bibliothèque'}
+];
+
+const API_DISTANTE = 'https://api.elevenlabs.io/v1';
+const DUREE_CIBLE = 180;   // secondes affichées en pleine jauge
+const DUREE_MINI  = 60;    // secondes en dessous desquelles on avertit
+
+const etat = {
+  page:0,
+  origine:null,          // 'moi' | 'autre'
+  consentement:null,     // objet figé au moment de la validation
+  echantillons:[],       // {id, nom, blob, duree, type}
+  mode:'reel',           // 'reel' | 'demo'
+  fournisseur:'local',   // 'local' | 'distant' — le serveur local est le défaut
+  typeVoix:'clonee',     // 'clonee' | 'catalogue'
+  voixAAmeliorer:null,   // voix dont on prépare une nouvelle version
+  connexion:null,        // dernier résultat de vérification du service
+  voixId:null,
+  voixNom:null,
+  generations:[]         // {id, nom, texte, blob, date, voix}
+};
+
+let bd = null;
+
+/* ══════════════════════════════════════════════════════
+   BASE DE DONNÉES LOCALE
+   ══════════════════════════════════════════════════════ */
+
+function ouvrirBase(){
+  return new Promise((resolve,reject)=>{
+    const req = indexedDB.open('studio_voix', 1);
+    req.onupgradeneeded = e=>{
+      const b = e.target.result;
+      if(!b.objectStoreNames.contains('echantillons')) b.createObjectStore('echantillons',{keyPath:'id'});
+      if(!b.objectStoreNames.contains('generations'))  b.createObjectStore('generations',{keyPath:'id'});
+      if(!b.objectStoreNames.contains('config'))       b.createObjectStore('config',{keyPath:'cle'});
+    };
+    req.onsuccess = ()=>resolve(req.result);
+    req.onerror   = ()=>reject(req.error);
+  });
+}
+
+function tx(magasin, mode){ return bd.transaction(magasin, mode).objectStore(magasin); }
+
+function bdEcrire(magasin, obj){
+  return new Promise((resolve,reject)=>{
+    if(!bd) return resolve();
+    const r = tx(magasin,'readwrite').put(obj);
+    r.onsuccess = ()=>resolve(); r.onerror = ()=>reject(r.error);
+  });
+}
+function bdLire(magasin, cle){
+  return new Promise((resolve,reject)=>{
+    if(!bd) return resolve(null);
+    const r = tx(magasin,'readonly').get(cle);
+    r.onsuccess = ()=>resolve(r.result||null); r.onerror = ()=>reject(r.error);
+  });
+}
+function bdTout(magasin){
+  return new Promise((resolve,reject)=>{
+    if(!bd) return resolve([]);
+    const r = tx(magasin,'readonly').getAll();
+    r.onsuccess = ()=>resolve(r.result||[]); r.onerror = ()=>reject(r.error);
+  });
+}
+function bdEffacerLigne(magasin, cle){
+  return new Promise((resolve,reject)=>{
+    if(!bd) return resolve();
+    const r = tx(magasin,'readwrite').delete(cle);
+    r.onsuccess = ()=>resolve(); r.onerror = ()=>reject(r.error);
+  });
+}
+function bdViderMagasin(magasin){
+  return new Promise((resolve,reject)=>{
+    if(!bd) return resolve();
+    const r = tx(magasin,'readwrite').clear();
+    r.onsuccess = ()=>resolve(); r.onerror = ()=>reject(r.error);
+  });
+}
+
+/* ══════════════════════════════════════════════════════
+   UTILITAIRES
+   ══════════════════════════════════════════════════════ */
+
+const $ = id => document.getElementById(id);
+
+function ident(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
+
+function echapper(s){
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function fmtDuree(sec){
+  if(!isFinite(sec) || sec < 0) sec = 0;
+  const m = Math.floor(sec/60), s = Math.floor(sec%60);
+  return String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+}
+
+function fmtTaille(o){
+  if(o < 1024) return o + ' o';
+  if(o < 1048576) return (o/1024).toFixed(0) + ' Ko';
+  return (o/1048576).toFixed(1) + ' Mo';
+}
+
+function fmtNombre(n){ return n.toLocaleString('fr-FR'); }
+
+function horodatage(){
+  const d = new Date(), p = n => String(n).padStart(2,'0');
+  return d.getFullYear() + p(d.getMonth()+1) + p(d.getDate()) + '-' + p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds());
+}
+
+function slug(s){
+  return String(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-zA-Z0-9]+/g,'-').replace(/^-+|-+$/g,'').toLowerCase().slice(0,40) || 'voix';
+}
+
+function toast(msg, genre){
+  const d = document.createElement('div');
+  d.className = 'toast' + (genre ? ' ' + genre : '');
+  d.textContent = msg;
+  $('toasts').appendChild(d);
+  setTimeout(()=>{ d.style.opacity='0'; d.style.transition='opacity .3s'; setTimeout(()=>d.remove(),300); }, 4600);
+}
+
+function occupe(bouton, actif, texte){
+  if(!bouton) return;
+  bouton.disabled = actif;
+  if(actif){
+    /* Le libellé d'origine n'est mémorisé qu'une fois : un second appel pendant
+       la même attente écraserait la mémoire par le bouton déjà occupé, et la
+       restauration finale laisserait la roue tourner indéfiniment. */
+    if(!bouton.dataset.libelle) bouton.dataset.libelle = bouton.innerHTML;
+    bouton.innerHTML = '<span class="spin"></span>' + echapper(texte||'Traitement…');
+  } else if(bouton.dataset.libelle){
+    bouton.innerHTML = bouton.dataset.libelle;
+    delete bouton.dataset.libelle;
+  }
+}
+
+/* Mesure la durée réelle d'un blob audio, avec repli sur la valeur estimée. */
+async function mesurerDuree(blob, repli){
+  try{
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if(!Ctx) return repli || 0;
+    const ctx = new Ctx();
+    const tampon = await ctx.decodeAudioData(await blob.arrayBuffer());
+    const d = tampon.duration;
+    ctx.close();
+    return isFinite(d) && d > 0 ? d : (repli || 0);
+  }catch(e){
+    return repli || 0;
+  }
+}
+
+/* ══════════════════════════════════════════════════════
+   NAVIGATION
+   ══════════════════════════════════════════════════════ */
+
+function construireNav(){
+  $('navLat').innerHTML = PAGES.map((p,i)=>
+    '<div class="s-nav-item" id="nav'+i+'" onclick="go('+i+')">' +
+      '<div class="s-num">'+String(i+1).padStart(2,'0')+'</div>' +
+      '<div class="s-nav-lbl">'+echapper(p.t)+'</div>' +
+    '</div>').join('');
+}
+
+/* Renvoie un message si la page demandée est inaccessible, sinon null.
+   Seul le consentement bloque : les autres étapes signalent ce qui manque
+   sur place plutôt que d'interdire la navigation. */
+function verrou(n){
+  if(n > 0 && !etat.consentement)
+    return "Validez d'abord le consentement.";
+  return null;
+}
+
+function go(n){
+  if(n > 0 && !etat.consentement && !validerConsentement()) return;
+
+  const message = verrou(n);
+  if(message){ toast(message, 'err'); return; }
+
+  if(enregistrement) arreterEnregistrement();
+
+  etat.page = n;
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
+  $('p'+n).classList.add('on');
+  const zone = $('zonePrincipale');
+  if(zone) zone.scrollTop = 0;
+  window.scrollTo(0,0);
+
+  if(n === 1){
+    majAffichageEtape4();
+    if(etat.typeVoix === 'catalogue'){
+      afficherCatalogue();
+    } else {
+      majRecapEnvoi();
+      listerVoix();   // la bibliothèque de voix est le point d'entrée de l'étape
+    }
+  }
+  if(n === 2){ majVoixActive(); majCompteur(); }
+  if(n === 3){ afficherGenerations(); afficherTraceConsentement(); }
+
+  majEtat();
+}
+
+/* ══════════════════════════════════════════════════════
+   PAGE 1 — CONSENTEMENT
+   ══════════════════════════════════════════════════════ */
+
+function choisirOrigine(valeur){
+  etat.origine = valeur;
+  $('origMoi').checked   = (valeur === 'moi');
+  $('origAutre').checked = (valeur === 'autre');
+  document.querySelectorAll('#zoneOrigine .radio').forEach((r,i)=>{
+    r.classList.toggle('sel', (i === 0) === (valeur === 'moi'));
+  });
+  $('zoneIdentite').style.display = 'block';
+
+  $('lblCons1').textContent = (valeur === 'moi')
+    ? "Je consens à la reproduction de ma propre voix pour l'usage décrit ci-dessus."
+    : "La personne concernée a donné son accord explicite et préalable à la reproduction de sa voix pour l'usage décrit ci-dessus.";
+
+  if(valeur === 'moi' && !$('consNom').value) $('consNom').placeholder = 'Votre nom';
+  if(!$('consDate').value) $('consDate').value = new Date().toISOString().slice(0,10);
+
+  majEtat();
+}
+
+function validerConsentement(){
+  let manque = false;
+  const marquer = (el, mauvais)=>{
+    if(!el) return;
+    el.classList.toggle('req-err', mauvais);
+    if(mauvais) manque = true;
+  };
+
+  if(!etat.origine){
+    toast("Indiquez d'abord à qui appartient la voix.", 'err');
+    return false;
+  }
+
+  marquer($('consNom'),   !$('consNom').value.trim());
+  marquer($('consDate'),  !$('consDate').value);
+  marquer($('consUsage'), !$('consUsage').value.trim());
+  for(let i=1; i<=4; i++) marquer($('chk'+i), !$('cons'+i).checked);
+
+  if(manque){
+    toast('Complétez tous les champs et cochez les quatre engagements.', 'err');
+    return false;
+  }
+
+  etat.consentement = {
+    origine: etat.origine,
+    nom:     $('consNom').value.trim(),
+    date:    $('consDate').value,
+    usage:   $('consUsage').value.trim(),
+    valideLe: new Date().toISOString()
+  };
+  bdEcrire('config', {cle:'consentement', valeur: etat.consentement});
+  toast('Consentement enregistré.', 'ok');
+  return true;
+}
+
+function afficherTraceConsentement(){
+  const c = etat.consentement;
+  if(!c){ $('traceConsentement').innerHTML = '<div class="vide">Aucun consentement enregistré.</div>'; return; }
+  $('traceConsentement').innerHTML =
+    ligneKv('Origine de la voix', c.origine === 'moi' ? 'Voix du propre utilisateur' : "Voix d'un tiers, avec accord") +
+    ligneKv('Personne concernée', c.nom) +
+    ligneKv("Date de l'accord", new Date(c.date + 'T00:00:00').toLocaleDateString('fr-FR')) +
+    ligneKv('Usage déclaré', c.usage) +
+    ligneKv('Validé le', new Date(c.valideLe).toLocaleString('fr-FR')) +
+    ligneKv('Engagements', 'Quatre engagements acceptés');
+}
+
+function ligneKv(cle, valeur){
+  return '<div class="kv"><span class="kv-c">'+echapper(cle)+'</span><span class="kv-v">'+echapper(valeur)+'</span></div>';
+}
+
+function exporterConsentement(){
+  const c = etat.consentement;
+  if(!c){ toast('Aucun consentement à exporter.', 'err'); return; }
+  const lignes = [
+    'TRACE DE CONSENTEMENT — REPRODUCTION DE VOIX',
+    '',
+    'Origine de la voix   : ' + (c.origine === 'moi' ? "voix de l'utilisateur lui-même" : "voix d'un tiers, avec accord recueilli"),
+    'Personne concernée   : ' + c.nom,
+    "Date de l'accord     : " + c.date,
+    'Usage déclaré        : ' + c.usage,
+    'Validation dans      : ' + new Date(c.valideLe).toLocaleString('fr-FR'),
+    '',
+    'Engagements acceptés :',
+    "  1. Accord explicite et préalable de la personne concernée pour l'usage décrit.",
+    '  2. Les productions sont présentées comme des voix de synthèse.',
+    "  3. Aucun usage d'usurpation, de fraude ou de contournement d'authentification vocale.",
+    '  4. Retrait possible à tout moment, avec suppression des données.',
+    '',
+    'Échantillons conservés : ' + etat.echantillons.length,
+    'Audios générés         : ' + etat.generations.length,
+    'Voix distante          : ' + (etat.voixId || 'aucune'),
+    '',
+    'Document généré le ' + new Date().toLocaleString('fr-FR') + '.'
+  ];
+  telecharger(new Blob([lignes.join('\n')], {type:'text/plain;charset=utf-8'}),
+              'consentement_' + slug(c.nom) + '_' + horodatage() + '.txt');
+}
+
+/* ══════════════════════════════════════════════════════
+   PAGE 2 — ENREGISTREMENT
+   ══════════════════════════════════════════════════════ */
+
+let enregistrement = false, flux = null;
+let blocsPcm = [], nbEchantillonsPcm = 0, freqCapture = 48000;
+let debutRec = 0, minuteur = null;
+let ctxAudio = null, analyseur = null, animation = null, sourceMicro = null;
+let capteur = null, silencieux = null;
+
+/* Module de capture exécuté dans le fil audio : il transmet les échantillons
+   bruts sans jamais les compresser.
+
+   L'enregistrement passait auparavant par MediaRecorder, qui n'offre que des
+   formats compressés — Opus le plus souvent. Le modèle apprenait donc la voix
+   à partir d'un signal déjà dégradé, ce qui plafonnait la ressemblance sans
+   qu'aucun réglage ultérieur ne puisse le rattraper. */
+const CODE_CAPTEUR = `
+class CapteurPcm extends AudioWorkletProcessor {
+  process(entrees){
+    const canal = entrees[0] && entrees[0][0];
+    if(canal && canal.length) this.port.postMessage(new Float32Array(canal));
+    return true;
+  }
+}
+registerProcessor('capteur-pcm', CapteurPcm);
+`;
+
+function recevoirBloc(bloc){
+  if(!enregistrement || !bloc || !bloc.length) return;
+  blocsPcm.push(bloc);
+  nbEchantillonsPcm += bloc.length;
+}
+
+/* Renvoie le nœud de capture. L'AudioWorklet est préféré : il travaille dans
+   le fil audio et ne saute pas d'échantillon si l'interface est occupée.
+   ScriptProcessor sert de repli pour les navigateurs plus anciens. */
+async function creerCapteur(){
+  if(ctxAudio.audioWorklet){
+    try{
+      const url = URL.createObjectURL(new Blob([CODE_CAPTEUR], {type:'application/javascript'}));
+      await ctxAudio.audioWorklet.addModule(url);
+      URL.revokeObjectURL(url);
+      const noeud = new AudioWorkletNode(ctxAudio, 'capteur-pcm');
+      noeud.port.onmessage = e => recevoirBloc(e.data);
+      return noeud;
+    }catch(e){ /* repli ci-dessous */ }
+  }
+  const noeud = ctxAudio.createScriptProcessor(4096, 1, 1);
+  noeud.onaudioprocess = e => recevoirBloc(new Float32Array(e.inputBuffer.getChannelData(0)));
+  return noeud;
+}
+
+function assemblerPcm(){
+  const total = new Float32Array(nbEchantillonsPcm);
+  let position = 0;
+  for(const bloc of blocsPcm){ total.set(bloc, position); position += bloc.length; }
+  blocsPcm = []; nbEchantillonsPcm = 0;
+  return total;
+}
+
+function extensionDe(type){
+  if(!type) return 'webm';
+  if(type.indexOf('webm') >= 0) return 'webm';
+  if(type.indexOf('mp4') >= 0 || type.indexOf('m4a') >= 0) return 'm4a';
+  if(type.indexOf('ogg') >= 0) return 'ogg';
+  if(type.indexOf('mpeg') >= 0) return 'mp3';
+  if(type.indexOf('wav') >= 0) return 'wav';
+  return 'webm';
+}
+
+function basculerEnregistrement(){
+  if(enregistrement) arreterEnregistrement(); else demarrerEnregistrement();
+}
+
+async function demarrerEnregistrement(){
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    toast("Ce navigateur ne donne pas accès au micro.", 'err');
+    return;
+  }
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  if(!Ctx){
+    toast("Ce navigateur ne sait pas traiter l'audio.", 'err');
+    return;
+  }
+
+  try{
+    const traitement = $('optTraitement').checked;
+    flux = await navigator.mediaDevices.getUserMedia({audio:{
+      echoCancellation: traitement,
+      noiseSuppression: traitement,
+      autoGainControl:  $('optGain').checked,
+      channelCount: 1
+    }});
+  }catch(e){
+    $('recEtat').textContent = 'Accès au micro refusé';
+    toast("Accès au micro refusé. Autorisez le micro dans les réglages du navigateur.", 'err');
+    return;
+  }
+
+  try{
+    ctxAudio = new Ctx();
+    if(ctxAudio.state === 'suspended') await ctxAudio.resume();
+    freqCapture = ctxAudio.sampleRate;
+    sourceMicro = ctxAudio.createMediaStreamSource(flux);
+
+    analyseur = ctxAudio.createAnalyser();
+    analyseur.fftSize = 1024;
+    sourceMicro.connect(analyseur);
+
+    capteur = await creerCapteur();
+    /* Le graphe n'est parcouru que s'il aboutit à la sortie : un gain nul
+       permet de l'y raccorder sans rien faire entendre. */
+    silencieux = ctxAudio.createGain();
+    silencieux.gain.value = 0;
+    sourceMicro.connect(capteur);
+    capteur.connect(silencieux);
+    silencieux.connect(ctxAudio.destination);
+  }catch(e){
+    toast("Impossible de démarrer la capture : " + (e && e.message ? e.message : e), 'err');
+    arreterCapture();
+    return;
+  }
+
+  blocsPcm = []; nbEchantillonsPcm = 0;
+  enregistrement = true;
+  debutRec = Date.now();
+  $('btnRec').classList.add('rec');
+  $('recEtat').textContent = 'Enregistrement en cours — parlez normalement';
+  minuteur = setInterval(()=>{ $('chrono').textContent = fmtDuree((Date.now()-debutRec)/1000); }, 200);
+
+  dessinerVumetre();
+}
+
+/* Démonte le graphe audio et libère le micro. */
+function arreterCapture(){
+  if(animation) cancelAnimationFrame(animation);
+  animation = null;
+  [sourceMicro, capteur, silencieux, analyseur].forEach(n=>{ try{ if(n) n.disconnect(); }catch(e){} });
+  if(capteur && capteur.port) capteur.port.onmessage = null;
+  if(capteur) capteur.onaudioprocess = null;
+  capteur = null; silencieux = null; analyseur = null; sourceMicro = null;
+  if(flux){ flux.getTracks().forEach(t=>t.stop()); flux = null; }
+  const c = $('vu');
+  if(c){ const g = c.getContext('2d'); g.clearRect(0,0,c.width,c.height); }
+  $('alerteSat').style.display = 'none';
+}
+
+async function arreterEnregistrement(){
+  if(!enregistrement) return;
+  enregistrement = false;
+  clearInterval(minuteur);
+  $('btnRec').classList.remove('rec');
+  $('recEtat').textContent = 'Traitement de la prise…';
+
+  const donnees = assemblerPcm();
+  const frequence = freqCapture;
+  arreterCapture();
+  if(ctxAudio){ try{ await ctxAudio.close(); }catch(e){} ctxAudio = null; }
+
+  await finaliserEnregistrement(donnees, frequence);
+}
+
+async function finaliserEnregistrement(donnees, frequence){
+  const duree = donnees.length / frequence;
+  $('chrono').textContent = '00:00';
+  $('recEtat').textContent = 'Prise enregistrée';
+
+  if(duree < 1){
+    toast('Prise trop courte, elle a été ignorée.', 'err');
+    return;
+  }
+
+  const blob = encoderWav(donnees, frequence, 16);
+  await ajouterEchantillon({
+    id: ident(),
+    nom: 'Prise ' + (etat.echantillons.length + 1) + '.wav',
+    blob, duree, type: 'audio/wav',
+    source: 'micro',
+    frequence
+  });
+  toast('Prise ajoutée : ' + fmtDuree(duree) + ' en ' + Math.round(frequence/1000) + ' kHz non compressé.', 'ok');
+}
+
+/* ─── Vumètre ─── */
+
+function dessinerVumetre(){
+  const c = $('vu');
+  if(!analyseur || !c) return;
+  const g = c.getContext('2d');
+  const l = c.clientWidth, h = c.clientHeight;
+  if(c.width !== l) c.width = l;
+  if(c.height !== h) c.height = h;
+
+  const donnees = new Uint8Array(analyseur.fftSize);
+  analyseur.getByteTimeDomainData(donnees);
+
+  let crete = 0, somme = 0;
+  for(let i=0;i<donnees.length;i++){
+    const v = Math.abs(donnees[i]-128)/128;
+    if(v > crete) crete = v;
+    somme += v*v;
+  }
+  const efficace = Math.sqrt(somme/donnees.length);
+
+  g.clearRect(0,0,l,h);
+  const barres = 48, largeur = l/barres;
+  for(let i=0;i<barres;i++){
+    const pas = i/barres;
+    const actif = pas < Math.min(1, efficace*3.2);
+    g.fillStyle = !actif ? 'rgba(255,255,255,.06)'
+                : pas > .88 ? '#F85149' : pas > .7 ? '#F0B429' : '#1D9E75';
+    const hb = actif ? Math.max(4, h * (0.25 + pas*0.6)) : 4;
+    g.fillRect(i*largeur + 1, (h-hb)/2, largeur - 2, hb);
+  }
+
+  $('alerteSat').style.display = crete > 0.985 ? 'block' : 'none';
+  animation = requestAnimationFrame(dessinerVumetre);
+}
+
+/* ─── Échantillons ─── */
+
+async function ajouterEchantillon(ech){
+  etat.echantillons.push(ech);
+  await bdEcrire('echantillons', ech);
+  afficherEchantillons();
+  majEtat();
+}
+
+async function importerFichiers(evt){
+  const fichiers = Array.from(evt.target.files || []);
+  evt.target.value = '';
+  for(const f of fichiers){
+    if(f.type && f.type.indexOf('audio') !== 0){
+      toast('Fichier ignoré, ce n\u2019est pas de l\u2019audio : ' + f.name, 'err');
+      continue;
+    }
+    const duree = await mesurerDuree(f, 0);
+    await ajouterEchantillon({
+      id: ident(), nom: f.name, blob: f, duree,
+      type: f.type || 'audio/mpeg', source: 'fichier'
+    });
+  }
+  if(fichiers.length) toast(fichiers.length + ' fichier(s) traité(s).', 'ok');
+}
+
+function afficherEchantillons(){
+  const zone = $('listeEch');
+  if(!etat.echantillons.length){
+    zone.innerHTML = '<div class="vide">Aucun échantillon pour le moment.</div>';
+    majJauge();
+    return;
+  }
+  zone.innerHTML = etat.echantillons.map(e=>
+    '<div class="item">' +
+      '<div class="item-corps">' +
+        '<div class="item-nom">'+echapper(e.nom)+'</div>' +
+        '<div class="item-meta">'+fmtDuree(e.duree)+' — '+fmtTaille(e.blob.size)+' — '+
+          (e.source === 'micro' ? 'micro' : 'import')+'</div>' +
+      '</div>' +
+      '<audio controls preload="none" src="'+URL.createObjectURL(e.blob)+'"></audio>' +
+      '<div class="item-btns">' +
+        '<button class="btn btn-r btn-sm" onclick="supprimerEchantillon(\''+e.id+'\')">Supprimer</button>' +
+      '</div>' +
+    '</div>').join('');
+  majJauge();
+}
+
+async function supprimerEchantillon(id){
+  etat.echantillons = etat.echantillons.filter(e=>e.id !== id);
+  await bdEffacerLigne('echantillons', id);
+  afficherEchantillons();
+  majEtat();
+  toast('Échantillon supprimé.');
+}
+
+function dureeCumulee(){
+  return etat.echantillons.reduce((t,e)=>t + (e.duree||0), 0);
+}
+
+function majJauge(){
+  const total = dureeCumulee();
+  const pct = Math.min(100, total / DUREE_CIBLE * 100);
+  const plein = $('jaugePlein');
+  plein.style.width = pct + '%';
+  plein.classList.toggle('ok', total >= DUREE_MINI);
+  $('dureeTotale').textContent = total >= 60
+    ? fmtDuree(total) + ' (' + Math.round(total) + ' s)'
+    : Math.round(total) + ' s';
+}
+
+/* ══════════════════════════════════════════════════════
+   PAGE 3 — SERVICE VOCAL
+   ══════════════════════════════════════════════════════ */
+
+function choisirMode(m){
+  etat.mode = m;
+  $('modeReel').checked = (m === 'reel');
+  $('modeDemo').checked = (m === 'demo');
+  $('radioReel').classList.toggle('sel', m === 'reel');
+  $('radioDemo').classList.toggle('sel', m === 'demo');
+  $('zoneApi').style.display = (m === 'reel') ? 'block' : 'none';
+  const carte = $('carteReglages');
+  if(carte) carte.style.opacity = (m === 'reel') ? '1' : '.45';
+  majAffichageEtape4();
+  majEtat();
+}
+
+/* L'étape 04 sert trois cas : créer une voix clonée, choisir une voix du
+   catalogue, ou rappeler que le mode démonstration ne crée rien. */
+function majAffichageEtape4(){
+  const demo = (etat.mode !== 'reel');
+  const catalogue = (etat.typeVoix === 'catalogue');
+  $('zoneCreation').style.display     = (!demo && !catalogue) ? 'block' : 'none';
+  $('zoneCatalogue').style.display    = (!demo &&  catalogue) ? 'block' : 'none';
+  $('zoneCreationDemo').style.display = demo ? 'block' : 'none';
+
+  const desc = $('descEtape4');
+  if(desc) desc.textContent =
+    demo ? 'Le mode démonstration ne reproduit aucune voix enregistrée'
+    : catalogue ? 'Retenir une voix toute faite du service distant'
+    : 'Reprendre une voix existante, ou en créer une à partir de vos enregistrements';
+
+  majConnexion();
+  majAffichageAmelioration();
+}
+
+function choisirTypeVoix(t){
+  const change = (etat.typeVoix !== t);
+  etat.typeVoix = t;
+  $('typeClonee').checked    = (t === 'clonee');
+  $('typeCatalogue').checked = (t === 'catalogue');
+  $('radioClonee').classList.toggle('sel', t === 'clonee');
+  $('radioCatalogue').classList.toggle('sel', t === 'catalogue');
+  $('noteCatalogue').style.display   = (t === 'catalogue') ? 'block' : 'none';
+  /* Le catalogue n'existe que chez le service distant : le choix du
+     fournisseur n'a plus lieu d'être proposé. */
+  $('blocFournisseur').style.display = (t === 'catalogue') ? 'none' : 'block';
+  if(t === 'catalogue' && etat.fournisseur !== 'distant') choisirFournisseur('distant');
+
+  /* Changer de type invalide la voix retenue précédemment, mais rétablir
+     l'affichage au démarrage ne doit rien effacer. */
+  if(change){
+    etat.voixId = null; etat.voixNom = null;
+    if(bd) bdEffacerLigne('config','voix');
+    if(bd) bdEcrire('config', {cle:'typeVoix', valeur:t});
+  }
+  majAffichageEtape4();
+  majEtat();
+}
+
+function choisirFournisseur(f){
+  etat.fournisseur = f;
+  $('fournDistant').checked = (f === 'distant');
+  $('fournLocal').checked   = (f === 'local');
+  $('radioDistant').classList.toggle('sel', f === 'distant');
+  $('radioLocal').classList.toggle('sel', f === 'local');
+  $('champUrlLocale').style.display = (f === 'local') ? 'block' : 'none';
+  $('blocCle').style.display        = (f === 'local') ? 'none'  : 'block';
+  $('blocModele').style.display     = (f === 'local') ? 'none'  : 'block';
+  etat.connexion = null;   // changer de fournisseur invalide la vérification
+  enregistrerFournisseur();
+  majConnexion();
+  majEtat();
+}
+
+function enregistrerFournisseur(){
+  if(bd) bdEcrire('config', {cle:'fournisseur', valeur:{nom:etat.fournisseur, url:urlLocale()}});
+}
+
+function urlLocale(){
+  const champ = $('urlLocale');
+  const v = champ ? champ.value.trim() : '';
+  return (v || 'http://127.0.0.1:8770').replace(/\/+$/, '');
+}
+
+/* Adresse de base du service, selon le fournisseur retenu. Les deux exposent
+   les mêmes routes : le reste du code n'a pas à savoir lequel répond. */
+function baseApi(){
+  return etat.fournisseur === 'local' ? urlLocale() + '/v1' : API_DISTANTE;
+}
+
+function zoneResultatTest(){ return $('resTest'); }
+function boutonTest(){ return $('btnTest'); }
+
+/* ─── Replis de l'étape 02 ─── */
+
+function basculer(id, bouton){
+  const el = $(id);
+  if(!el) return;
+  const ouvert = (el.style.display !== 'none');
+  el.style.display = ouvert ? 'none' : 'block';
+  if(bouton) bouton.classList.toggle('btn-p', !ouvert);
+}
+
+function basculerReglages(){ basculer('reglagesConnexion', $('btnReglages')); }
+function basculerOptionsMicro(){ basculer('optionsMicro'); }
+function basculerPhrases(){ basculer('zonePhrases'); }
+
+/* Ligne d'état de la connexion, en tête de l'étape 02. */
+function majConnexion(){
+  const titre = $('titreConnexion'), detail = $('detailConnexion'), pastille = $('dotConnexion');
+  if(!titre) return;
+
+  if(etat.mode === 'demo'){
+    titre.textContent = 'Mode démonstration';
+    detail.textContent = "Voix générique du navigateur, aucune voix n'est reproduite";
+    pastille.className = 'dot att';
+    return;
+  }
+
+  titre.textContent = (etat.fournisseur === 'local')
+    ? 'Serveur local — ' + urlLocale()
+    : 'Service distant' + (etat.typeVoix === 'catalogue' ? ' — catalogue' : '');
+
+  if(etat.connexion && etat.connexion.ok){
+    detail.textContent = etat.connexion.texte;
+    pastille.className = 'dot ok';
+  } else if(etat.connexion){
+    detail.textContent = 'Dernière vérification en échec';
+    pastille.className = 'dot att';
+  } else {
+    detail.textContent = 'Connexion non vérifiée';
+    pastille.className = 'dot';
+  }
+}
+
+function cleCourante(){
+  const champ = $('cleApi');
+  return champ ? champ.value.trim() : '';
+}
+
+function memoriserCle(){
+  const cle = cleCourante();
+  if(!cle) return;
+  try{
+    if($('memoCle').checked){ localStorage.setItem('studio_voix_cle', cle); sessionStorage.removeItem('studio_voix_cle'); }
+    else { sessionStorage.setItem('studio_voix_cle', cle); localStorage.removeItem('studio_voix_cle'); }
+  }catch(e){ /* stockage indisponible : la clé reste en mémoire vive */ }
+}
+
+function oublierCle(){
+  try{ localStorage.removeItem('studio_voix_cle'); sessionStorage.removeItem('studio_voix_cle'); }catch(e){}
+  $('cleApi').value = '';
+  $('memoCle').checked = false;
+  $('resTest').innerHTML = '';
+  majEtat();
+  toast('Clé effacée de cet appareil.');
+}
+
+function entetes(json){
+  const h = {'xi-api-key': cleCourante()};
+  if(json) h['Content-Type'] = 'application/json';
+  return h;
+}
+
+/* Traduit une erreur du service en message compréhensible. */
+async function messageErreur(reponse){
+  let brut = '';
+  try{
+    const donnees = await reponse.json();
+    brut = (donnees && donnees.detail && (donnees.detail.message || donnees.detail.status)) ||
+           (typeof donnees.detail === 'string' ? donnees.detail : '') || '';
+  }catch(e){}
+
+  const code = String(brut).toLowerCase();
+  if(reponse.status === 401) return "Clé refusée : vérifiez qu'elle est complète et toujours active.";
+  if(code.indexOf('can_not_use_instant_voice_cloning') >= 0 || code.indexOf('voice_limit') >= 0)
+    return "Le clonage instantané n'est pas inclus dans l'offre du compte. Il faut un abonnement payant chez le fournisseur.";
+  if(reponse.status === 403) return "Accès refusé : l'offre du compte ne permet pas cette opération. " + brut;
+  if(reponse.status === 422) return 'Requête refusée : ' + (brut || 'paramètres invalides.');
+  if(reponse.status === 429) return 'Trop de requêtes ou quota de caractères épuisé.';
+  /* Le serveur local place son diagnostic ici : le transmettre tel quel plutôt
+     que de le remplacer par un message générique. */
+  if(reponse.status >= 500)
+    return brut || 'Le service est momentanément indisponible. Réessayez dans un instant.';
+  return brut || ('Erreur ' + reponse.status + '.');
+}
+
+function messageReseau(e){
+  const detail = ' (' + (e && e.message ? e.message : 'échec réseau') + ')';
+  if(etat.fournisseur === 'local'){
+    return "Le serveur local ne répond pas sur " + urlLocale() + ". Vérifiez qu'il est bien lancé " +
+           "(python serveur.py --moteur test dans le dossier voix_locale) et que l'adresse correspond " +
+           "au port affiché à son démarrage." + detail;
+  }
+  return "Connexion impossible au service vocal. Deux causes habituelles : la page est ouverte en local " +
+         "(adresse file://) et le navigateur bloque l'appel, ou l'accès réseau est filtré. " +
+         "Servez la page via un serveur local, par exemple npx http-server, puis rouvrez-la sur http://localhost:8080/." +
+         detail;
+}
+
+async function testerConnexion(){
+  const local = (etat.fournisseur === 'local');
+  if(!local){
+    if(!cleCourante()){
+      $('cleApi').classList.add('req-err');
+      toast("Renseignez d'abord la clé d'accès.", 'err');
+      return;
+    }
+    $('cleApi').classList.remove('req-err');
+  }
+
+  const bouton = boutonTest(), zone = zoneResultatTest();
+  occupe(bouton, true, 'Test en cours…');
+  zone.innerHTML = '';
+
+  try{
+    const r = await fetch(baseApi() + '/user', {headers: entetes(false)});
+    if(!r.ok){
+      zone.innerHTML = '<div class="note n-red">' + echapper(await messageErreur(r)) + '</div>';
+      etat.connexion = {ok:false, texte:''};
+      return;
+    }
+    const d = await r.json();
+    const abo = d.subscription || {};
+    const utilises = abo.character_count, plafond = abo.character_limit;
+    let detail = '';
+    if(typeof utilises === 'number' && typeof plafond === 'number'){
+      detail = ligneKv('Caractères consommés', fmtNombre(utilises) + ' / ' + fmtNombre(plafond)) +
+               ligneKv('Restant', fmtNombre(Math.max(0, plafond - utilises)));
+    } else if(typeof utilises === 'number'){
+      detail = ligneKv('Caractères produits', fmtNombre(utilises));
+    }
+
+    /* Le serveur local annonce s'il clone vraiment ou s'il tourne en moteur de
+       contrôle : l'utilisateur doit le savoir avant d'écouter le résultat. */
+    let avis = '';
+    if(local && d.clone_reellement === false){
+      avis = '<div class="note n-amb" style="margin-top:10px"><div class="note-t">Moteur de contrôle</div>' +
+             'Ce serveur tourne avec le moteur de test : il produit un signal sonore qui ne ressemble ' +
+             'à personne. Il sert uniquement à vérifier la chaîne. Relancez-le avec un moteur réel pour cloner.</div>';
+    }
+    if(local && d.ffmpeg === false){
+      avis += '<div class="note n-red" style="margin-top:10px">ffmpeg est absent du serveur : ' +
+              'la création de voix échouera. Lancez pip install imageio-ffmpeg puis relancez le serveur.</div>';
+    }
+
+    zone.innerHTML =
+      '<div class="note n-grn"><div class="note-t">Connexion établie</div>' +
+      ligneKv(local ? 'Serveur' : 'Offre du compte', abo.tier || 'non communiquée') + detail + '</div>' + avis;
+    etat.connexion = {ok:true, texte: abo.tier || 'connecté'};
+    if(!local) memoriserCle();
+    toast('Connexion établie.', 'ok');
+  }catch(e){
+    zone.innerHTML = '<div class="note n-red">' + echapper(messageReseau(e)) + '</div>';
+    etat.connexion = {ok:false, texte:''};
+  }finally{
+    occupe(bouton, false);
+    majConnexion();
+    majEtat();
+  }
+}
+
+/* ══════════════════════════════════════════════════════
+   PAGE 4 — CRÉATION DE LA VOIX
+   ══════════════════════════════════════════════════════ */
+
+function majRecapEnvoi(){
+  const total = dureeCumulee();
+  let avis = '';
+  if(total < DUREE_MINI){
+    avis = '<div class="note n-amb" style="margin-top:10px"><div class="note-t">Matière insuffisante</div>' +
+           'Moins d\u2019une minute d\u2019audio : la ressemblance sera approximative. Ajoutez des prises pour un meilleur résultat.</div>';
+  } else if(total > 300){
+    avis = '<div class="note n-blu" style="margin-top:10px">Au-delà de cinq minutes, le surplus n\u2019améliore plus le résultat. ' +
+           'Mieux vaut garder les meilleures prises.</div>';
+  }
+  $('recapEnvoi').innerHTML =
+    ligneKv('Personne concernée', etat.consentement ? etat.consentement.nom : '—') +
+    ligneKv('Échantillons', String(etat.echantillons.length)) +
+    ligneKv('Durée cumulée', fmtDuree(total)) +
+    ligneKv('Volume envoyé', fmtTaille(etat.echantillons.reduce((t,e)=>t+e.blob.size,0))) +
+    avis;
+}
+
+/* ─── Reprise et amélioration d'une voix existante ─── */
+
+function nouvelleVoix(){
+  annulerAmelioration();
+  $('voixNom').value = '';
+  $('voixDesc').value = '';
+  $('resCreation').innerHTML = '';
+  $('titreFabrication').scrollIntoView({behavior:'smooth', block:'start'});
+  toast("Enregistrez, puis créez la voix.");
+}
+
+/* Prépare le remplacement d'une voix par une version refaite à partir des
+   échantillons présents. Les échantillons déjà collectés sont conservés :
+   on peut donc en ajouter pour enrichir la référence plutôt que tout refaire. */
+function ameliorerVoix(i){
+  const v = voixDistantes[i];
+  if(!v) return;
+  etat.voixAAmeliorer = {id: v.voice_id, nom: v.name};
+  $('voixNom').value = v.name;
+  $('texteAmelioration').textContent =
+    'La voix « ' + v.name + ' » sera remplacée par une nouvelle version construite à partir des '
+    + 'échantillons ci-dessous. Ajoutez des prises pour enrichir la référence, puis validez. '
+    + "Tant que vous n'avez pas validé, la voix actuelle reste utilisable telle quelle.";
+  majAffichageAmelioration();
+  $('titreFabrication').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function annulerAmelioration(){
+  etat.voixAAmeliorer = null;
+  majAffichageAmelioration();
+}
+
+function majAffichageAmelioration(){
+  const enCours = !!etat.voixAAmeliorer;
+  const banniere = $('banniereAmelioration');
+  if(!banniere) return;
+  banniere.style.display = enCours ? 'block' : 'none';
+  $('btnRemplacer').style.display = enCours ? 'inline-flex' : 'none';
+  $('btnCreer').textContent = enCours ? 'Créer une voix séparée à la place' : 'Créer la voix clonée';
+  $('btnCreer').className = enCours
+    ? 'btn btn-g' : 'btn btn-p';
+  $('btnCreer').style.width = '100%';
+  $('btnCreer').style.justifyContent = 'center';
+  $('btnCreer').style.marginTop = '14px';
+  $('titreFabrication').textContent = enCours
+    ? 'Améliorer « ' + etat.voixAAmeliorer.nom + ' »'
+    : 'Créer une voix';
+  if(enCours) $('btnRemplacer').textContent = 'Remplacer « ' + etat.voixAAmeliorer.nom + ' »';
+}
+
+async function creerVoix(remplacer){
+  if(etat.mode !== 'reel'){ toast('Le mode démonstration ne crée pas de voix.', 'err'); return; }
+  if(!etat.echantillons.length){ toast("Aucun échantillon à envoyer.", 'err'); return; }
+
+  const ancienne = remplacer ? etat.voixAAmeliorer : null;
+  if(ancienne && !confirm(
+      'Remplacer « ' + ancienne.nom + " » par cette nouvelle version ?\n\n"
+      + "L'ancienne voix sera supprimée du service. Les audios déjà générés avec elle "
+      + 'restent dans votre bibliothèque.')) return;
+
+  const nom = $('voixNom').value.trim();
+  if(!nom){
+    $('voixNom').classList.add('req-err');
+    toast('Donnez un nom à la voix.', 'err');
+    return;
+  }
+  $('voixNom').classList.remove('req-err');
+
+  const bouton = ancienne ? $('btnRemplacer') : $('btnCreer');
+  occupe(bouton, true, 'Envoi et analyse…');
+  $('resCreation').innerHTML = '';
+
+  try{
+    const donnees = new FormData();
+    donnees.append('name', nom);
+    const desc = $('voixDesc').value.trim();
+    if(desc) donnees.append('description', desc);
+    if($('optBruit').checked) donnees.append('remove_background_noise', 'true');
+    etat.echantillons.forEach(e=>donnees.append('files', e.blob, e.nom));
+
+    /* Content-Type volontairement omis : le navigateur pose lui-même la frontière multipart. */
+    const r = await fetch(baseApi() + '/voices/add', {method:'POST', headers:{'xi-api-key':cleCourante()}, body:donnees});
+
+    if(!r.ok){
+      $('resCreation').innerHTML = '<div class="note n-red">' + echapper(await messageErreur(r)) + '</div>';
+      return;
+    }
+    const d = await r.json();
+    etat.voixId  = d.voice_id;
+    etat.voixNom = nom;
+    await bdEcrire('config', {cle:'voix', valeur:{id: d.voice_id, nom}});
+
+    /* Le remplacement ne supprime l'ancienne voix qu'une fois la nouvelle
+       obtenue : un échec en cours de route ne fait donc rien perdre. */
+    let mention = '';
+    if(ancienne && ancienne.id !== d.voice_id){
+      try{
+        const s = await fetch(baseApi() + '/voices/' + ancienne.id, {method:'DELETE', headers: entetes(false)});
+        mention = s.ok
+          ? ligneKv('Ancienne version', 'supprimée')
+          : ligneKv('Ancienne version', 'conservée, suppression refusée par le service');
+      }catch(e){
+        mention = ligneKv('Ancienne version', 'conservée, le service n’a pas répondu');
+      }
+      etat.voixAAmeliorer = null;
+      majAffichageAmelioration();
+    }
+
+    $('resCreation').innerHTML =
+      '<div class="note n-grn"><div class="note-t">' +
+      (ancienne ? 'Voix remplacée' : 'Voix créée') + '</div>' +
+      ligneKv('Nom', nom) + ligneKv('Identifiant', d.voice_id) + mention +
+      (d.requires_verification ? ligneKv('Vérification', 'Le fournisseur demande une vérification vocale') : '') +
+      '</div>';
+    toast(ancienne ? 'Nouvelle version en place.' : 'Voix clonée avec succès.', 'ok');
+    memoriserCle();
+    listerVoix();
+  }catch(e){
+    $('resCreation').innerHTML = '<div class="note n-red">' + echapper(messageReseau(e)) + '</div>';
+  }finally{
+    occupe(bouton, false);
+    majEtat();
+  }
+}
+
+let voixDistantes = [];   // dernière liste renvoyée par le service
+
+async function listerVoix(){
+  if(etat.mode !== 'reel' || (etat.fournisseur === 'distant' && !cleCourante())){
+    $('listeVoix').innerHTML = '<div class="vide">Clé d\u2019accès requise pour lister les voix.</div>';
+    return;
+  }
+  $('listeVoix').innerHTML = '<div class="vide">Chargement…</div>';
+  try{
+    const r = await fetch(baseApi() + '/voices', {headers: entetes(false)});
+    if(!r.ok){ $('listeVoix').innerHTML = '<div class="note n-red">' + echapper(await messageErreur(r)) + '</div>'; return; }
+    const d = await r.json();
+    const voix = (d.voices || []).filter(v=>v.category === 'cloned' || v.category === 'generated' || v.category === 'professional');
+    voixDistantes = voix;
+    if(!voix.length){
+      $('listeVoix').innerHTML =
+        '<div class="vide">Aucune voix pour le moment. Enregistrez-vous ci-dessous, ' +
+        'puis créez votre première voix.</div>';
+      return;
+    }
+    /* Les noms de voix viennent du service : on les garde en mémoire et on ne
+       passe qu'un indice aux boutons, pour ne jamais injecter de texte distant
+       dans un attribut onclick. */
+    voixDistantes = voix;
+    $('listeVoix').innerHTML = voix.map((v,i)=>
+      '<div class="item">' +
+        '<div class="item-corps">' +
+          '<div class="item-nom">'+echapper(v.name)+
+            (v.voice_id === etat.voixId ? ' <span class="badge b-grn">active</span>' : '')+'</div>' +
+          '<div class="item-meta">'+echapper(v.voice_id)+'</div>' +
+        '</div>' +
+        '<div class="item-btns">' +
+          '<button class="btn ' + (v.voice_id === etat.voixId ? 'btn-g' : 'btn-v') +
+            ' btn-sm" onclick="activerVoixParIndice('+i+')">Utiliser cette version</button>' +
+          '<button class="btn btn-g btn-sm" onclick="ameliorerVoix('+i+')">Améliorer</button>' +
+          '<button class="btn btn-r btn-sm" onclick="supprimerVoixParIndice('+i+')">Supprimer</button>' +
+        '</div>' +
+      '</div>').join('');
+  }catch(e){
+    $('listeVoix').innerHTML = '<div class="note n-red">' + echapper(messageReseau(e)) + '</div>';
+  }
+}
+
+/* ─── Catalogue du service distant ─── */
+
+let voixCatalogue = [];
+
+async function listerCatalogue(){
+  if(etat.fournisseur !== 'distant' || !cleCourante()){
+    $('listeCatalogue').innerHTML =
+      '<div class="vide">Le catalogue exige le service distant et une clé d’accès, à renseigner à l’étape 03.</div>';
+    return;
+  }
+  const bouton = $('btnCatalogue');
+  occupe(bouton, true, 'Chargement…');
+  try{
+    const r = await fetch(baseApi() + '/voices', {headers: entetes(false)});
+    if(!r.ok){
+      $('listeCatalogue').innerHTML = '<div class="note n-red">' + echapper(await messageErreur(r)) + '</div>';
+      return;
+    }
+    const d = await r.json();
+    voixCatalogue = (d.voices || []).filter(v=>v.category === 'premade');
+    if(!voixCatalogue.length){
+      $('listeCatalogue').innerHTML = '<div class="vide">Aucune voix de catalogue renvoyée par le service.</div>';
+      return;
+    }
+    afficherCatalogue();
+    toast(voixCatalogue.length + ' voix de catalogue chargées.', 'ok');
+  }catch(e){
+    $('listeCatalogue').innerHTML = '<div class="note n-red">' + echapper(messageReseau(e)) + '</div>';
+  }finally{
+    occupe(bouton, false);
+  }
+}
+
+/* Résume les étiquettes fournies par le service : genre, accent, usage… */
+function etiquettes(v){
+  const l = v.labels || {};
+  return Object.keys(l).map(k=>l[k]).filter(Boolean).join(' — ');
+}
+
+function afficherCatalogue(){
+  const zone = $('listeCatalogue');
+  if(!voixCatalogue.length){
+    zone.innerHTML = '<div class="vide">Cliquez sur « Charger le catalogue » pour voir les voix disponibles.</div>';
+    return;
+  }
+  const filtre = ($('filtreCatalogue').value || '').trim().toLowerCase();
+  const retenues = voixCatalogue
+    .map((v,i)=>({v, i}))
+    .filter(o => !filtre ||
+      (o.v.name + ' ' + etiquettes(o.v) + ' ' + (o.v.description || '')).toLowerCase().indexOf(filtre) >= 0);
+
+  if(!retenues.length){
+    zone.innerHTML = '<div class="vide">Aucune voix ne correspond à ce filtre.</div>';
+    return;
+  }
+
+  zone.innerHTML = retenues.map(o=>{
+    const v = o.v;
+    const desc = etiquettes(v);
+    return '<div class="item">' +
+      '<div class="item-corps">' +
+        '<div class="item-nom">'+echapper(v.name)+
+          (v.voice_id === etat.voixId ? ' <span class="badge b-grn">retenue</span>' : '')+'</div>' +
+        '<div class="item-meta">'+echapper(desc || 'aucune description')+'</div>' +
+      '</div>' +
+      (v.preview_url ? '<audio controls preload="none" src="'+encodeURI(v.preview_url)+'"></audio>' : '') +
+      '<div class="item-btns">' +
+        '<button class="btn btn-g btn-sm" onclick="activerVoixCatalogue('+o.i+')">Utiliser</button>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function activerVoixCatalogue(i){
+  const v = voixCatalogue[i];
+  if(!v) return;
+  activerVoix(v.voice_id, v.name);
+  afficherCatalogue();
+}
+
+function activerVoixParIndice(i){
+  const v = voixDistantes[i];
+  if(v) activerVoix(v.voice_id, v.name);
+}
+
+function supprimerVoixParIndice(i){
+  const v = voixDistantes[i];
+  if(v) supprimerVoix(v.voice_id, v.name);
+}
+
+async function activerVoix(id, nom){
+  etat.voixId = id;
+  etat.voixNom = nom;
+  await bdEcrire('config', {cle:'voix', valeur:{id, nom}});
+  if(etat.typeVoix === 'clonee') listerVoix();
+  majEtat();
+  toast('Voix active : ' + nom + '.', 'ok');
+}
+
+async function supprimerVoix(id, nom){
+  if(!confirm('Supprimer définitivement la voix « ' + (nom || id) + ' » chez le fournisseur ?')) return;
+  try{
+    const r = await fetch(baseApi() + '/voices/' + id, {method:'DELETE', headers: entetes(false)});
+    if(!r.ok){ toast(await messageErreur(r), 'err'); return; }
+    if(etat.voixId === id){
+      etat.voixId = null; etat.voixNom = null;
+      await bdEffacerLigne('config', 'voix');
+    }
+    if(etat.voixAAmeliorer && etat.voixAAmeliorer.id === id) annulerAmelioration();
+    listerVoix();
+    majEtat();
+    toast('Voix supprimée.', 'ok');
+  }catch(e){ toast(messageReseau(e), 'err'); }
+}
+
+/* ══════════════════════════════════════════════════════
+   PAGE 5 — SYNTHÈSE
+   ══════════════════════════════════════════════════════ */
+
+/* ══════════════════════════════════════════════════════
+   STYLES D'ÉLOCUTION
+   ══════════════════════════════════════════════════════
+
+   Un style n'est pas un simple curseur : il règle ensemble le moteur
+   (régularité, expressivité, débit), la préparation du texte qui guide les
+   pauses, et la chaîne de traitement audio. Les trois plans se répondent.
+
+   pauses     : aucune | moderees | marquees — découpage après la ponctuation forte
+   segmenter  : découpe aussi aux virgules, pour une élocution détachée          */
+
+const ELOCUTIONS = {
+  narrateur:    {stab:.80, expr:.10, debit:0.95, preset:'podcast',   pauses:'marquees', segmenter:false,
+                 desc:"Débit régulier, peu de relief, respirations franches entre les phrases. Pour un texte long qu'on écoute sans se concentrer."},
+  enseignant:   {stab:.50, expr:.35, debit:1.10, preset:'radio',     pauses:'marquees', segmenter:true,
+                 desc:"Propositions détachées les unes des autres, ce qui appuie les débuts et fins de phrase. Rythme soutenu, articulation marquée."},
+  short:        {stab:.25, expr:.70, debit:1.30, preset:'annonce',   pauses:'aucune',   segmenter:true,
+                 desc:"Très rapide, très expressif, sans temps mort. Pour des formats courts où l'attention se perd en deux secondes."},
+  publicite:    {stab:.30, expr:.60, debit:1.15, preset:'annonce',   pauses:'moderees', segmenter:true,
+                 desc:"Énergique et percutant, voix très en avant par une compression forte. Pour une annonce de trente secondes."},
+  journal:      {stab:.80, expr:.15, debit:1.00, preset:'radio',     pauses:'moderees', segmenter:false,
+                 desc:"Neutre et crédible, débit constant, aucune emphase. Le style attendu pour une information factuelle."},
+  livre:        {stab:.65, expr:.35, debit:0.90, preset:'podcast',   pauses:'marquees', segmenter:false,
+                 desc:"Plus lent, chaleureux, avec de vraies respirations. Tient à l'écoute sur la durée sans fatiguer."},
+  documentaire: {stab:.75, expr:.25, debit:0.90, preset:'podcast',   pauses:'marquees', segmenter:false,
+                 desc:"Grave et posé, silences assumés. L'autorité vient de la lenteur, pas de l'insistance."},
+  accueil:      {stab:.85, expr:.10, debit:0.95, preset:'telephone', pauses:'marquees', segmenter:true,
+                 desc:"Très articulé, chaque information détachée, bande passante réduite comme au téléphone. Pour un message d'accueil ou un serveur vocal."},
+  conversation: {stab:.40, expr:.45, debit:1.05, preset:'podcast',   pauses:'moderees', segmenter:false,
+                 desc:"Naturel et familier, variations libres. Pour s'adresser à quelqu'un plutôt que de lui lire un texte."}
+};
+
+const DESC_PERSO = "Réglages libres. Choisissez un style pour tout ajuster d'un coup.";
+
+function appliquerElocution(){
+  const cle = $('elocution').value;
+  const e = ELOCUTIONS[cle];
+  $('descElocution').textContent = e ? e.desc : DESC_PERSO;
+
+  if(e){
+    $('stabilite').value = e.stab;
+    $('style').value     = e.expr;
+    $('debit').value     = e.debit;
+    majReglages();
+    $('preset').value = e.preset;
+    appliquerPreset();
+  }
+  majCompteur();
+  enregistrerElocution();
+}
+
+function enregistrerElocution(){
+  if(bd) bdEcrire('config', {cle:'elocution', valeur:$('elocution').value});
+}
+
+/* Met le texte en forme selon le style. Aucun mot n'est ajouté ni retiré :
+   seuls des retours à la ligne sont introduits, que le moteur interprète
+   comme des pauses. L'aperçu affiché permet de le vérifier. */
+function preparerTexte(brut, cle){
+  const e = ELOCUTIONS[cle];
+  let t = String(brut).replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
+  if(!e) return t;
+  if(e.segmenter)              t = t.replace(/,[ ]+/g, ',\n');
+  if(e.pauses === 'moderees')  t = t.replace(/([.!?…])[ ]+/g, '$1\n');
+  if(e.pauses === 'marquees')  t = t.replace(/([.!?…])[ ]+/g, '$1\n\n');
+  return t;
+}
+
+function majReglages(perso){
+  if(perso && $('elocution').value !== 'perso'){
+    $('elocution').value = 'perso';
+    $('descElocution').textContent = DESC_PERSO;
+    enregistrerElocution();
+  }
+  const f = n => n.toFixed(2).replace('.', ',');
+  $('vStab').textContent  = f(parseFloat($('stabilite').value));
+  $('vSim').textContent   = f(parseFloat($('similarite').value));
+  $('vStyle').textContent = f(parseFloat($('style').value));
+  $('vDebit').textContent = f(parseFloat($('debit').value)) + ' ×';
+  majCompteur();
+}
+
+/* ══════════════════════════════════════════════════════
+   TRAITEMENT AUDIO
+   ══════════════════════════════════════════════════════ */
+
+/* Chaînes toutes faites, dans l'esprit d'une console de diffusion. */
+const PRESETS = {
+  radio:     {passeHaut:90,  passeBas:12000, graves:2.5, mediums:2,   aigus:3.5, deess:-4, seuil:-22, ratio:5,  cible:-3, normaliser:true},
+  podcast:   {passeHaut:75,  passeBas:12000, graves:1,   mediums:1.5, aigus:2,   deess:-3, seuil:-18, ratio:3,  cible:-6, normaliser:true},
+  annonce:   {passeHaut:100, passeBas:12000, graves:4,   mediums:3,   aigus:4,   deess:-5, seuil:-30, ratio:9,  cible:-2, normaliser:true},
+  telephone: {passeHaut:300, passeBas:3400,  graves:-6,  mediums:6,   aigus:-6,  deess:-2, seuil:-20, ratio:6,  cible:-4, normaliser:true}
+};
+
+const CURSEURS_TRAITEMENT = ['passeHaut','passeBas','graves','mediums','aigus','deess','seuil','ratio','cible'];
+
+function traitementActif(){
+  const c = $('traitementActif');
+  return !!(c && c.checked);
+}
+
+function reglagesTraitement(){
+  const v = {};
+  CURSEURS_TRAITEMENT.forEach(id => v[id] = parseFloat($(id).value));
+  v.normaliser = $('normaliser').checked;
+  return v;
+}
+
+function appliquerPreset(){
+  const choix = $('preset').value;
+  if(choix === 'perso') return;
+
+  if(choix === 'aucun'){
+    $('traitementActif').checked = false;
+    majTraitement();
+    return;
+  }
+
+  const p = PRESETS[choix];
+  if(!p) return;
+  CURSEURS_TRAITEMENT.forEach(id => { if(id in p) $(id).value = p[id]; });
+  $('normaliser').checked = p.normaliser;
+  $('traitementActif').checked = true;
+  majTraitement();
+}
+
+/* perso : un curseur a été bougé à la main, le préréglage ne décrit plus l'état. */
+function majTraitement(perso){
+  if(perso && $('preset').value !== 'perso') $('preset').value = 'perso';
+  /* Le traitement fait partie du style : le retoucher rend le style caduc. */
+  if(perso && $('elocution') && $('elocution').value !== 'perso'){
+    $('elocution').value = 'perso';
+    $('descElocution').textContent = DESC_PERSO;
+    enregistrerElocution();
+  }
+
+  const r = reglagesTraitement();
+  const dec = (n, u) => n.toFixed(1).replace('.', ',') + ' ' + u;
+  $('vPasseHaut').textContent = Math.round(r.passeHaut) + ' Hz';
+  $('vPasseBas').textContent  = Math.round(r.passeBas) + ' Hz';
+  $('vGraves').textContent    = dec(r.graves, 'dB');
+  $('vMediums').textContent   = dec(r.mediums, 'dB');
+  $('vAigus').textContent     = dec(r.aigus, 'dB');
+  $('vDeess').textContent     = dec(r.deess, 'dB');
+  $('vSeuil').textContent     = Math.round(r.seuil) + ' dB';
+  $('vRatio').textContent     = r.ratio.toFixed(1).replace('.', ',') + ' : 1';
+  $('vCible').textContent     = dec(r.cible, 'dB');
+
+  /* Les curseurs restent visibles même inactifs : masquer ce qui existe le rend
+     introuvable. Ils sont seulement estompés tant que rien n'est appliqué. */
+  const actif = traitementActif();
+  $('reglagesTraitement').style.opacity = actif ? '1' : '.45';
+  $('rappelTraitement').style.display = actif ? 'none' : 'block';
+  if(bd) bdEcrire('config', {cle:'traitement', valeur:{actif: traitementActif(), preset: $('preset').value, ...r}});
+}
+
+/* ─── Nettoyage du signal ─── */
+
+function nettoyageActif(){
+  const c = $('nettoyageActif');
+  return !!(c && c.checked);
+}
+
+function majNettoyage(){
+  const actif = nettoyageActif();
+  $('vPorte').textContent = Math.round(parseFloat($('porte').value)) + ' dB';
+  $('reglagesNettoyage').style.opacity = actif ? '1' : '.45';
+  if(bd) bdEcrire('config', {cle:'nettoyage', valeur:{
+    actif, seuil: parseFloat($('porte').value), rogner: $('rogner').checked
+  }});
+}
+
+/* Porte de bruit : ramène au silence tout ce qui reste sous le seuil.
+
+   Le gain n'est jamais coupé net — une transition instantanée produirait un
+   claquement audible. Il s'ouvre en quelques millisecondes, se referme plus
+   lentement, et un temps de maintien évite qu'il ne papillonne sur les
+   syllabes tenues. */
+function porteDeBruit(donnees, frequence, seuilDb){
+  const seuil = Math.pow(10, seuilDb / 20);
+  const coefOuverture = Math.exp(-1 / (frequence * 0.003));   // 3 ms
+  const coefFermeture = Math.exp(-1 / (frequence * 0.025));   // 25 ms
+  const coefEnveloppe = Math.exp(-1 / (frequence * 0.020));   // suivi de niveau
+  const maintienMax = Math.round(frequence * 0.060);          // 60 ms
+
+  let enveloppe = 0, gain = 0, maintien = 0;
+  for(let i=0;i<donnees.length;i++){
+    const niveau = Math.abs(donnees[i]);
+    enveloppe = niveau > enveloppe ? niveau : niveau + (enveloppe - niveau) * coefEnveloppe;
+
+    let cible;
+    if(enveloppe > seuil){ maintien = maintienMax; cible = 1; }
+    else if(maintien > 0){ maintien--; cible = 1; }
+    else cible = 0;
+
+    const coef = (cible > gain) ? coefOuverture : coefFermeture;
+    gain = cible + (gain - cible) * coef;
+    /* Une décroissance exponentielle tend vers zéro sans jamais l'atteindre :
+       sans ce seuil, un résidu de souffle subsisterait indéfiniment. */
+    if(cible === 0 && gain < 0.002) gain = 0;
+    donnees[i] *= gain;
+  }
+}
+
+/* Retire le silence de tête et de queue, où le moteur laisse souvent une
+   traîne. Une petite marge est conservée pour ne pas amputer l'attaque du
+   premier mot ni la résonance du dernier. */
+function rognerSilences(donnees, frequence, seuilDb){
+  const seuil = Math.pow(10, (seuilDb - 6) / 20);
+  const marge = Math.round(frequence * 0.05);
+
+  let debut = 0, fin = donnees.length - 1;
+  while(debut < donnees.length && Math.abs(donnees[debut]) < seuil) debut++;
+  while(fin > debut && Math.abs(donnees[fin]) < seuil) fin--;
+  if(debut >= fin) return donnees;   // rien d'audible : on ne touche à rien
+
+  debut = Math.max(0, debut - marge);
+  fin = Math.min(donnees.length - 1, fin + marge);
+  return donnees.slice(debut, fin + 1);
+}
+
+/* Encode un signal en WAV mono non compressé, en 16 ou 24 bits. */
+function encoderWav(donnees, frequence, bits){
+  const resolution = (bits === 24) ? 24 : 16;
+  const octets = resolution / 8;
+  const n = donnees.length;
+  const tampon = new ArrayBuffer(44 + n * octets);
+  const vue = new DataView(tampon);
+  const texte = (pos, s) => { for(let i=0;i<s.length;i++) vue.setUint8(pos + i, s.charCodeAt(i)); };
+
+  texte(0, 'RIFF');  vue.setUint32(4, 36 + n * octets, true);  texte(8, 'WAVE');
+  texte(12, 'fmt '); vue.setUint32(16, 16, true);
+  vue.setUint16(20, 1, true);                    // PCM entier
+  vue.setUint16(22, 1, true);                    // mono
+  vue.setUint32(24, frequence, true);
+  vue.setUint32(28, frequence * octets, true);   // octets par seconde
+  vue.setUint16(32, octets, true);               // alignement de bloc
+  vue.setUint16(34, resolution, true);
+  texte(36, 'data'); vue.setUint32(40, n * octets, true);
+
+  let p = 44;
+  if(resolution === 16){
+    for(let i=0;i<n;i++){
+      const v = Math.max(-1, Math.min(1, donnees[i]));
+      vue.setInt16(p, v * 32767, true);
+      p += 2;
+    }
+  } else {
+    for(let i=0;i<n;i++){
+      const v = Math.max(-1, Math.min(1, donnees[i]));
+      const e = Math.round(v * 8388607);          // entier signé sur 24 bits
+      vue.setUint8(p,     e & 0xFF);
+      vue.setUint8(p + 1, (e >> 8) & 0xFF);
+      vue.setUint8(p + 2, (e >> 16) & 0xFF);
+      p += 3;
+    }
+  }
+  return new Blob([tampon], {type:'audio/wav'});
+}
+
+/* Décode sans rééchantillonner.
+
+   Un contexte audio ordinaire tourne à la fréquence de la carte son et convertit
+   d'office ce qu'on lui donne : décoder du 24 kHz sur une machine à 44,1 kHz le
+   rééchantillonnait donc à notre insu, avant même tout traitement. Un contexte
+   hors ligne créé à la fréquence du fichier restitue le signal intact. */
+async function decoderAudio(blob){
+  const HorsLigne = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+  const entete = await lireEnteteWav(blob);
+  /* Hors WAV, il s'agit du mp3 du service distant, demandé en 44 100 Hz. */
+  const frequence = entete ? entete.frequence : 44100;
+  const ctx = new HorsLigne(1, 1, frequence);
+  return await ctx.decodeAudioData(await blob.arrayBuffer());
+}
+
+/* Change la fréquence d'échantillonnage en confiant la conversion au moteur
+   audio du navigateur, dont le rééchantillonneur est de bonne facture. */
+async function reechantillonner(donnees, freqSource, freqCible){
+  if(!freqCible || freqCible === freqSource) return {donnees, frequence: freqSource};
+  const HorsLigne = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+  if(!HorsLigne) return {donnees, frequence: freqSource};
+
+  const longueur = Math.max(1, Math.ceil(donnees.length * freqCible / freqSource));
+  const off = new HorsLigne(1, longueur, freqCible);
+  const tampon = off.createBuffer(1, donnees.length, freqSource);
+  tampon.copyToChannel(donnees, 0);
+  const lecteur = off.createBufferSource();
+  lecteur.buffer = tampon;
+  lecteur.connect(off.destination);
+  lecteur.start();
+  const rendu = await off.startRendering();
+  return {donnees: rendu.getChannelData(0), frequence: freqCible};
+}
+
+/* Applique la chaîne de traitement au signal reçu. Le calcul est fait hors
+   temps réel : la durée du rendu ne dépend pas de la durée de l'audio. */
+async function appliquerTraitement(blob){
+  const HorsLigne = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+  if(!HorsLigne) return blob;
+
+  let source;
+  try{
+    source = await decoderAudio(blob);
+  }catch(e){
+    toast("Audio illisible pour le traitement : fichier laissé brut.", 'err');
+    return blob;
+  }
+
+  const r = reglagesTraitement();
+  const chaineActive = traitementActif();
+  const off = new HorsLigne(1, source.length, source.sampleRate);
+  const lecteur = off.createBufferSource();
+  lecteur.buffer = source;
+
+  const filtre = (type, freq, q, gain) => {
+    const f = off.createBiquadFilter();
+    f.type = type;
+    f.frequency.value = freq;
+    if(q !== null) f.Q.value = q;
+    if(gain !== null) f.gain.value = gain;
+    return f;
+  };
+
+  /* Sans chaîne active, le rendu se limite à récupérer le signal intact :
+     le nettoyage seul reste possible. */
+  const nyquist = source.sampleRate / 2 - 100;
+  const chaine = [];
+  if(chaineActive){
+    chaine.push(
+      filtre('highpass',  Math.min(r.passeHaut, nyquist), 0.7, null),
+      filtre('lowpass',   Math.min(r.passeBas, nyquist),  0.7, null),
+      filtre('lowshelf',  120,  null, r.graves),
+      filtre('peaking',   1800, 0.9,  r.mediums),
+      filtre('highshelf', 6000, null, r.aigus),
+      filtre('peaking',   7000, 3.5,  r.deess)
+    );
+    const compresseur = off.createDynamicsCompressor();
+    compresseur.threshold.value = r.seuil;
+    compresseur.ratio.value = r.ratio;
+    compresseur.knee.value = 6;
+    compresseur.attack.value = 0.003;
+    compresseur.release.value = 0.25;
+    chaine.push(compresseur);
+  }
+
+  let precedent = lecteur;
+  for(const noeud of chaine){ precedent.connect(noeud); precedent = noeud; }
+  precedent.connect(off.destination);
+  lecteur.start();
+
+  const rendu = await off.startRendering();
+  let donnees = rendu.getChannelData(0);
+
+  /* Le nettoyage vient après la chaîne : la compression ayant remonté le bruit
+     de fond, c'est à ce moment que la porte doit juger du niveau réel. */
+  if(nettoyageActif()){
+    const seuilPorte = parseFloat($('porte').value);
+    porteDeBruit(donnees, rendu.sampleRate, seuilPorte);
+    if($('rogner').checked) donnees = rognerSilences(donnees, rendu.sampleRate, seuilPorte);
+  }
+
+  if(chaineActive && r.normaliser){
+    let crete = 0;
+    for(let i=0;i<donnees.length;i++){
+      const v = Math.abs(donnees[i]);
+      if(v > crete) crete = v;
+    }
+    if(crete > 0.0001){
+      const facteur = Math.pow(10, r.cible / 20) / crete;
+      for(let i=0;i<donnees.length;i++) donnees[i] *= facteur;
+    }
+  }
+
+  const converti = await reechantillonner(donnees, rendu.sampleRate, frequenceExport());
+  return encoderWav(converti.donnees, converti.frequence, resolutionExport());
+}
+
+/* ─── Export ─── */
+
+function resolutionExport(){ return parseInt($('resolution').value, 10) || 16; }
+function frequenceExport(){ return parseInt($('frequenceExport').value, 10) || 0; }
+
+/* Une conversion est nécessaire dès qu'un réglage s'écarte du format natif. */
+function exportModifie(){
+  return frequenceExport() > 0 || resolutionExport() !== 16;
+}
+
+function enregistrerExport(){
+  if(bd) bdEcrire('config', {cle:'export', valeur:{
+    resolution: resolutionExport(), frequence: frequenceExport()
+  }});
+}
+
+/* Lit l'en-tête du fichier produit plutôt que de faire confiance aux réglages :
+   c'est le seul moyen d'annoncer le format réel. */
+async function lireEnteteWav(blob){
+  try{
+    const tete = new DataView(await blob.slice(0, 44).arrayBuffer());
+    const signature = String.fromCharCode(tete.getUint8(0), tete.getUint8(1), tete.getUint8(2), tete.getUint8(3));
+    if(signature !== 'RIFF') return null;
+    return {
+      frequence: tete.getUint32(24, true),
+      bits: tete.getUint16(34, true),
+      canaux: tete.getUint16(22, true)
+    };
+  }catch(e){ return null; }
+}
+
+async function majInfoFormat(blob){
+  const zone = $('infoFormat');
+  if(!zone) return;
+  const e = await lireEnteteWav(blob);
+  zone.textContent = e
+    ? 'Dernier fichier produit : ' + fmtNombre(e.frequence) + ' Hz · ' + e.bits + ' bits · '
+      + (e.canaux > 1 ? 'stéréo' : 'mono') + ' · sans compression'
+    : 'Dernier fichier produit : format compressé du service distant';
+}
+
+function majCompteur(){
+  const brut = $('texte').value;
+  const prepare = preparerTexte(brut, $('elocution').value);
+  const n = prepare.length;
+
+  const c = $('compteur');
+  c.textContent = fmtNombre(n) + (n > 1 ? ' caractères' : ' caractère') + ' sur 5 000';
+  c.classList.toggle('trop', n > 5000);
+
+  /* L'aperçu n'apparaît que si la préparation modifie réellement le texte. */
+  const different = brut.trim() && prepare !== brut.trim();
+  $('blocApercu').style.display = different ? 'block' : 'none';
+  if(different) $('apercuTexte').textContent = prepare;
+}
+
+function majVoixActive(){
+  const zone = $('voixActive');
+  if(etat.mode === 'demo'){
+    zone.innerHTML = '<div class="note n-amb" style="margin:0"><div class="note-t">Mode démonstration</div>' +
+      'La lecture utilise une voix générique du navigateur. Ce n\u2019est pas la voix enregistrée, ' +
+      'et l\u2019audio ne peut pas être téléchargé dans ce mode.</div>';
+    return;
+  }
+  if(!etat.voixId){
+    zone.innerHTML = '<div class="note n-red" style="margin:0"><div class="note-t">Aucune voix active</div>' +
+      (etat.typeVoix === 'catalogue'
+        ? 'Revenez à l\u2019étape 04 pour retenir une voix du catalogue.'
+        : 'Revenez à l\u2019étape 04 pour créer la voix ou en activer une existante.') + '</div>';
+    return;
+  }
+  zone.innerHTML =
+    '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
+      '<span class="badge b-vio">' + (etat.typeVoix === 'catalogue' ? 'Voix du catalogue' : 'Voix clonée') + '</span>' +
+      '<strong>'+echapper(etat.voixNom || 'Voix')+'</strong>' +
+      '<span class="item-meta">'+echapper(etat.voixId)+'</span>' +
+    '</div>';
+}
+
+async function synthetiser(){
+  const saisi = $('texte').value.trim();
+  /* Le texte transmis est celui préparé par le style, pas la saisie brute. */
+  const texte = preparerTexte(saisi, $('elocution').value);
+  if(!saisi){
+    $('texte').classList.add('req-err');
+    toast('Saisissez le texte à prononcer.', 'err');
+    return;
+  }
+  $('texte').classList.remove('req-err');
+  if(texte.length > 5000){ toast('Texte trop long : 5 000 caractères au maximum.', 'err'); return; }
+
+  if(etat.mode === 'demo'){ synthetiserDemo(texte); return; }
+
+  if(!etat.voixId){ toast("Aucune voix active. Créez-la à l'étape 04.", 'err'); return; }
+
+  const bouton = $('btnSynth');
+  occupe(bouton, true, 'Génération…');
+  $('resSynth').innerHTML = '';
+
+  try{
+    const corps = {
+      text: texte,
+      model_id: $('modele').value,
+      voice_settings:{
+        stability: parseFloat($('stabilite').value),
+        similarity_boost: parseFloat($('similarite').value),
+        style: parseFloat($('style').value),
+        use_speaker_boost: $('boost').checked,
+        speed: parseFloat($('debit').value)
+      }
+    };
+    const r = await fetch(baseApi() + '/text-to-speech/' + etat.voixId + '?output_format=mp3_44100_128', {
+      method:'POST', headers: entetes(true), body: JSON.stringify(corps)
+    });
+    if(!r.ok){
+      $('resSynth').innerHTML = '<div class="note n-red">' + echapper(await messageErreur(r)) + '</div>';
+      return;
+    }
+    const brut = await r.blob();
+    let blob = brut, traite = false;
+    if(traitementActif() || nettoyageActif() || exportModifie()){
+      occupe(bouton, true, 'Traitement…');
+      blob = await appliquerTraitement(brut);
+      traite = (blob !== brut);
+    }
+    await majInfoFormat(blob);
+
+    /* L'extension suit le format réellement produit : le service distant renvoie
+       du mp3, le serveur local et le traitement du wav. Le préfixe est conservé. */
+    const gen = {
+      id: ident(),
+      nom: 'voix-synthetique_' + slug(etat.voixNom || 'voix') + '_' + horodatage() +
+           '.' + extensionDe(blob.type || 'audio/mpeg'),
+      texte: saisi, blob, date: new Date().toISOString(), voix: etat.voixNom || etat.voixId,
+      traitement: traite && traitementActif() ? $('preset').value : null,
+      nettoyage: traite && nettoyageActif(),
+      elocution: $('elocution').value
+    };
+    etat.generations.unshift(gen);
+    await bdEcrire('generations', gen);
+
+    /* En cas de traitement, les deux versions sont proposées côte à côte :
+       c'est la seule façon de juger le réglage à l'oreille. */
+    const comparaison = traite
+      ? '<div style="margin-top:10px">' +
+          '<div class="item-meta" style="margin-bottom:4px">Sans traitement, pour comparer</div>' +
+          '<audio controls src="'+URL.createObjectURL(brut)+'"></audio>' +
+        '</div>'
+      : '';
+
+    $('resSynth').innerHTML =
+      '<div class="note n-grn"><div class="note-t">Audio généré</div>' +
+        '<div style="display:flex;gap:10px;align-items:center;margin-top:8px;flex-wrap:wrap">' +
+          '<audio controls src="'+URL.createObjectURL(blob)+'"></audio>' +
+          '<button class="btn btn-g btn-sm" onclick="telechargerGeneration(\''+gen.id+'\')">Télécharger</button>' +
+          (traite ? '<span class="badge b-vio">traité</span>' : '') +
+        '</div>' + comparaison +
+        '<div style="margin-top:8px;font-size:11.5px">Le nom du fichier porte la mention « voix-synthetique » : ne la retirez pas.</div>' +
+      '</div>';
+    toast('Audio généré.', 'ok');
+    memoriserCle();
+  }catch(e){
+    $('resSynth').innerHTML = '<div class="note n-red">' + echapper(messageReseau(e)) + '</div>';
+  }finally{
+    occupe(bouton, false);
+  }
+}
+
+function synthetiserDemo(texte){
+  if(!window.speechSynthesis){
+    toast('Ce navigateur ne propose pas de synthèse vocale intégrée.', 'err');
+    return;
+  }
+  window.speechSynthesis.cancel();
+  const mot = new SpeechSynthesisUtterance(texte);
+  const voix = window.speechSynthesis.getVoices();
+  const fr = voix.find(v=>v.lang && v.lang.toLowerCase().indexOf('fr') === 0);
+  if(fr) mot.voice = fr;
+  mot.lang = 'fr-FR';
+  mot.rate = 1;
+  window.speechSynthesis.speak(mot);
+  $('resSynth').innerHTML =
+    '<div class="note n-amb"><div class="note-t">Lecture de démonstration</div>' +
+    'Voix générique du navigateur' + (fr ? ' (' + echapper(fr.name) + ')' : '') + '. ' +
+    'Aucun fichier n\u2019est produit et ce n\u2019est pas la voix enregistrée.' +
+    '<div style="margin-top:8px"><button class="btn btn-g btn-sm" onclick="window.speechSynthesis.cancel()">Arrêter la lecture</button></div></div>';
+}
+
+/* ══════════════════════════════════════════════════════
+   PAGE 6 — BIBLIOTHÈQUE
+   ══════════════════════════════════════════════════════ */
+
+function afficherGenerations(){
+  const zone = $('listeGen');
+  if(!etat.generations.length){
+    zone.innerHTML = '<div class="vide">Aucun audio généré pour le moment.</div>';
+    return;
+  }
+  zone.innerHTML = etat.generations.map(g=>
+    '<div class="item">' +
+      '<div class="item-corps">' +
+        '<div class="item-nom">'+echapper(g.texte.slice(0,70) + (g.texte.length > 70 ? '…' : ''))+'</div>' +
+        '<div class="item-meta">'+new Date(g.date).toLocaleString('fr-FR')+' — '+echapper(g.voix)+
+          ' — '+fmtTaille(g.blob.size)+
+          (g.elocution && g.elocution !== 'perso' ? ' — style ' + echapper(g.elocution) : '')+
+          (g.traitement ? ' — traitement ' + echapper(g.traitement) : '')+'</div>' +
+      '</div>' +
+      '<audio controls preload="none" src="'+URL.createObjectURL(g.blob)+'"></audio>' +
+      '<div class="item-btns">' +
+        '<button class="btn btn-g btn-sm" onclick="telechargerGeneration(\''+g.id+'\')">Télécharger</button>' +
+        '<button class="btn btn-r btn-sm" onclick="supprimerGeneration(\''+g.id+'\')">Supprimer</button>' +
+      '</div>' +
+    '</div>').join('');
+}
+
+function telecharger(blob, nom){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = nom;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 4000);
+}
+
+function telechargerGeneration(id){
+  const g = etat.generations.find(x=>x.id === id);
+  if(!g) return;
+  telecharger(g.blob, g.nom);
+}
+
+async function supprimerGeneration(id){
+  etat.generations = etat.generations.filter(g=>g.id !== id);
+  await bdEffacerLigne('generations', id);
+  afficherGenerations();
+  toast('Audio supprimé.');
+}
+
+async function toutEffacer(){
+  if(!confirm("Effacer les échantillons, les audios générés et la trace du consentement stockés dans ce navigateur ? Cette action est définitive.")) return;
+  await bdViderMagasin('echantillons');
+  await bdViderMagasin('generations');
+  await bdViderMagasin('config');
+  try{ localStorage.removeItem('studio_voix_cle'); sessionStorage.removeItem('studio_voix_cle'); }catch(e){}
+
+  etat.echantillons = []; etat.generations = [];
+  etat.consentement = null; etat.origine = null;
+  etat.voixId = null; etat.voixNom = null;
+
+  afficherEchantillons(); afficherGenerations(); afficherTraceConsentement();
+  toast('Toutes les données locales ont été effacées.', 'ok');
+  setTimeout(()=>location.reload(), 900);
+}
+
+/* ══════════════════════════════════════════════════════
+   ÉTAT DE L'INTERFACE
+   ══════════════════════════════════════════════════════ */
+
+function majEtat(){
+  /* Navigation latérale */
+  PAGES.forEach((p,i)=>{
+    const el = $('nav'+i);
+    if(!el) return;
+    el.classList.toggle('active', i === etat.page);
+    el.classList.toggle('bloque', verrou(i) !== null && i !== etat.page);
+    el.classList.toggle('done', etapeFaite(i) && i !== etat.page);
+  });
+
+  /* Pastilles d'état */
+  const cons = !!etat.consentement;
+  $('dotCons').className = 'dot' + (cons ? ' ok' : ' att');
+  $('txtCons').textContent = cons
+    ? 'Consentement : ' + etat.consentement.nom
+    : 'Consentement requis';
+
+  const n = etat.echantillons.length, total = dureeCumulee();
+  $('dotEch').className = 'dot' + (total >= DUREE_MINI ? ' ok' : n ? ' att' : '');
+  $('txtEch').textContent = n ? n + ' échantillon(s) — ' + fmtDuree(total) : 'Aucun échantillon';
+
+  if(etat.mode === 'demo'){
+    $('dotVoix').className = 'dot att';
+    $('txtVoix').textContent = 'Mode démonstration';
+  } else {
+    $('dotVoix').className = 'dot' + (etat.voixId ? ' ok' : '');
+    $('txtVoix').textContent = etat.voixId
+      ? 'Voix : ' + (etat.voixNom || 'clonée')
+      : (etat.typeVoix === 'catalogue' ? 'Aucune voix retenue' : 'Aucune voix créée');
+  }
+
+  /* Nettoyage des marqueurs d'erreur dès que le champ est rempli */
+  ['consNom','consDate','consUsage','voixNom','cleApi','texte'].forEach(id=>{
+    const el = $(id);
+    if(el && el.value && el.value.trim()) el.classList.remove('req-err');
+  });
+  for(let i=1;i<=4;i++){
+    const c = $('cons'+i), b = $('chk'+i);
+    if(c && b && c.checked) b.classList.remove('req-err');
+  }
+}
+
+function etapeFaite(i){
+  switch(i){
+    case 0: return !!etat.consentement;
+    case 1: return etat.mode === 'demo' || !!etat.voixId;
+    case 2: return etat.generations.length > 0;
+    default: return false;
+  }
+}
+
+/* ══════════════════════════════════════════════════════
+   DÉMARRAGE
+   ══════════════════════════════════════════════════════ */
+
+async function demarrer(){
+  construireNav();
+  afficherEchantillons();
+  afficherGenerations();
+  majReglages();
+  majTraitement();
+  majNettoyage();
+  majCompteur();
+
+  try{
+    bd = await ouvrirBase();
+  }catch(e){
+    toast('Stockage local indisponible : rien ne sera conservé après fermeture.', 'err');
+  }
+
+  if(bd){
+    try{
+      const cons = await bdLire('config','consentement');
+      if(cons && cons.valeur){
+        etat.consentement = cons.valeur;
+        etat.origine = cons.valeur.origine;
+        choisirOrigine(cons.valeur.origine);
+        $('consNom').value   = cons.valeur.nom || '';
+        $('consDate').value  = cons.valeur.date || '';
+        $('consUsage').value = cons.valeur.usage || '';
+        for(let i=1;i<=4;i++) $('cons'+i).checked = true;
+      }
+
+      const voix = await bdLire('config','voix');
+      if(voix && voix.valeur){ etat.voixId = voix.valeur.id; etat.voixNom = voix.valeur.nom; }
+
+      const type = await bdLire('config','typeVoix');
+      if(type && type.valeur === 'catalogue') etat.typeVoix = 'catalogue';
+
+      const eloc = await bdLire('config','elocution');
+      if(eloc && eloc.valeur && $('elocution').querySelector('option[value="'+eloc.valeur+'"]')){
+        $('elocution').value = eloc.valeur;
+        const e = ELOCUTIONS[eloc.valeur];
+        $('descElocution').textContent = e ? e.desc : DESC_PERSO;
+      }
+
+      const exp = await bdLire('config','export');
+      if(exp && exp.valeur){
+        if(exp.valeur.resolution) $('resolution').value = String(exp.valeur.resolution);
+        $('frequenceExport').value = String(exp.valeur.frequence || 0);
+      }
+
+      const net = await bdLire('config','nettoyage');
+      if(net && net.valeur){
+        $('nettoyageActif').checked = !!net.valeur.actif;
+        if(typeof net.valeur.seuil === 'number') $('porte').value = net.valeur.seuil;
+        if(typeof net.valeur.rogner === 'boolean') $('rogner').checked = net.valeur.rogner;
+        majNettoyage();
+      }
+
+      const trait = await bdLire('config','traitement');
+      if(trait && trait.valeur){
+        const t = trait.valeur;
+        CURSEURS_TRAITEMENT.forEach(id => { if(typeof t[id] === 'number') $(id).value = t[id]; });
+        if(typeof t.normaliser === 'boolean') $('normaliser').checked = t.normaliser;
+        if(t.preset) $('preset').value = t.preset;
+        $('traitementActif').checked = !!t.actif;
+        majTraitement();
+      }
+
+      const fourn = await bdLire('config','fournisseur');
+      if(fourn && fourn.valeur){
+        if(fourn.valeur.url) $('urlLocale').value = fourn.valeur.url;
+        choisirFournisseur(fourn.valeur.nom === 'local' ? 'local' : 'distant');
+      }
+
+      etat.echantillons = await bdTout('echantillons');
+      etat.generations  = (await bdTout('generations')).sort((a,b)=>b.date.localeCompare(a.date));
+      afficherEchantillons();
+      afficherGenerations();
+      afficherTraceConsentement();
+    }catch(e){
+      toast('Données locales illisibles, elles ont été ignorées.', 'err');
+    }
+  }
+
+  /* Aligne l'affichage sur les choix retenus, qu'ils viennent des données
+     enregistrées ou des valeurs par défaut. */
+  /* Le fournisseur d'abord : le type « catalogue » impose ensuite le service
+     distant, et doit donc avoir le dernier mot. */
+  choisirFournisseur(etat.fournisseur);
+  choisirTypeVoix(etat.typeVoix);
+  majAffichageEtape4();
+  majAffichageAmelioration();
+  majConnexion();
+
+  /* Reprise de la clé mémorisée */
+  try{
+    const memo = localStorage.getItem('studio_voix_cle');
+    const session = sessionStorage.getItem('studio_voix_cle');
+    if(memo){ $('cleApi').value = memo; $('memoCle').checked = true; }
+    else if(session){ $('cleApi').value = session; }
+  }catch(e){}
+
+  /* Enumération des voix du navigateur pour le mode démonstration */
+  if(window.speechSynthesis && typeof window.speechSynthesis.getVoices === 'function'){
+    window.speechSynthesis.getVoices();
+    window.speechSynthesis.onvoiceschanged = ()=>{};
+  }
+
+  window.addEventListener('beforeunload', e=>{
+    if(enregistrement){ e.preventDefault(); e.returnValue = ''; }
+  });
+
+  majEtat();
+}
+
+document.addEventListener('DOMContentLoaded', demarrer);
+</script>
+</body>
+</html>
