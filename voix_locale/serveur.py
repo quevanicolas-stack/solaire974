@@ -17,6 +17,7 @@ Lancement :
 import argparse
 import json
 import math
+import os
 import shutil
 import struct
 import subprocess
@@ -363,6 +364,124 @@ MOTEURS = {"test": MoteurTest, "xtts": MoteurXTTS}
 
 
 # ══════════════════════════════════════════════════════════════
+#   MOTEURS DE CONVERSATION
+# ══════════════════════════════════════════════════════════════
+
+PERSONNALITE = (
+    "Tu es un assistant automatique qui répond à la place de Nicolas Queva. "
+    "Tu parles français. Tes réponses sont lues à voix haute par une synthèse vocale : "
+    "écris donc des phrases courtes, sans liste à puces, sans titre, sans code et sans "
+    "caractères décoratifs, en toutes lettres pour les nombres et les abréviations. "
+    "Trois phrases au maximum, sauf si l'on te demande explicitement un développement. "
+    "Si l'on te demande si tu es une personne réelle, réponds sans détour que tu es un "
+    "programme et que la voix est une voix de synthèse. "
+    "Si tu ne sais pas, dis-le et propose de transmettre la question."
+)
+
+
+class MoteurChat:
+    """Contrat commun à tous les moteurs de conversation."""
+
+    nom = "abstrait"
+    repond_reellement = False
+
+    def preparer(self) -> None:
+        """Vérifie que le moteur est utilisable, avant le premier échange."""
+
+    def repondre(self, echanges: list[dict], personnalite: str) -> str:
+        raise NotImplementedError
+
+
+class MoteurChatTest(MoteurChat):
+    """
+    Répond sans clé ni réseau, à partir du seul message reçu.
+
+    Sert à vérifier la chaîne complète — question, réponse écrite, lecture à
+    voix haute — sans consommer quoi que ce soit. Les réponses sont fabriquées :
+    elles ne proviennent d'aucun modèle de langage.
+    """
+
+    nom = "test"
+    repond_reellement = False
+
+    def repondre(self, echanges: list[dict], personnalite: str) -> str:
+        dernier = ""
+        for e in reversed(echanges):
+            if e.get("role") == "user":
+                dernier = str(e.get("content") or "").strip()
+                break
+        if not dernier:
+            return "Je vous écoute."
+
+        bas = dernier.lower()
+        if any(m in bas for m in ("bonjour", "salut", "bonsoir")):
+            return ("Bonjour. Je suis un assistant automatique et cette voix est une voix "
+                    "de synthèse. Que puis-je faire pour vous ?")
+        if "?" in dernier:
+            return (f"Vous demandez : {dernier.rstrip('?').strip()}. Le moteur de conversation "
+                    "réel n'est pas actif sur ce serveur, je ne peux donc pas y répondre. "
+                    "Relancez le serveur avec le moteur claude pour obtenir une vraie réponse.")
+        return (f"J'ai bien noté : {dernier}. Ceci est une réponse fabriquée par le moteur "
+                "de contrôle, elle ne vient d'aucun modèle de langage.")
+
+
+class MoteurChatClaude(MoteurChat):
+    """
+    Interroge le modèle chez Anthropic.
+
+    La clé est lue dans la variable d'environnement ANTHROPIC_API_KEY et ne
+    quitte jamais le serveur : contrairement à la clé du studio vocal, qui est
+    personnelle et reste dans le navigateur, celle-ci serait exposée à tout
+    visiteur si elle vivait dans la page.
+    """
+
+    nom = "claude"
+    repond_reellement = True
+    MODELE = "claude-opus-5"
+
+    def __init__(self, modele: str | None = None):
+        self.modele = modele or self.MODELE
+        self.client = None
+
+    def preparer(self) -> None:
+        if self.client is not None:
+            return
+        try:
+            import anthropic
+        except ImportError:
+            raise RuntimeError(
+                "Le paquet anthropic n'est pas installé. Lancez « pip install anthropic » "
+                "dans l'environnement du serveur, puis relancez-le."
+            )
+        cle = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+        if not cle:
+            raise RuntimeError(
+                "La variable d'environnement ANTHROPIC_API_KEY est vide. Renseignez-la avant "
+                "de lancer le serveur : export ANTHROPIC_API_KEY=\"votre-clé\"."
+            )
+        self.client = anthropic.Anthropic(api_key=cle)
+        print(f"[chat] moteur claude prêt, modèle {self.modele}", flush=True)
+
+    def repondre(self, echanges: list[dict], personnalite: str) -> str:
+        self.preparer()
+        reponse = self.client.messages.create(
+            model=self.modele,
+            max_tokens=2000,
+            system=personnalite,
+            thinking={"type": "adaptive"},
+            messages=[{"role": e["role"], "content": e["content"]} for e in echanges],
+        )
+        # La réflexion adaptative ajoute des blocs qui ne sont pas destinés à
+        # être lus : seul le texte est conservé.
+        morceaux = [b.text for b in reponse.content if getattr(b, "type", "") == "text"]
+        texte = "\n".join(m.strip() for m in morceaux if m and m.strip()).strip()
+        return texte or "Je n'ai pas de réponse à formuler."
+
+
+MOTEURS_CHAT = {"test": MoteurChatTest, "claude": MoteurChatClaude}
+
+
+# ══════════════════════════════════════════════════════════════
 #   RÉPERTOIRE DES VOIX
 # ══════════════════════════════════════════════════════════════
 
@@ -409,7 +528,39 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-etat = {"moteur": MoteurTest(), "caracteres": 0}
+etat = {
+    "moteur": MoteurTest(),
+    "caracteres": 0,
+    "chat": MoteurChatTest(),
+    "personnalite": PERSONNALITE,
+    "voix_chat": None,          # voix imposée à l'assistant, sinon la première trouvée
+    "echanges": 0,
+}
+
+# Garde-fous d'usage. Ils sont modestes tant que le service reste interne, mais
+# ils existent dès maintenant : le jour où la page est exposée publiquement, il
+# est trop tard pour les ajouter.
+LIMITES = {
+    "caracteres_par_message": 1000,
+    "messages_par_session": 30,       # sur la fenêtre ci-dessous
+    "fenetre_secondes": 3600,
+    "echanges_transmis": 20,          # historique renvoyé au modèle
+}
+
+_journal_usage: dict[str, list[float]] = {}
+
+
+def quota_restant(session: str) -> int:
+    """Décompte glissant des messages d'une session, sur la fenêtre configurée."""
+    maintenant = time.time()
+    passages = [t for t in _journal_usage.get(session, [])
+                if maintenant - t < LIMITES["fenetre_secondes"]]
+    _journal_usage[session] = passages
+    return max(0, LIMITES["messages_par_session"] - len(passages))
+
+
+def consommer_quota(session: str) -> None:
+    _journal_usage.setdefault(session, []).append(time.time())
 
 
 def erreur(code: int, message: str) -> JSONResponse:
@@ -556,9 +707,123 @@ async def synthese(voix_id: str, requete: Request):
     return Response(content=audio, media_type=mime)
 
 
+# ══════════════════════════════════════════════════════════════
+#   CONVERSATION
+# ══════════════════════════════════════════════════════════════
+
+ANNONCE = ("Assistant automatique. Les réponses sont produites par un programme "
+           "et lues par une voix de synthèse.")
+
+
+def voix_de_lassistant() -> dict | None:
+    """La voix imposée au lancement, sinon la première voix disponible."""
+    fiches = lister_fiches()
+    if not fiches:
+        return None
+    impose = etat["voix_chat"]
+    if impose:
+        for f in fiches:
+            if f["voice_id"] == impose or f["name"] == impose:
+                return f
+        return None
+    return fiches[0]
+
+
+@app.get("/v1/chat/config")
+def configuration_chat():
+    """
+    Tout ce dont le composant embarqué a besoin pour démarrer.
+
+    Aucune clé n'y figure : les identifiants du modèle restent sur le serveur.
+    """
+    chat = etat["chat"]
+    voix = voix_de_lassistant()
+    return {
+        "moteur": chat.nom,
+        "repond_reellement": chat.repond_reellement,
+        "annonce": ANNONCE,
+        "voix": ({"voice_id": voix["voice_id"], "name": voix["name"]} if voix else None),
+        "synthese": etat["moteur"].nom,
+        "clone_reellement": etat["moteur"].clone_reellement,
+        "limites": {
+            "caracteres_par_message": LIMITES["caracteres_par_message"],
+            "messages_par_session": LIMITES["messages_par_session"],
+            "fenetre_secondes": LIMITES["fenetre_secondes"],
+        },
+    }
+
+
+@app.post("/v1/chat")
+async def conversation(requete: Request):
+    try:
+        corps = await requete.json()
+    except Exception:
+        return erreur(422, "Requête illisible.")
+
+    echanges = corps.get("messages")
+    if not isinstance(echanges, list) or not echanges:
+        return erreur(422, "Aucun message reçu.")
+
+    propres = []
+    for e in echanges:
+        if not isinstance(e, dict):
+            continue
+        role = e.get("role")
+        contenu = str(e.get("content") or "").strip()
+        if role in ("user", "assistant") and contenu:
+            propres.append({"role": role, "content": contenu})
+    if not propres or propres[-1]["role"] != "user":
+        return erreur(422, "Le dernier message doit venir de l'utilisateur.")
+    if len(propres[-1]["content"]) > LIMITES["caracteres_par_message"]:
+        return erreur(422, f"Message trop long : {LIMITES['caracteres_par_message']} "
+                           "caractères au maximum.")
+
+    # L'historique est borné : au-delà, les tours les plus anciens sont oubliés.
+    propres = propres[-LIMITES["echanges_transmis"]:]
+    if propres[0]["role"] != "user":
+        propres = propres[1:]
+
+    session = str(corps.get("session") or "")[:64] or (requete.client.host if requete.client else "anonyme")
+    if quota_restant(session) <= 0:
+        return erreur(429, "Limite d'échanges atteinte pour cette session. Réessayez plus tard.")
+
+    # La personnalité vient du serveur et jamais de la page : sans cela, un
+    # visiteur pourrait réécrire les consignes de l'assistant depuis sa console.
+    debut = time.time()
+    try:
+        reponse = etat["chat"].repondre(propres, etat["personnalite"])
+    except RuntimeError as e:
+        return erreur(500, str(e))
+    except Exception as e:
+        return erreur(500, f"Conversation impossible : {e}")
+
+    consommer_quota(session)
+    etat["echanges"] += 1
+    print(f"[chat] réponse en {time.time() - debut:.1f} s "
+          f"({len(reponse)} caractères, moteur {etat['chat'].nom})", flush=True)
+
+    voix = voix_de_lassistant()
+    return {
+        "reply": reponse,
+        "moteur": etat["chat"].nom,
+        "repond_reellement": etat["chat"].repond_reellement,
+        "voice_id": voix["voice_id"] if voix else None,
+        "restant": quota_restant(session),
+        "annonce": ANNONCE,
+    }
+
+
 def page_application() -> Path | None:
     """Localise clonage_voix.html, à côté du serveur ou dans le dossier parent."""
     for candidat in (RACINE.parent / "clonage_voix.html", RACINE / "clonage_voix.html"):
+        if candidat.exists():
+            return candidat
+    return None
+
+
+def page_chatbot() -> Path | None:
+    """Localise chatbot_voix.html, à côté du serveur ou dans le dossier parent."""
+    for candidat in (RACINE.parent / "chatbot_voix.html", RACINE / "chatbot_voix.html"):
         if candidat.exists():
             return candidat
     return None
@@ -580,6 +845,16 @@ def application():
     return FileResponse(page, media_type="text/html; charset=utf-8")
 
 
+@app.get("/chat")
+def chatbot():
+    """Sert le composant conversationnel, sur la même origine que le service."""
+    page = page_chatbot()
+    if not page:
+        return erreur(404, "chatbot_voix.html est introuvable. Placez-le dans le dossier "
+                           "parent de voix_locale.")
+    return FileResponse(page, media_type="text/html; charset=utf-8")
+
+
 @app.get("/")
 def accueil():
     moteur = etat["moteur"]
@@ -587,9 +862,11 @@ def accueil():
         "service": "Serveur vocal local — Studio Voix",
         "moteur": moteur.nom,
         "clone_reellement": moteur.clone_reellement,
+        "chat": etat["chat"].nom,
         "voix": len(lister_fiches()),
         "ffmpeg": ffmpeg_disponible(),
         "application": "/app" if page_application() else None,
+        "assistant": "/chat" if page_chatbot() else None,
     }
 
 
@@ -606,16 +883,35 @@ def principal():
     analyseur.add_argument("--hote", default="127.0.0.1",
                            help="127.0.0.1 limite l'accès à cette machine.")
     analyseur.add_argument("--peripherique", default="auto", choices=["auto", "cpu", "cuda", "mps"])
+    analyseur.add_argument("--chat", default="test", choices=sorted(MOTEURS_CHAT),
+                           help="test : réponses fabriquées, aucune clé. "
+                                "claude : réponses du modèle, clé dans ANTHROPIC_API_KEY.")
+    analyseur.add_argument("--personnalite", default=None,
+                           help="Fichier texte décrivant l'assistant. À défaut, la "
+                                "personnalité par défaut est utilisée.")
+    analyseur.add_argument("--voix-assistant", default=None,
+                           help="Nom ou identifiant de la voix que prend l'assistant. "
+                                "À défaut, la première voix enregistrée.")
     args = analyseur.parse_args()
 
     fabrique = MOTEURS[args.moteur]
     etat["moteur"] = fabrique(args.peripherique) if fabrique is MoteurXTTS else fabrique()
+    etat["chat"] = MOTEURS_CHAT[args.chat]()
+    etat["voix_chat"] = args.voix_assistant
+    if args.personnalite:
+        fichier = Path(args.personnalite)
+        if not fichier.exists():
+            print(f"  Erreur : personnalité introuvable ({fichier}).\n", file=sys.stderr)
+            sys.exit(1)
+        etat["personnalite"] = fichier.read_text(encoding="utf-8").strip()
     DOSSIER_VOIX.mkdir(parents=True, exist_ok=True)
 
     print()
     print("  Serveur vocal local — Studio Voix")
     print(f"  Moteur      : {args.moteur}", end="")
     print("" if etat["moteur"].clone_reellement else "   (signal de contrôle, ne clone pas)")
+    print(f"  Conversation: {args.chat}", end="")
+    print("" if etat["chat"].repond_reellement else "   (réponses fabriquées)")
     print(f"  Adresse     : http://{args.hote}:{args.port}")
     print(f"  Voix        : {len(lister_fiches())} enregistrée(s)")
     binaire = chemin_ffmpeg()
@@ -627,11 +923,20 @@ def principal():
         print()
     if page_application():
         print(f"  Ouvrez l'application ici : http://{args.hote}:{args.port}/app")
+        if page_chatbot():
+            print(f"  Assistant conversationnel : http://{args.hote}:{args.port}/chat")
         print(f"  Aucun autre serveur n'est nécessaire.")
     else:
         print(f"  clonage_voix.html est introuvable : servez-le de votre côté, puis")
         print(f"  à l'étape 03 choisissez « Serveur local » sur http://{args.hote}:{args.port}")
     print()
+
+    if args.chat == "claude":
+        try:
+            etat["chat"].preparer()
+        except RuntimeError as e:
+            print(f"  Erreur : {e}\n", file=sys.stderr)
+            sys.exit(1)
 
     if args.moteur == "xtts":
         try:
