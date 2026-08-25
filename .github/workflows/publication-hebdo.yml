@@ -1,0 +1,41 @@
+name: Planning de publication
+
+on:
+  schedule:
+    # Tous les lundis à 04h00 UTC, soit 08h00 à La Réunion (UTC+4).
+    - cron: '0 4 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  planning:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Régénérer les publications
+        run: node outils/build.mjs
+
+      - name: Contrôler l'absence de duplication
+        run: node outils/build.mjs --verifier
+
+      - name: Ouvrir l'issue de la semaine
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node outils/build.mjs --planning > corps.md
+          semaine=$(date -u +'%G-S%V')
+          gh issue create \
+            --title "Publication — semaine $semaine" \
+            --body-file corps.md \
+            --label publication || \
+          gh issue create \
+            --title "Publication — semaine $semaine" \
+            --body-file corps.md
