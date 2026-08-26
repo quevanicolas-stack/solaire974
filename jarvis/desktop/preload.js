@@ -12,5 +12,7 @@ contextBridge.exposeInMainWorld('jarvisBureau', {
   appliquerReacteur: (reglages) => ipcRenderer.send('jarvis:reacteur', reglages),
   // Le raccourci global et la pastille demandent l'ouverture du micro.
   surBasculerEcoute: (rappel) => ipcRenderer.on('jarvis:basculerEcoute', () => rappel()),
+  // Demande l'affichage de la fenetre restee masquee au demarrage de la session.
+  montrerFenetre: () => ipcRenderer.send('jarvis:montrer'),
   estApplication: true
 });

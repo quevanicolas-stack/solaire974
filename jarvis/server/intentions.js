@@ -39,10 +39,45 @@ function normaliser(texte) {
   return normaliserAvecCarte(texte).texte;
 }
 
-const OUI = ['oui', 'ouais', 'confirme', 'je confirme', 'vas y', 'va y', 'valide', 'd accord',
-  'daccord', 'ok', 'okay', 'c est bon', 'exact', 'affirmatif', 'fais le', 'lance', 'yes'];
-const NON = ['non', 'annule', 'annuler', 'laisse tomber', 'stop', 'arrete', 'negatif',
-  'surtout pas', 'oublie', 'oublie ca', 'pas maintenant'];
+// Reponses a une demande de confirmation. La correspondance est exacte sur la phrase
+// entiere : un simple prefixe ferait passer « lance Spotify » pour un « oui » et
+// « arrete la musique » pour un « non ».
+const OUI = [
+  'oui', 'ouais', 'ouai', 'oui oui', 'si',
+  'confirme', 'je confirme', 'oui confirme', 'ok confirme',
+  'vas y', 'va y', 'allez y', 'oui vas y', 'ok vas y', 'd accord vas y',
+  'valide', 'je valide', 'oui valide',
+  'd accord', 'daccord', 'oui d accord',
+  'ok', 'okay', 'oui ok', 'ok merci',
+  'c est bon', 'c est ca', 'c est parti',
+  'exact', 'exactement', 'affirmatif', 'bien sur', 'tout a fait',
+  'fais le', 'fais ca', 'oui fais le', 'yes'
+];
+
+const NON = [
+  'non', 'nan', 'non non', 'non merci',
+  'annule', 'annuler', 'j annule', 'non annule',
+  'laisse tomber', 'non laisse tomber', 'laisse',
+  'stop', 'arrete', 'arrete tout',
+  'negatif', 'surtout pas', 'pas du tout',
+  'oublie', 'oublie ca', 'non oublie',
+  'pas maintenant', 'plus tard', 'une autre fois'
+];
+
+// Formules de politesse et interpellations qui entourent une reponse sans en changer
+// le sens : on les retire avant de comparer.
+const ENROBAGE = /^(jarvis|dis|alors|bon|eh bien|euh)\s+|\s+(s il te plait|s il vous plait|stp|svp|merci|jarvis|maintenant|tout de suite|alors)$/g;
+
+function estReponse(texte, liste) {
+  let nu = String(texte);
+  // Plusieurs formules peuvent s'empiler : « jarvis oui s il te plait ».
+  let precedent;
+  do {
+    precedent = nu;
+    nu = nu.replace(ENROBAGE, '').trim();
+  } while (nu !== precedent);
+  return liste.indexOf(nu) !== -1;
+}
 
 // Sites courants reconnus par leur nom parle.
 const SITES = {
@@ -145,10 +180,6 @@ function brutGroupe(contexteNorme, correspondance, indiceGroupe) {
   return contexteNorme.source.slice(depart, arrivee + 1).trim().replace(/[.,;!?]+$/, '');
 }
 
-function contient(texte, liste) {
-  return liste.some((mot) => texte === mot || texte.startsWith(mot + ' ') || texte.endsWith(' ' + mot) || texte.includes(' ' + mot + ' '));
-}
-
 function nettoyerCible(reste) {
   return String(reste || '')
     .replace(/^(l |la |le |les |mon |ma |mes |un |une |du |de la |de |d )+/i, '')
@@ -228,8 +259,8 @@ function analyser(texteBrut, contexte) {
   if (!t) return { intention: 'vide', sur: true };
 
   // --- Reponses courtes a une demande de confirmation ---------------------
-  if (contient(t, OUI)) return { intention: 'confirmer', sur: true };
-  if (contient(t, NON)) return { intention: 'refuser', sur: true };
+  if (estReponse(t, OUI)) return { intention: 'confirmer', sur: true };
+  if (estReponse(t, NON)) return { intention: 'refuser', sur: true };
 
   // --- Politesse et fin de session ---------------------------------------
   if (/^(merci|merci beaucoup|c est parfait|parfait)\b/.test(t)) {
@@ -406,6 +437,7 @@ module.exports = {
   normaliser,
   normaliserAvecCarte,
   analyserDuree,
+  estReponse,
   trouverApplication,
   trouverSite,
   APPLICATIONS,

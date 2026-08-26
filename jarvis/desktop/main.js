@@ -22,10 +22,15 @@ function adresseLocale() {
 }
 
 // --- Fenetre principale ---------------------------------------------------
-function creerFenetrePrincipale() {
+// "discrete" cree la fenetre sans l'afficher : au demarrage de la session, JARVIS
+// salue et attend une reponse sans interrompre ce que vous faisiez.
+function creerFenetrePrincipale(options) {
+  const discrete = !!(options && options.discrete);
   if (fenetrePrincipale) {
-    fenetrePrincipale.show();
-    fenetrePrincipale.focus();
+    if (!discrete) {
+      fenetrePrincipale.show();
+      fenetrePrincipale.focus();
+    }
     return fenetrePrincipale;
   }
 
@@ -49,7 +54,9 @@ function creerFenetrePrincipale() {
 
   fenetrePrincipale.loadURL(adresseLocale() + '/index.html');
 
-  fenetrePrincipale.once('ready-to-show', () => fenetrePrincipale.show());
+  fenetrePrincipale.once('ready-to-show', () => {
+    if (!discrete) fenetrePrincipale.show();
+  });
 
   // Fermer la fenetre ne quitte pas l'application : JARVIS reste en arriere-plan.
   fenetrePrincipale.on('close', (evenement) => {
@@ -186,7 +193,16 @@ function demanderEcoute() {
   fenetre.webContents.send('jarvis:basculerEcoute');
 }
 
+// Un clic sur la pastille ouvre le micro sans forcement montrer la fenetre.
+function demanderEcouteDiscrete() {
+  const fenetre = creerFenetrePrincipale({ discrete: true });
+  fenetre.webContents.send('jarvis:basculerEcoute');
+}
+
 function brancherIpc() {
+    // La fenetre masquee demande a etre montree lorsque l'utilisateur repond.
+  ipcMain.on('jarvis:montrer', () => creerFenetrePrincipale());
+
   // La fenetre principale relaie l'etat de la voix a la pastille.
   ipcMain.on('jarvis:etat', (evenement, etat) => {
     if (fenetrePastille) fenetrePastille.webContents.send('pastille:etat', etat);
@@ -202,7 +218,7 @@ function brancherIpc() {
   });
 
   // Gestes sur la pastille.
-  ipcMain.on('pastille:basculerEcoute', () => demanderEcoute());
+  ipcMain.on('pastille:basculerEcoute', () => demanderEcouteDiscrete());
   ipcMain.on('pastille:ouvrir', () => creerFenetrePrincipale());
   ipcMain.on('pastille:menu', () => {
     if (zoneNotification) zoneNotification.popUpContextMenu();
@@ -219,7 +235,10 @@ if (!app.requestSingleInstanceLock()) {
   app.whenReady().then(() => {
     serveur.demarrer();
     brancherIpc();
-    creerFenetrePrincipale();
+    // Lance par le systeme a l'ouverture de session : on ne montre pas la fenetre,
+    // seule la pastille apparait et JARVIS prend la parole.
+    const auDemarrage = app.getLoginItemSettings().wasOpenedAtLogin;
+    creerFenetrePrincipale({ discrete: auDemarrage });
     creerPastille();
     creerZoneNotification();
 

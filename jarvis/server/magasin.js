@@ -3,7 +3,6 @@
 // memoire longue. Un seul fichier JSON dans ~/.jarvis, ecrit de maniere atomique.
 
 const fs = require('fs');
-const path = require('path');
 const config = require('./config');
 
 const VIDE = {

@@ -120,6 +120,11 @@
   async function envoyer(texte) {
     const contenu = String(texte || '').trim();
     if (!contenu) return;
+    // Si la fenetre etait restee masquee au demarrage de la session, la premiere
+    // reponse de l'utilisateur la fait apparaitre.
+    if (window.jarvisBureau && window.jarvisBureau.montrerFenetre) {
+      window.jarvisBureau.montrerFenetre();
+    }
     ajouterEchange({ utilisateur: contenu, date: Date.now() });
     $('#phrase-provisoire').textContent = '';
     etatReacteur('reflexion');

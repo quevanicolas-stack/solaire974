@@ -6,7 +6,6 @@ const http = require('http');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const crypto = require('crypto');
 
 const config = require('./config');
 const magasin = require('./magasin');

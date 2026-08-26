@@ -89,7 +89,12 @@ ok('WebSocket connecte (etat "En ligne")', true);
 // Salutation automatique
 await page.waitForFunction(() => document.querySelectorAll('#liste-echanges .bulle.jarvis').length > 0, null, { timeout: 6000 });
 const salutation = await page.textContent('#liste-echanges .bulle.jarvis');
-ok('salutation prononcee : "' + salutation.slice(0, 60) + '..."', /travaill|fait|programme|commence|mission|besoin|prepare|ecoute|attelle|occupe|allez/i.test(salutation));
+// La salutation est tiree au hasard : on verifie sa forme, pas son libelle exact.
+// Elle interpelle l'utilisateur par son nom puis enchaine sur une question.
+const salutationValide = salutation.includes('Monsieur')
+  && salutation.trim().split(/[.?!]\s+/).length >= 2
+  && /[.?!]$/.test(salutation.trim());
+ok('salutation prononcee : "' + salutation.slice(0, 58) + '..."', salutationValide);
 
 // Commande ecrite
 await page.fill('#champ-commande', 'quelle heure est-il');
