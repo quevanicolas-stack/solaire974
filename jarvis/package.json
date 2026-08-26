@@ -1,0 +1,34 @@
+{
+  "name": "jarvis",
+  "version": "1.0.0",
+  "description": "Assistant vocal personnel JARVIS — noyau serveur, application macOS et clients mobile/tablette synchronises par compte",
+  "private": true,
+  "main": "desktop/main.js",
+  "type": "commonjs",
+  "scripts": {
+    "serveur": "node server/index.js",
+    "start": "electron .",
+    "empaqueter": "electron-builder --mac --publish never"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "fr.ecologreen.jarvis",
+    "productName": "JARVIS",
+    "files": ["desktop/**/*", "server/**/*", "ui/**/*", "package.json"],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": ["dmg", "zip"],
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "JARVIS utilise le microphone pour comprendre vos commandes vocales.",
+        "NSSpeechRecognitionUsageDescription": "JARVIS transcrit votre voix pour executer vos demandes.",
+        "LSUIElement": false
+      }
+    }
+  }
+}
