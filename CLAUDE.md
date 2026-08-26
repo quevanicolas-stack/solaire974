@@ -27,3 +27,41 @@ Fichier unique : `solaire974_3_4_5.html` (2,6 Mo, ~2100 lignes de code applicati
 - Branche : `main`. Messages de commit en français, atomiques.
 - Avant tout commit : ouvrir le fichier dans un navigateur et vérifier les 6 pages + la génération du devis.
 - Commit avant chaque série de modifications importantes (point de restauration).
+
+---
+
+# jarvis/ — Assistant vocal JARVIS
+
+Sous-projet indépendant du calculateur solaire. Aucune interaction avec
+`solaire974_3_4_5.html` : les règles ci-dessus ne s'y appliquent pas, sauf celles de
+langue (tout en français, pas d'emojis dans l'interface).
+
+## Contexte
+Assistant personnel vocal : salutation aléatoire à l'ouverture de session, exécution
+d'actions système après validation orale, pastille « réacteur arc » toujours visible.
+Un compte unique partagé entre le Mac, le téléphone et la tablette.
+
+## Architecture
+- `server/` — noyau Node.js **sans aucune dépendance externe** (WebSocket implémenté
+  à la main). Doit pouvoir démarrer hors ligne, sans `npm install`.
+- `ui/` — interface unique servie à tous les appareils (vanilla JS, PWA).
+- `desktop/` — coque Electron macOS (seul endroit où une dépendance est admise).
+
+## Règles verrouillées
+- Aucune dépendance externe dans `server/` et `ui/`.
+- L'exécution système passe toujours par `execFile` avec arguments séparés ; jamais
+  d'interpolation dans un shell, sauf l'intention `shell`, désactivée par défaut.
+- Les actions sensibles exigent une validation orale : ne pas retirer ce garde-fou.
+- Reconnaissance oui/non par correspondance **exacte** sur la phrase entière : un
+  préfixe ferait passer « lance Spotify » pour un « oui ». Régression déjà survenue.
+- L'analyse conserve le texte brut (accents, majuscules, chemins) via la carte
+  d'indices de `normaliserAvecCarte`.
+- Aucun envoi de données à un service tiers : la transcription reste locale.
+
+## Vérifications avant commit
+```sh
+node jarvis/server/test-intentions.js          # 44 cas d'analyse
+node jarvis/server/test-integration.js         # API, comptes, appairage, WebSocket
+node jarvis/verification/verifier-interface.mjs # parcours complet au navigateur
+python3 jarvis/verification/verifier-qr.py     # encodeur QR contre une référence
+```
