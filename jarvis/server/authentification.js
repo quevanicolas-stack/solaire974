@@ -92,6 +92,22 @@ function lireJeton(jeton) {
   return charge;
 }
 
+// Deux appareils du meme type portent le meme nom : on numerote pour que la liste
+// des appareils reste lisible et qu'une revocation vise le bon.
+function nomUnique(compteId, souhaite) {
+  const d = magasin.charger();
+  const base = String(souhaite || 'Appareil').trim() || 'Appareil';
+  const pris = new Set(Object.values(d.appareils)
+    .filter((a) => a.compteId === compteId)
+    .map((a) => a.nom));
+  if (!pris.has(base)) return base;
+  for (let i = 2; i < 100; i++) {
+    const candidat = base + ' ' + i;
+    if (!pris.has(candidat)) return candidat;
+  }
+  return base + ' ' + Date.now();
+}
+
 function enregistrerAppareil(compteId, nom, plateforme) {
   const d = magasin.charger();
   const jeton = signerJeton({
@@ -102,7 +118,7 @@ function enregistrerAppareil(compteId, nom, plateforme) {
   d.appareils[jeton] = {
     jeton,
     compteId,
-    nom: nom || 'Appareil',
+    nom: nomUnique(compteId, nom),
     plateforme: plateforme || 'inconnue',
     cree: Date.now(),
     dernierAcces: Date.now()
@@ -195,6 +211,7 @@ module.exports = {
   signerJeton,
   lireJeton,
   enregistrerAppareil,
+  nomUnique,
   compteDepuisJeton,
   listerAppareils,
   revoquerAppareil,

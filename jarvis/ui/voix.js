@@ -130,9 +130,14 @@
 
         enonce.onend = terminer;
         enonce.onerror = (evenement) => {
+          const code = evenement && evenement.error;
           // "interrupted" et "canceled" surviennent quand on coupe volontairement.
-          if (evenement && evenement.error && !/interrupted|canceled/.test(evenement.error)) {
-            this.surErreur('Synthese vocale : ' + evenement.error);
+          // Les autres pannes tiennent a l'appareil (aucune voix installee) : les
+          // repeter a chaque phrase n'apporte rien, on ne signale que la premiere.
+          if (code && !/interrupted|canceled/.test(code) && !this._erreurSyntheseSignalee) {
+            this._erreurSyntheseSignalee = true;
+            this.surErreur('Synthese vocale indisponible sur cet appareil (' + code
+              + '). Les reponses restent affichees a l\'ecran.');
           }
           terminer();
         };

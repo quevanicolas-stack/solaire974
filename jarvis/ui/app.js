@@ -76,6 +76,8 @@
     }
     const horodatage = document.createElement('span');
     horodatage.className = 'horodatage';
+    // Un message venu de l'utilisateur seul est aligne a droite, comme sa bulle.
+    if (echange.utilisateur && !echange.jarvis) horodatage.classList.add('droite');
     horodatage.textContent = heureCourte(echange.date);
     element.appendChild(horodatage);
 
@@ -251,7 +253,8 @@
 
   function remplirListeVoix() {
     const selection = $('#reglage-voix');
-    if (!selection || !voix) return;
+    // L'evenement "voiceschanged" peut survenir avant que les reglages soient charges.
+    if (!selection || !voix || !reglages) return;
     const disponibles = voix.listerVoix();
     selection.textContent = '';
     const auto = document.createElement('option');

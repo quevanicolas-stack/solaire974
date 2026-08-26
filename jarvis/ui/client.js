@@ -73,9 +73,12 @@
       const noms = {
         ios: 'iPhone', ipados: 'iPad', android: 'Telephone Android',
         'macos-application': 'Mac (application)', macos: 'Mac (navigateur)',
-        windows: 'PC Windows', inconnue: 'Appareil'
+        windows: 'PC Windows'
       };
-      return noms[p] || 'Appareil';
+      if (noms[p]) return noms[p];
+      // Plateforme non reconnue : on se rabat sur ce que le navigateur veut bien dire.
+      const systeme = (global.navigator && (navigator.platform || navigator.vendor)) || '';
+      return systeme ? 'Appareil ' + systeme : 'Appareil';
     }
 
     definirServeur(adresse) {
