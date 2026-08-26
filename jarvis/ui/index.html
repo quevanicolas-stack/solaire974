@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#020a14">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="JARVIS">
+<title>JARVIS</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icones/reacteur-apple-180.png">
+<link rel="icon" href="icones/reacteur-64.png" type="image/png">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ------------------------------------------------------------------ -->
+<!-- Ecran de connexion                                                  -->
+<!-- ------------------------------------------------------------------ -->
+<section id="ecran-connexion" class="ecran ecran-centre">
+  <div class="bloc-connexion">
+    <canvas id="reacteur-connexion" class="reacteur-connexion" aria-hidden="true"></canvas>
+    <h1 class="titre-marque">JARVIS</h1>
+    <p class="sous-titre">Assistant personnel. Un compte, tous vos appareils.</p>
+
+    <div class="onglets" role="tablist">
+      <button class="onglet actif" data-onglet="connexion" role="tab">Se connecter</button>
+      <button class="onglet" data-onglet="creation" role="tab">Creer un compte</button>
+      <button class="onglet" data-onglet="appairage" role="tab">Code d'appairage</button>
+    </div>
+
+    <form id="formulaire-connexion" class="panneau-onglet actif" data-panneau="connexion">
+      <label>Adresse de courriel
+        <input type="email" name="courriel" autocomplete="username" required>
+      </label>
+      <label>Mot de passe
+        <input type="password" name="motDePasse" autocomplete="current-password" required>
+      </label>
+      <button type="submit" class="bouton-principal">Se connecter</button>
+    </form>
+
+    <form id="formulaire-creation" class="panneau-onglet" data-panneau="creation">
+      <label>Adresse de courriel
+        <input type="email" name="courriel" autocomplete="username" required>
+      </label>
+      <label>Mot de passe
+        <input type="password" name="motDePasse" autocomplete="new-password" minlength="8" required>
+        <span class="aide">Huit caracteres au minimum.</span>
+      </label>
+      <button type="submit" class="bouton-principal">Creer le compte</button>
+    </form>
+
+    <form id="formulaire-appairage" class="panneau-onglet" data-panneau="appairage">
+      <p class="aide">
+        Sur le Mac, ouvrez les reglages de JARVIS puis Appairage. Saisissez ici le code
+        a six chiffres affiche a l'ecran.
+      </p>
+      <label>Adresse du serveur
+        <input type="url" name="serveur" inputmode="url" placeholder="http://192.168.1.20:4790">
+        <span class="aide">A renseigner uniquement si cette page n'est pas servie par le Mac.</span>
+      </label>
+      <label>Code a six chiffres
+        <input type="text" name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6"
+               autocomplete="one-time-code" required>
+      </label>
+      <button type="submit" class="bouton-principal">Rejoindre le compte</button>
+    </form>
+
+    <p id="message-connexion" class="message" role="alert" aria-live="polite"></p>
+  </div>
+</section>
+
+<!-- ------------------------------------------------------------------ -->
+<!-- Ecran principal                                                     -->
+<!-- ------------------------------------------------------------------ -->
+<section id="ecran-principal" class="ecran masque">
+
+  <header class="barre-haute">
+    <div class="identite">
+      <canvas id="reacteur-barre" class="reacteur-barre" aria-hidden="true"></canvas>
+      <div class="identite-texte">
+        <span class="nom-marque">JARVIS</span>
+        <span id="etat-liaison" class="etat-liaison">Connexion en cours</span>
+      </div>
+    </div>
+    <div class="actions-haute">
+      <button id="bouton-reveil" class="bouton-discret" type="button" title="Faire parler JARVIS">
+        Saluer
+      </button>
+      <button id="bouton-reglages" class="bouton-discret" type="button" aria-haspopup="dialog">
+        Reglages
+      </button>
+    </div>
+  </header>
+
+  <main class="scene">
+    <div class="zone-reacteur">
+      <canvas id="reacteur-principal" class="reacteur-principal"
+              aria-label="Reacteur JARVIS" role="img"></canvas>
+      <button id="bouton-micro" class="bouton-micro" type="button" aria-pressed="false">
+        <span id="libelle-micro">Parler</span>
+      </button>
+    </div>
+
+    <p id="phrase-active" class="phrase-active" aria-live="polite"></p>
+    <p id="phrase-provisoire" class="phrase-provisoire"></p>
+  </main>
+
+  <section class="conversation" aria-label="Conversation">
+    <ol id="liste-echanges" class="liste-echanges"></ol>
+  </section>
+
+  <form id="formulaire-commande" class="barre-commande">
+    <input id="champ-commande" type="text" autocomplete="off"
+           placeholder="Ecrire une commande" aria-label="Commande a envoyer">
+    <button type="submit" class="bouton-principal compact">Envoyer</button>
+  </form>
+</section>
+
+<!-- ------------------------------------------------------------------ -->
+<!-- Panneau des reglages                                                -->
+<!-- ------------------------------------------------------------------ -->
+<aside id="panneau-reglages" class="panneau-lateral masque" role="dialog"
+       aria-modal="true" aria-labelledby="titre-reglages">
+  <header class="entete-panneau">
+    <h2 id="titre-reglages">Reglages</h2>
+    <button id="fermer-reglages" class="bouton-discret" type="button">Fermer</button>
+  </header>
+
+  <div class="corps-panneau">
+
+    <fieldset>
+      <legend>Identite</legend>
+      <label>Comment JARVIS vous appelle
+        <input type="text" id="reglage-nom" maxlength="40">
+      </label>
+      <p class="aide">Compte : <span id="courriel-compte"></span></p>
+    </fieldset>
+
+    <fieldset>
+      <legend>Voix</legend>
+      <label>Voix du systeme
+        <select id="reglage-voix"></select>
+      </label>
+      <label>Debit <output id="valeur-debit"></output>
+        <input type="range" id="reglage-debit" min="0.6" max="1.6" step="0.05">
+      </label>
+      <label>Hauteur <output id="valeur-hauteur"></output>
+        <input type="range" id="reglage-hauteur" min="0.5" max="1.5" step="0.05">
+      </label>
+      <label>Volume <output id="valeur-volume"></output>
+        <input type="range" id="reglage-volume" min="0" max="1" step="0.05">
+      </label>
+      <button type="button" id="bouton-essai-voix" class="bouton-secondaire">Essayer la voix</button>
+    </fieldset>
+
+    <fieldset>
+      <legend>Accueil</legend>
+      <label class="interrupteur">
+        <input type="checkbox" id="reglage-accueil-actif">
+        <span>Parler des l'ouverture de la session</span>
+      </label>
+      <label>Ne pas resaluer avant
+        <input type="number" id="reglage-silence" min="0" max="1440" step="5"> minutes
+      </label>
+    </fieldset>
+
+    <fieldset>
+      <legend>Ecoute</legend>
+      <label class="interrupteur">
+        <input type="checkbox" id="reglage-veille">
+        <span>Ecoute continue du mot de reveil</span>
+      </label>
+      <label>Mot de reveil
+        <input type="text" id="reglage-mot-reveil" maxlength="24">
+      </label>
+      <p class="aide" id="etat-reconnaissance"></p>
+    </fieldset>
+
+    <fieldset>
+      <legend>Execution</legend>
+      <label class="interrupteur">
+        <input type="checkbox" id="reglage-validation">
+        <span>Demander une validation orale avant les actions sensibles</span>
+      </label>
+      <label class="interrupteur">
+        <input type="checkbox" id="reglage-validation-sures">
+        <span>Demander aussi pour les actions sans risque</span>
+      </label>
+      <label class="interrupteur avertissement">
+        <input type="checkbox" id="reglage-shell">
+        <span>Autoriser l'execution de commandes dictees</span>
+      </label>
+      <p class="aide avertissement-texte">
+        Une commande dictee s'execute avec vos droits d'utilisateur. Une phrase mal
+        comprise peut donc modifier ou supprimer des fichiers. A n'activer qu'en
+        connaissance de cause ; la validation orale reste toujours exigee.
+      </p>
+    </fieldset>
+
+    <fieldset>
+      <legend>Reacteur</legend>
+      <label>Position en surimpression
+        <select id="reglage-position">
+          <option value="gauche">Haut a gauche</option>
+          <option value="centre">Haut au centre</option>
+          <option value="droite">Haut a droite</option>
+        </select>
+      </label>
+      <label>Diametre <output id="valeur-taille"></output>
+        <input type="range" id="reglage-taille" min="56" max="180" step="4">
+      </label>
+      <label>Opacite au repos <output id="valeur-opacite"></output>
+        <input type="range" id="reglage-opacite" min="0.15" max="1" step="0.05">
+      </label>
+    </fieldset>
+
+    <fieldset>
+      <legend>Raccourcis vocaux</legend>
+      <ul id="liste-raccourcis" class="liste-raccourcis"></ul>
+      <div class="grille-raccourci">
+        <input type="text" id="raccourci-nom" placeholder="Nom" aria-label="Nom du raccourci">
+        <input type="text" id="raccourci-phrases" placeholder="Phrases, separees par une virgule"
+               aria-label="Phrases declenchantes">
+        <select id="raccourci-type" aria-label="Type d'action">
+          <option value="application">Application</option>
+          <option value="site">Site web</option>
+          <option value="dossier">Dossier</option>
+          <option value="fichier">Fichier</option>
+          <option value="recherche">Recherche</option>
+          <option value="shell">Commande</option>
+        </select>
+        <input type="text" id="raccourci-cible" placeholder="Cible" aria-label="Cible de l'action">
+        <button type="button" id="ajouter-raccourci" class="bouton-secondaire">Ajouter</button>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Appareils</legend>
+      <ul id="liste-appareils" class="liste-appareils"></ul>
+      <button type="button" id="bouton-appairer" class="bouton-secondaire">
+        Ajouter un telephone ou une tablette
+      </button>
+      <div id="bloc-appairage" class="bloc-appairage masque">
+        <canvas id="qr-appairage" class="qr-appairage" aria-label="Code QR d'appairage" role="img"></canvas>
+        <p class="code-appairage" id="code-appairage"></p>
+        <p class="aide" id="adresse-appairage"></p>
+        <p class="aide">Scannez le code, ou ouvrez l'adresse puis saisissez les six chiffres.
+          Le code expire au bout de cinq minutes.</p>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Donnees</legend>
+      <button type="button" id="bouton-vider" class="bouton-secondaire">Effacer la conversation</button>
+      <button type="button" id="bouton-deconnexion" class="bouton-secondaire danger">
+        Deconnecter cet appareil
+      </button>
+    </fieldset>
+
+    <p id="message-reglages" class="message" role="status" aria-live="polite"></p>
+  </div>
+</aside>
+
+<div id="voile" class="voile masque"></div>
+
+<script src="reacteur.js"></script>
+<script src="qr.js"></script>
+<script src="voix.js"></script>
+<script src="client.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>JARVIS</title>
+<style>
+  /* Fenetre en surimpression : entierement transparente hors du reacteur. */
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    background: transparent;
+    overflow: hidden;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  #pastille {
+    width: 100%;
+    height: 100%;
+    display: block;
+    cursor: pointer;
+    /* La fenetre entiere est deplacable, sauf le reacteur qui reste cliquable. */
+    -webkit-app-region: no-drag;
+  }
+
+  /* Infobulle discrete au survol, pour rappeler les gestes disponibles. */
+  #aide {
+    position: absolute;
+    left: 50%;
+    bottom: 2px;
+    transform: translateX(-50%);
+    padding: 2px 8px;
+    font: 10px -apple-system, BlinkMacSystemFont, sans-serif;
+    color: #bae6fd;
+    background: rgba(2, 10, 20, 0.85);
+    border-radius: 6px;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.2s;
+    pointer-events: none;
+  }
+
+  body:hover #aide { opacity: 1; }
+</style>
+</head>
+<body>
+<canvas id="pastille" aria-label="Reacteur JARVIS" role="img"></canvas>
+<div id="aide">Clic : parler — Double clic : ouvrir</div>
+
+<script src="reacteur.js"></script>
+<script>
+'use strict';
+// Pastille toujours visible : elle refletent l'etat de JARVIS et sert de bouton.
+// Elle ne parle pas et n'ecoute pas elle-meme : elle recoit l'etat et l'amplitude
+// de la fenetre principale par le pont expose dans le preload.
+(function () {
+  const canvas = document.getElementById('pastille');
+  const reacteur = new Reacteur(canvas, { compact: true });
+  reacteur.demarrer();
+
+  const pont = window.jarvisPastille;
+
+  if (pont) {
+    pont.surEtat((etat) => reacteur.definirEtat(etat));
+    pont.surNiveau((valeur) => reacteur.definirNiveau(valeur));
+    pont.surOpacite((valeur) => { reacteur.opaciteRepos = valeur; });
+
+    canvas.addEventListener('click', () => pont.basculerEcoute());
+    canvas.addEventListener('dblclick', () => pont.ouvrirFenetre());
+    // Clic droit : menu de la fenetre principale.
+    canvas.addEventListener('contextmenu', (evenement) => {
+      evenement.preventDefault();
+      pont.menu();
+    });
+  }
+
+  window.addEventListener('resize', () => reacteur.redimensionner());
+})();
+</script>
+</body>
+</html>

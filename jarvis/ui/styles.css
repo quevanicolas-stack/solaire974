@@ -1,0 +1,561 @@
+/* JARVIS — interface commune au Mac, au telephone et a la tablette.
+   Theme sombre, bleu de reacteur, bascule mobile a 860 px. */
+
+:root {
+  --fond: #020a14;
+  --fond-releve: #06121f;
+  --fond-carte: rgba(12, 32, 52, 0.62);
+  --bordure: rgba(56, 189, 248, 0.18);
+  --bordure-vive: rgba(56, 189, 248, 0.45);
+  --texte: #dbeafe;
+  --texte-attenue: #7f9cb8;
+  --bleu: #38bdf8;
+  --bleu-clair: #bae6fd;
+  --bleu-sombre: #0c4a6e;
+  --alerte: #fb7185;
+  --succes: #4ade80;
+  --rayon: 14px;
+  --ombre-bleue: 0 0 24px rgba(56, 189, 248, 0.22);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--fond);
+  color: var(--texte);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
+}
+
+/* Lueur diffuse en fond, comme un reacteur derriere l'ecran. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% -10%, rgba(56, 189, 248, 0.16), transparent 55%),
+    radial-gradient(circle at 10% 110%, rgba(30, 64, 175, 0.14), transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.ecran {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  max-height: 100%;
+}
+
+.ecran-centre {
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.masque { display: none !important; }
+
+/* --- Ecran de connexion ------------------------------------------------- */
+.bloc-connexion {
+  width: 100%;
+  max-width: 420px;
+  padding: 28px 26px 24px;
+  background: var(--fond-carte);
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon);
+  box-shadow: var(--ombre-bleue);
+  backdrop-filter: blur(12px);
+  text-align: center;
+}
+
+.reacteur-connexion {
+  width: 116px;
+  height: 116px;
+  margin: 0 auto 6px;
+  display: block;
+}
+
+.titre-marque {
+  margin: 0;
+  font-size: 30px;
+  letter-spacing: 0.32em;
+  font-weight: 300;
+  color: var(--bleu-clair);
+  text-shadow: 0 0 18px rgba(56, 189, 248, 0.5);
+}
+
+.sous-titre {
+  margin: 6px 0 20px;
+  color: var(--texte-attenue);
+  font-size: 14px;
+}
+
+.onglets {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 18px;
+  padding: 4px;
+  background: rgba(2, 10, 20, 0.6);
+  border: 1px solid var(--bordure);
+  border-radius: 10px;
+}
+
+.onglet {
+  flex: 1;
+  padding: 8px 4px;
+  font-size: 13px;
+  color: var(--texte-attenue);
+  background: none;
+  border: none;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s;
+}
+
+.onglet:hover { color: var(--bleu-clair); }
+
+.onglet.actif {
+  background: rgba(56, 189, 248, 0.16);
+  color: var(--bleu-clair);
+}
+
+.panneau-onglet { display: none; text-align: left; }
+.panneau-onglet.actif { display: block; }
+
+label {
+  display: block;
+  margin-bottom: 14px;
+  font-size: 13px;
+  color: var(--texte-attenue);
+}
+
+input[type="text"], input[type="email"], input[type="password"],
+input[type="url"], input[type="number"], select {
+  width: 100%;
+  margin-top: 5px;
+  padding: 10px 12px;
+  font-size: 15px;
+  font-family: inherit;
+  color: var(--texte);
+  background: rgba(2, 12, 24, 0.85);
+  border: 1px solid var(--bordure);
+  border-radius: 9px;
+  outline: none;
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: var(--bordure-vive);
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.14);
+}
+
+input[type="range"] {
+  width: 100%;
+  margin-top: 8px;
+  accent-color: var(--bleu);
+}
+
+.aide {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--texte-attenue);
+}
+
+.bouton-principal {
+  width: 100%;
+  padding: 12px;
+  font-size: 15px;
+  font-family: inherit;
+  font-weight: 500;
+  color: #041018;
+  background: linear-gradient(180deg, var(--bleu-clair), var(--bleu));
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: filter 0.18s, transform 0.08s;
+}
+
+.bouton-principal:hover { filter: brightness(1.08); }
+.bouton-principal:active { transform: translateY(1px); }
+.bouton-principal.compact { width: auto; padding: 11px 20px; }
+
+.bouton-secondaire {
+  padding: 9px 14px;
+  margin: 4px 6px 4px 0;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--bleu-clair);
+  background: rgba(56, 189, 248, 0.1);
+  border: 1px solid var(--bordure);
+  border-radius: 9px;
+  cursor: pointer;
+  transition: background 0.18s;
+}
+
+.bouton-secondaire:hover { background: rgba(56, 189, 248, 0.2); }
+.bouton-secondaire.danger { color: var(--alerte); border-color: rgba(251, 113, 133, 0.35); }
+.bouton-secondaire.danger:hover { background: rgba(251, 113, 133, 0.15); }
+
+.bouton-discret {
+  padding: 7px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--texte-attenue);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: color 0.18s, border-color 0.18s;
+}
+
+.bouton-discret:hover { color: var(--bleu-clair); border-color: var(--bordure); }
+
+.message {
+  min-height: 20px;
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: var(--alerte);
+  text-align: center;
+}
+
+.message.succes { color: var(--succes); }
+
+/* --- Barre haute -------------------------------------------------------- */
+.barre-haute {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  padding-top: max(10px, env(safe-area-inset-top));
+  border-bottom: 1px solid var(--bordure);
+  background: rgba(2, 10, 20, 0.72);
+  backdrop-filter: blur(10px);
+}
+
+.identite { display: flex; align-items: center; gap: 10px; }
+.reacteur-barre { width: 34px; height: 34px; display: block; }
+.identite-texte { display: flex; flex-direction: column; line-height: 1.25; }
+
+.nom-marque {
+  font-size: 14px;
+  letter-spacing: 0.24em;
+  color: var(--bleu-clair);
+}
+
+.etat-liaison { font-size: 11px; color: var(--texte-attenue); }
+.etat-liaison.connecte { color: var(--succes); }
+.etat-liaison.perdu { color: var(--alerte); }
+
+.actions-haute { display: flex; gap: 4px; }
+
+/* --- Scene centrale ----------------------------------------------------- */
+.scene {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 22px 20px 8px;
+}
+
+.zone-reacteur { position: relative; display: flex; flex-direction: column; align-items: center; }
+
+.reacteur-principal {
+  width: 210px;
+  height: 210px;
+  display: block;
+  cursor: pointer;
+}
+
+.bouton-micro {
+  margin-top: 14px;
+  padding: 10px 26px;
+  font-size: 14px;
+  font-family: inherit;
+  letter-spacing: 0.06em;
+  color: var(--bleu-clair);
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid var(--bordure-vive);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.bouton-micro[aria-pressed="true"] {
+  color: #041018;
+  background: linear-gradient(180deg, var(--bleu-clair), var(--bleu));
+  border-color: transparent;
+}
+
+.phrase-active {
+  max-width: 640px;
+  margin: 18px 0 0;
+  min-height: 1.5em;
+  font-size: 17px;
+  text-align: center;
+  color: var(--bleu-clair);
+}
+
+.phrase-provisoire {
+  max-width: 640px;
+  margin: 4px 0 0;
+  min-height: 1.2em;
+  font-size: 14px;
+  font-style: italic;
+  text-align: center;
+  color: var(--texte-attenue);
+}
+
+/* --- Conversation ------------------------------------------------------- */
+.conversation {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 8px 16px 4px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.liste-echanges {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.echange { display: flex; flex-direction: column; gap: 4px; }
+
+.bulle {
+  max-width: 82%;
+  padding: 9px 13px;
+  font-size: 14px;
+  border-radius: 14px;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+}
+
+.bulle.utilisateur {
+  align-self: flex-end;
+  color: #041018;
+  background: linear-gradient(180deg, var(--bleu-clair), var(--bleu));
+  border-bottom-right-radius: 5px;
+}
+
+.bulle.jarvis {
+  align-self: flex-start;
+  background: var(--fond-carte);
+  border: 1px solid var(--bordure);
+  border-bottom-left-radius: 5px;
+}
+
+.bulle.jarvis.echec { border-color: rgba(251, 113, 133, 0.4); }
+.bulle.jarvis.attente { border-color: rgba(250, 204, 21, 0.45); }
+
+.horodatage {
+  align-self: flex-start;
+  font-size: 10px;
+  color: var(--texte-attenue);
+  letter-spacing: 0.04em;
+}
+
+.echange .horodatage.droite { align-self: flex-end; }
+
+/* --- Barre de commande -------------------------------------------------- */
+.barre-commande {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px;
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--bordure);
+  background: rgba(2, 10, 20, 0.78);
+  backdrop-filter: blur(10px);
+}
+
+.barre-commande input { margin-top: 0; }
+
+/* --- Panneau des reglages ----------------------------------------------- */
+.panneau-lateral {
+  position: fixed;
+  top: 0;
+  right: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  width: min(460px, 100%);
+  height: 100%;
+  background: var(--fond-releve);
+  border-left: 1px solid var(--bordure);
+  box-shadow: -20px 0 50px rgba(0, 0, 0, 0.5);
+}
+
+.entete-panneau {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  padding-top: max(14px, env(safe-area-inset-top));
+  border-bottom: 1px solid var(--bordure);
+}
+
+.entete-panneau h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  color: var(--bleu-clair);
+}
+
+.corps-panneau {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 18px max(28px, env(safe-area-inset-bottom));
+  -webkit-overflow-scrolling: touch;
+}
+
+fieldset {
+  margin: 0 0 18px;
+  padding: 14px 14px 6px;
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon);
+  background: rgba(2, 12, 24, 0.4);
+}
+
+legend {
+  padding: 0 8px;
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--bleu);
+}
+
+.interrupteur {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin-bottom: 12px;
+  color: var(--texte);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.interrupteur input[type="checkbox"] {
+  flex: 0 0 auto;
+  width: 17px;
+  height: 17px;
+  margin-top: 2px;
+  accent-color: var(--bleu);
+}
+
+.interrupteur.avertissement span { color: #fbbf24; }
+
+.avertissement-texte {
+  padding: 9px 11px;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  border-radius: 9px;
+  background: rgba(251, 191, 36, 0.07);
+  color: #fcd34d;
+}
+
+output { float: right; font-size: 12px; color: var(--bleu-clair); }
+
+.liste-raccourcis, .liste-appareils {
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ligne-liste {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 11px;
+  font-size: 13px;
+  background: rgba(2, 12, 24, 0.7);
+  border: 1px solid var(--bordure);
+  border-radius: 9px;
+}
+
+.ligne-liste .detail { color: var(--texte-attenue); font-size: 12px; }
+
+.bouton-retirer {
+  flex: 0 0 auto;
+  padding: 4px 9px;
+  font-size: 12px;
+  font-family: inherit;
+  color: var(--alerte);
+  background: none;
+  border: 1px solid rgba(251, 113, 133, 0.3);
+  border-radius: 7px;
+  cursor: pointer;
+}
+
+.grille-raccourci { display: grid; gap: 8px; }
+.grille-raccourci input, .grille-raccourci select { margin-top: 0; }
+
+.bloc-appairage { margin-top: 12px; text-align: center; }
+
+.qr-appairage {
+  display: block;
+  margin: 0 auto 10px;
+  padding: 8px;
+  background: #fff;
+  border-radius: 10px;
+}
+
+.code-appairage {
+  margin: 0 0 4px;
+  font-size: 28px;
+  letter-spacing: 0.34em;
+  color: var(--bleu-clair);
+  font-variant-numeric: tabular-nums;
+}
+
+.voile {
+  position: fixed;
+  inset: 0;
+  z-index: 15;
+  background: rgba(1, 6, 12, 0.62);
+  backdrop-filter: blur(2px);
+}
+
+/* --- Bascule mobile ----------------------------------------------------- */
+@media (max-width: 860px) {
+  .reacteur-principal { width: 168px; height: 168px; }
+  .scene { padding: 16px 16px 6px; }
+  .phrase-active { font-size: 16px; }
+  .bulle { max-width: 88%; }
+  .panneau-lateral { width: 100%; border-left: none; }
+  .actions-haute .bouton-discret { padding: 7px 9px; }
+}
+
+@media (max-width: 420px) {
+  .reacteur-principal { width: 142px; height: 142px; }
+  .titre-marque { font-size: 26px; }
+  .onglet { font-size: 12px; }
+}
+
+/* Ecrans bas : la conversation garde la priorite sur le reacteur. */
+@media (max-height: 620px) {
+  .reacteur-principal { width: 118px; height: 118px; }
+  .scene { padding: 10px 16px 4px; }
+  .phrase-active { margin-top: 10px; font-size: 15px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition-duration: 0.01ms !important; }
+}
