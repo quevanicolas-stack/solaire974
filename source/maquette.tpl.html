@@ -1,0 +1,1636 @@
+<meta charset="utf-8">
+<title>Fluent &amp; Forward — Business English Accelerator</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,700;1,400&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ==================================================================
+   Fluent & Forward — Business English Accelerator
+   Direction artistique reprise de la landing page : crème, encre,
+   vert, or, sable. Textes d'Aurélie repris tels quels.
+   Visuels présentés dans des encadrés à fond flou.
+   ================================================================== */
+:root{
+  --cream:#FAF7F2; --ink:#2C1810; --green:#1B6B4A; --deep:#10382A;
+  --gold:#C9A96E; --gold-fonce:#a9863f; --sand:#EFE7DA; --sable:#E8DDD0;
+  --rouge:#A8452F; --ambre:#B77A2B; --vert-clair:#2f8a62;
+  --muted:rgba(44,24,16,.62); --line:rgba(44,24,16,.12);
+  --titre:'Plus Jakarta Sans',system-ui,sans-serif; --texte:'DM Sans',system-ui,sans-serif;
+  --largeur:1080px; --rayon:16px;
+  --hbande:40px; --hbarre:66px; --chrome:calc(var(--hbande) + var(--hbarre));
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:var(--texte);font-size:17px;line-height:1.66;color:var(--ink);background:var(--cream);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3{font-family:var(--titre);font-weight:800;line-height:1.12;letter-spacing:-.02em;text-wrap:balance}
+h1{font-size:clamp(2rem,4.8vw,3.5rem)} h2{font-size:clamp(1.6rem,3vw,2.3rem)} h3{font-size:1.12rem;font-weight:700}
+p{margin-bottom:1.05em}p:last-child{margin-bottom:0}
+a{color:var(--green);text-decoration:none}a:hover{color:var(--deep)}
+img{max-width:100%;height:auto;display:block}
+strong{font-weight:700}
+
+/* ---------- Bande + entête ---------- */
+.bande{position:fixed;top:0;left:0;right:0;z-index:80;height:var(--hbande);display:flex;align-items:center;justify-content:center;background:var(--deep);transition:transform .3s ease}
+.bande a{font-family:var(--titre);font-weight:700;font-size:.8rem;letter-spacing:.08em;text-transform:uppercase;color:var(--gold);padding:4px 16px}
+.bande a:hover{color:#e6cd9c}
+.bande.cachee{transform:translateY(-100%)}
+.entete{position:fixed;top:var(--hbande);left:0;right:0;z-index:70;height:var(--hbarre);background:rgba(250,247,242,.9);backdrop-filter:blur(9px);border-bottom:1px solid var(--line);transition:top .3s ease}
+.bande.cachee + .entete{top:0}
+.barre{max-width:var(--largeur);margin:0 auto;height:100%;padding:0 24px;display:flex;align-items:center;gap:16px}
+.marque{font-family:var(--titre);font-weight:800;font-size:1.06rem;color:var(--green);margin-right:auto}
+.bouton-menu{display:flex;flex-direction:column;justify-content:center;gap:5px;width:44px;height:44px;padding:11px;background:transparent;border:1px solid var(--line);border-radius:11px;cursor:pointer}
+.bouton-menu span{display:block;height:2px;background:var(--ink);border-radius:2px}
+
+/* ---------- Menu latéral (glisse depuis la droite) ---------- */
+.voile{position:fixed;inset:0;z-index:90;background:rgba(16,56,42,.42);backdrop-filter:blur(2px);opacity:0;visibility:hidden;transition:opacity .3s ease,visibility .3s ease}
+.voile.ouvert{opacity:1;visibility:visible}
+.panneau{position:fixed;top:0;right:0;bottom:0;z-index:91;width:min(340px,84vw);background:var(--cream);box-shadow:-24px 0 60px rgba(16,56,42,.22);transform:translateX(100%);transition:transform .34s cubic-bezier(.22,1,.36,1);display:flex;flex-direction:column;padding:26px 24px}
+.panneau.ouvert{transform:none}
+.panneau-haut{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}
+.panneau-haut .marque{margin:0}
+.fermer{width:40px;height:40px;border:1px solid var(--line);border-radius:10px;background:transparent;cursor:pointer;font-size:1.3rem;color:var(--ink);line-height:1}
+.panneau nav{display:flex;flex-direction:column;gap:2px}
+.panneau nav a{font-family:var(--titre);font-weight:700;font-size:1.14rem;color:var(--ink);padding:13px 12px;border-radius:10px}
+.panneau nav a:hover{background:var(--sable);color:var(--green)}
+.panneau .bouton{margin-top:20px}
+
+/* ---------- Boutons ---------- */
+.bouton{display:inline-flex;align-items:center;justify-content:center;gap:9px;font-family:var(--titre);font-weight:700;font-size:1rem;padding:15px 30px;border:2px solid transparent;border-radius:12px;cursor:pointer;text-align:center;transition:transform .18s ease,background .18s ease,box-shadow .18s ease}
+.bouton:hover{transform:translateY(-2px);text-decoration:none}
+.bouton-vert{background:var(--green);color:#fff}.bouton-vert:hover{background:var(--deep);color:#fff}
+.bouton-or{background:var(--gold);color:#231a0e;box-shadow:0 10px 24px rgba(201,169,110,.34)}.bouton-or:hover{background:#d8b878;color:#231a0e}
+.bouton-clair{background:#fff;color:var(--ink);border-color:var(--line)}.bouton-clair:hover{border-color:var(--gold);color:var(--green)}
+.bouton svg{width:19px;height:19px;flex:0 0 auto}
+
+/* ---------- Structure ---------- */
+.contenu{max-width:var(--largeur);margin:0 auto;padding:0 26px}
+.etroit{max-width:770px}
+.section{padding:92px 0}
+.section-sable{background:var(--sable)}
+.section-deep{background:var(--deep);color:#f5efe6}
+.centre{text-align:center}
+.oeil{display:inline-block;font-family:var(--titre);font-weight:700;font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-fonce);margin-bottom:14px}
+.section-deep .oeil{color:var(--gold)}
+.sous{color:var(--muted);font-size:1.08rem}
+.section-deep .sous{color:rgba(245,239,230,.72)}
+
+/* ---------- Hero : encadré à fond flou ---------- */
+.hero{position:relative;min-height:100vh;display:flex;align-items:center;padding:calc(var(--chrome) + 40px) 0 60px;overflow:hidden}
+.hero-fond{position:absolute;inset:0;background-size:cover;background-position:center center}
+.hero-fond::after{content:"";position:absolute;inset:0;background:
+   linear-gradient(102deg,rgba(250,247,242,.9) 0%,rgba(250,247,242,.7) 34%,rgba(250,247,242,.28) 52%,rgba(250,247,242,.04) 68%,transparent 82%)}
+.hero .contenu{position:relative;z-index:2;width:100%;max-width:100%;padding-left:clamp(24px,5vw,84px);padding-right:24px}
+.hero-carte{width:100%;max-width:640px;margin:0 auto 0 0;background:rgba(250,247,242,.72);backdrop-filter:blur(7px);border:1px solid rgba(255,255,255,.6);border-radius:22px;padding:44px 48px 46px;box-shadow:0 26px 64px rgba(16,56,42,.2)}
+/* Le titre d'Aurélie fait deux fois la longueur de l'ancien : en
+   capitales il écraserait tout l'encadré. On garde donc la casse
+   normale, et c'est la fin de la phrase, en vert, qui porte le coup. */
+.hero-carte h1{max-width:none}
+.hero h1{color:var(--ink);font-size:clamp(1.55rem,2.9vw,2.25rem);margin-bottom:18px}
+.hero h1 em{font-style:normal;color:var(--green)}
+.hero .accroche{font-size:1.16rem;color:#42352a;margin-bottom:12px}
+.hero .rejoins{font-family:var(--titre);font-weight:700;color:var(--gold-fonce);font-size:1.05rem;margin-bottom:26px}
+.hero .bouton{font-size:1.05rem}
+.hero-fleche{margin-top:20px;display:flex;align-items:center;gap:8px;color:var(--muted);font-size:.92rem;font-weight:500}
+.hero-fleche span{animation:sautille 1.8s ease-in-out infinite}
+@keyframes sautille{0%,100%{transform:translateY(0)}50%{transform:translateY(4px)}}
+
+/* ---------- Encadré visuel à fond flou (réutilisable) ---------- */
+.visuel{position:relative;border-radius:var(--rayon);overflow:hidden;box-shadow:0 22px 50px rgba(16,56,42,.16)}
+.visuel-flou{position:absolute;inset:-8%;background-size:cover;background-position:center;filter:blur(18px) saturate(1.1);transform:scale(1.1)}
+.visuel-net{position:relative;z-index:2;display:block;margin:0 auto;max-height:100%}
+.visuel-cadre{position:relative;padding:16px;background:rgba(255,255,255,.5)}
+
+/* ---------- Format : 6 points ---------- */
+.format{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;margin-top:34px}
+.point{background:#fff;border:1px solid var(--line);border-radius:14px;padding:22px 22px;box-shadow:0 8px 22px rgba(16,56,42,.05)}
+.point b{font-family:var(--titre)}
+.point p{margin:0;color:#463829}
+
+/* ---------- 8 modules — volontairement compacts : ils informent,
+     ils ne doivent pas manger la page ---------- */
+.modules{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:26px}
+.module{position:relative;background:#fff;border:1px solid var(--line);border-radius:13px;padding:16px 15px;box-shadow:0 6px 18px rgba(16,56,42,.045)}
+.module .num{font-family:var(--titre);font-weight:800;font-size:.72rem;color:var(--gold-fonce);letter-spacing:.06em}
+.module h3{margin:6px 0 6px;font-size:.95rem;color:var(--green);line-height:1.22}
+.module p{margin:0;font-size:.86rem;color:#4a3b2c;line-height:1.46}
+
+/* ---------- Sessions par mois ---------- */
+.mois-grille{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:34px}
+.mois{background:#fff;border:1px solid var(--line);border-radius:16px;padding:24px 22px;box-shadow:0 10px 26px rgba(16,56,42,.06);display:flex;flex-direction:column;gap:14px}
+.mois-titre{font-family:var(--titre);font-weight:800;font-size:1.16rem;color:var(--ink)}
+.mois-titre small{display:block;font-weight:600;font-size:.82rem;color:var(--muted);letter-spacing:.02em;margin-top:2px}
+.session{border-top:1px dashed var(--line);padding-top:14px;margin-top:14px}
+.session:first-of-type{border-top:0;padding-top:0;margin-top:0}
+.session .nom{font-weight:700;color:#3a2c1f;font-size:.98rem;margin-bottom:8px}
+.session-cta{display:block;text-decoration:none;color:inherit;border-radius:12px;transition:background .18s ease,transform .18s ease}
+.session-cta{padding:14px 14px 14px;margin-left:-14px;margin-right:-14px}
+.session-cta:first-of-type{margin-top:-2px}
+.session-cta:hover{background:rgba(27,107,74,.06);transform:translateY(-1px);color:inherit}
+.session-cta .reserver{display:inline-flex;align-items:center;gap:6px;margin-top:10px;font-family:var(--titre);font-weight:700;font-size:.84rem;color:var(--green)}
+.session-cta .reserver svg{width:15px;height:15px;transition:transform .18s ease}
+.session-cta:hover .reserver svg{transform:translateX(3px)}
+.session-complet{opacity:.72}
+.badge{display:inline-flex;align-items:center;gap:7px;font-family:var(--titre);font-weight:700;font-size:.82rem;padding:5px 12px;border-radius:999px}
+.badge::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor}
+.dispo{background:rgba(27,107,74,.12);color:var(--green)}
+.urgent{background:rgba(183,122,43,.15);color:#8f5f18}
+.complet{background:rgba(168,69,47,.12);color:var(--rouge)}
+.mois-vide{margin:4px 0 0;font-size:.94rem;color:var(--muted)}
+.sessions-appel{margin-top:34px;display:flex;flex-wrap:wrap;gap:14px;justify-content:center;max-width:700px;margin-left:auto;margin-right:auto}
+.sessions-appel .bouton{flex:1 1 0;min-width:250px}
+
+/* ---------- Bandeau Next Step : pleine largeur ---------- */
+.section-bandeau{padding-top:0}
+.bandeau-next{position:relative;width:100%;overflow:hidden;background-size:cover;background-position:center;min-height:clamp(280px,34vw,470px);display:flex;align-items:center}
+.bandeau-next::before{content:"";position:absolute;inset:0;z-index:1;background:radial-gradient(85% 120% at 100% 30%,rgba(255,250,240,.86),rgba(255,250,240,.3) 46%,transparent 74%)}
+.bandeau-zone{position:relative;z-index:2;width:100%;max-width:var(--largeur);margin:0 auto;padding:0 26px;display:flex;justify-content:flex-end}
+.bandeau-texte{text-align:right;max-width:min(560px,72%)}
+.bandeau-texte .oeil{color:#8a5316;margin-bottom:12px}
+.bandeau-texte h2{color:#4e2c0c;font-size:clamp(2rem,4.4vw,3.3rem);line-height:1.06;text-shadow:0 2px 20px rgba(255,248,235,.9)}
+.bandeau-sous{max-width:780px;margin:38px auto 0;text-align:center;color:var(--muted)}
+
+/* ---------- Format : liste éditoriale (ni tiret, ni bulle) ---------- */
+.format-liste{margin-top:22px;display:grid;grid-template-columns:1fr 1fr;gap:0 48px}
+.fl-item{display:flex;flex-direction:column;gap:3px;padding:15px 0;border-top:1px solid var(--line)}
+.fl-terme{font-family:var(--titre);font-weight:800;font-size:.99rem;color:var(--gold-fonce);letter-spacing:-.01em}
+.fl-desc{color:#463829;font-size:.94rem;line-height:1.5}
+
+/* ---------- Pour qui (intégré à l'À propos) ---------- */
+.pourqui-bloc{margin-top:60px}
+
+/* ---------- Tarif ---------- */
+.tarif{margin-top:20px;background:#fff;border:1px solid var(--line);border-radius:16px;padding:30px;text-align:center;box-shadow:0 10px 26px rgba(16,56,42,.06)}
+.tarif .popup{margin-top:18px;display:inline-block;background:rgba(201,169,110,.16);color:#8a6a24;font-family:var(--titre);font-weight:700;font-size:.92rem;padding:10px 18px;border-radius:12px;border:1px dashed var(--gold)}
+
+/* ---------- À propos ---------- */
+.apropos-haut{display:grid;grid-template-columns:1.35fr .95fr;gap:44px;align-items:start}
+.apropos-photo{max-width:360px}
+.methode{margin-top:56px;background:var(--sable);border-radius:20px;padding:40px}
+.methode h3{font-size:1.35rem;color:var(--green);margin-bottom:14px;font-family:var(--titre);font-weight:800;letter-spacing:-.01em}
+
+/* ---------- Pour qui : 2 cadrans ---------- */
+.cadrans{display:grid;grid-template-columns:repeat(2,1fr);gap:24px;margin-top:34px}
+.cadran{background:#fff;border:1px solid var(--line);border-radius:18px;padding:32px;display:flex;flex-direction:column;box-shadow:0 12px 30px rgba(16,56,42,.06)}
+.cadran h3{font-size:1.3rem;color:var(--ink);margin-bottom:14px}
+.cadran p{color:#463829;flex:1}
+.cadran .bouton{margin-top:22px}
+
+/* ---------- Mon Accélérateur ---------- */
+.membres-grille{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:34px}
+.carte-form{background:rgba(255,255,255,.06);border:1px solid rgba(245,239,230,.16);border-radius:18px;padding:32px}
+.carte-form h3{color:#fff;font-size:1.3rem;margin-bottom:6px}
+.carte-form .aide{color:rgba(245,239,230,.7);font-size:.96rem;margin-bottom:22px}
+.champ{margin-bottom:16px}
+.champ label{display:block;font-family:var(--titre);font-weight:700;font-size:.86rem;color:rgba(245,239,230,.9);margin-bottom:7px}
+.champ input,.champ textarea,.champ select{width:100%;background:rgba(250,247,242,.96);border:1px solid rgba(0,0,0,.08);border-radius:11px;padding:13px 15px;font-family:var(--texte);font-size:1rem;color:var(--ink)}
+.champ-tel{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:10px}
+.champ-tel select{appearance:none;cursor:pointer;padding-right:34px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232C1810' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 12px center;background-size:15px}
+.champ textarea{min-height:84px;resize:vertical}
+.champ .note{font-size:.82rem;color:rgba(245,239,230,.62);margin-top:6px}
+.rgpd{display:flex;gap:11px;align-items:flex-start;font-size:.9rem;color:rgba(245,239,230,.82);margin-bottom:20px}
+.rgpd input{margin-top:4px;flex:0 0 auto}
+.rgpd a{color:var(--gold)}
+/* Piège à robots : hors écran, jamais lu par un lecteur d'écran. */
+.piege{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+#zone-turnstile:not(:empty){margin-bottom:16px}
+.carte-form .bouton{width:100%}
+.encart-inactif{margin-top:20px;background:rgba(201,169,110,.12);border:1px solid rgba(201,169,110,.3);border-radius:12px;padding:16px 18px}
+.encart-inactif b{color:var(--gold);font-family:var(--titre)}
+.encart-inactif p{color:rgba(245,239,230,.72);font-size:.9rem;margin:6px 0 0}
+/* L'accès n'est pas encore ouvert : on le dit franchement plutôt que
+   d'afficher une connexion qui ne mène nulle part. */
+.encart-ferme{margin-top:20px;background:rgba(245,239,230,.06);border-left:3px solid var(--gold);border-radius:0 12px 12px 0;padding:18px 20px}
+.encart-ferme b{display:block;color:var(--gold);font-family:var(--titre);font-size:1.02rem;margin-bottom:8px}
+.encart-ferme p{color:rgba(245,239,230,.78);font-size:.94rem;margin:0}
+.retour{margin-top:14px;font-family:var(--titre);font-weight:700;color:var(--gold);min-height:1.2em}
+
+/* ---------- Pied ---------- */
+.pied{background:#0c2c21;color:rgba(245,239,230,.8);padding:64px 0 40px}
+.pied-haut{display:grid;grid-template-columns:1.4fr 1fr;gap:40px;align-items:center;padding-bottom:34px;border-bottom:1px solid rgba(245,239,230,.14)}
+.pied-guide h3{color:#fff;font-size:1.5rem;margin-bottom:12px}
+.pied-guide p{color:rgba(245,239,230,.72);margin-bottom:20px}
+.pied-liens{display:flex;flex-direction:column;gap:12px;align-items:flex-start}
+.pied-liens a{color:rgba(245,239,230,.86);font-weight:500}
+.pied-liens a:hover{color:var(--gold)}
+.ronds{display:flex;gap:14px;margin-top:6px}
+.rond{width:46px;height:46px;border-radius:50%;background:rgba(245,239,230,.1);display:flex;align-items:center;justify-content:center;transition:background .2s ease,transform .2s ease;color:#f5efe6}
+.rond:hover{background:var(--gold);transform:translateY(-2px);color:#0c2c21}
+.rond svg{width:21px;height:21px;display:block}
+.rond .paper{transform:translateX(-1px)}
+.pied-bas{padding-top:26px;font-size:.86rem;color:rgba(245,239,230,.55);display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
+
+/* ---------- Popup rentrée ---------- */
+.popup-fond{position:fixed;inset:0;z-index:120;background:rgba(16,56,42,.5);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:24px;opacity:0;visibility:hidden;transition:opacity .3s ease,visibility .3s ease}
+.popup-fond.ouvert{opacity:1;visibility:visible}
+.popup{position:relative;max-width:440px;background:var(--cream);border-radius:20px;padding:40px 36px;text-align:center;box-shadow:0 40px 90px rgba(16,56,42,.4);border-top:5px solid var(--gold)}
+.popup .fermer-popup{position:absolute;top:14px;right:16px;background:transparent;border:0;font-size:1.5rem;color:var(--muted);cursor:pointer;line-height:1}
+.popup .promo{font-family:var(--titre);font-weight:800;font-size:2.6rem;color:var(--green);line-height:1;margin:6px 0 4px}
+.popup h3{font-size:1.3rem;margin-bottom:10px}
+.popup p{color:#463829;margin-bottom:22px}
+.note-test{margin:18px 0 0!important;font-size:.9rem;color:var(--muted)!important}
+.popup-large{max-width:500px}
+.mail-adresse{display:flex;align-items:center;gap:10px;justify-content:space-between;background:var(--sable);border-radius:12px;padding:12px 12px 12px 16px;margin-bottom:18px}
+.mail-valeur{font-family:var(--titre);font-weight:700;font-size:.98rem;color:var(--ink);word-break:break-all;text-align:left}
+.mail-copier{flex:0 0 auto;background:#fff;border:1px solid var(--line);border-radius:9px;padding:8px 14px;font-family:var(--titre);font-weight:700;font-size:.86rem;color:var(--green);cursor:pointer;transition:border-color .18s ease,color .18s ease}
+.mail-copier:hover{border-color:var(--gold);color:var(--deep)}
+.mail-copier-large{width:100%;margin-top:12px;padding:12px}
+.mail-actions{display:grid;gap:10px}
+.mail-actions .bouton{width:100%}
+#retour-mail{text-align:center;font-size:.9rem}
+
+/* ==================================================================
+   Mascotte — le petit drapeau anglais
+   Présent sur toute la page, il sautille, son drapeau ondule au vent,
+   et une bulle apparaît au survol pour proposer le test de niveau.
+   ================================================================== */
+.mascotte{position:fixed;right:22px;bottom:22px;z-index:85;width:132px;height:104px;padding:0;border:0;background:transparent;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.mascotte:focus{outline:none}
+.mascotte:focus-visible .mascotte-corps{outline:3px solid var(--gold);outline-offset:6px;border-radius:12px}
+/* le sautillement */
+.mascotte-corps{position:absolute;inset:0;animation:masc-saute 1.5s ease-in-out infinite}
+.mascotte:hover .mascotte-corps{animation-duration:.66s}
+/* le mouvement de vent dans le drapeau */
+.mascotte-drapeau{display:block;width:100%;height:100%;object-fit:contain;transform-origin:60% 60%;animation:masc-vent 2.6s ease-in-out infinite;filter:drop-shadow(0 8px 14px rgba(16,56,42,.28))}
+.mascotte:hover .mascotte-drapeau{animation-duration:1.1s}
+
+/* la bulle de dialogue */
+.mascotte-bulle{position:absolute;right:0;bottom:104%;width:max-content;max-width:210px;background:var(--cream);color:var(--ink);border:1px solid var(--line);border-radius:14px;padding:12px 16px;font-family:var(--titre);font-weight:700;font-size:.92rem;line-height:1.35;text-align:left;box-shadow:0 14px 34px rgba(16,56,42,.22);opacity:0;transform:translateY(8px) scale(.94);transform-origin:bottom right;transition:opacity .22s ease,transform .22s ease;pointer-events:none}
+.mascotte-bulle::after{content:"";position:absolute;right:26px;top:100%;border:8px solid transparent;border-top-color:var(--cream);filter:drop-shadow(0 1px 0 rgba(44,24,16,.12))}
+.mascotte:hover .mascotte-bulle,.mascotte:focus-visible .mascotte-bulle,.mascotte.montre .mascotte-bulle{opacity:1;transform:none}
+
+@keyframes masc-saute{0%,100%{transform:translateY(0)}45%{transform:translateY(-14px)}72%{transform:translateY(-3px)}}
+@keyframes masc-vent{
+  0%,100%{transform:rotate(0deg) skewY(0deg) scaleX(1)}
+  28%{transform:rotate(-3deg) skewY(-2.4deg) scaleX(.965)}
+  62%{transform:rotate(2.6deg) skewY(2.4deg) scaleX(1.03)}
+}
+
+@media (max-width:860px){
+  .mascotte{right:12px;bottom:12px;width:104px;height:82px}
+}
+
+/* ==================================================================
+   Le quiz — « Testez votre anglais professionnel »
+   Le fond est flouté : on devine la page sans pouvoir la lire, et la
+   carte reste franchement opaque pour que le texte se lise sans effort.
+   ================================================================== */
+.quiz-fond{position:fixed;inset:0;z-index:130;display:flex;align-items:center;justify-content:center;padding:24px;
+  background:rgba(24,44,36,.42);backdrop-filter:blur(16px) saturate(.9);-webkit-backdrop-filter:blur(16px) saturate(.9);
+  opacity:0;visibility:hidden;transition:opacity .3s ease,visibility .3s ease}
+.quiz-fond.ouvert{opacity:1;visibility:visible}
+.quiz-carte{position:relative;width:100%;max-width:680px;max-height:calc(100vh - 48px);overflow-y:auto;
+  background:var(--cream);border-radius:24px;border-top:5px solid var(--gold);
+  padding:38px 40px 30px;box-shadow:0 40px 100px rgba(10,32,24,.5);
+  transform:scale(.06);opacity:0;transition:transform .52s cubic-bezier(.22,1.1,.36,1),opacity .3s ease}
+.quiz-fond.ouvert .quiz-carte{transform:scale(1);opacity:1}
+
+.quiz-carte .fermer-popup{position:absolute;top:12px;right:14px;z-index:4;width:38px;height:38px;border:0;border-radius:50%;
+  background:transparent;font-size:1.7rem;line-height:1;color:var(--muted);cursor:pointer;transition:background .18s ease,color .18s ease}
+.quiz-carte .fermer-popup:hover{background:var(--sable);color:var(--ink)}
+.quiz-tete{text-align:center;margin-bottom:26px}
+.quiz-tete .oeil{margin-bottom:8px}
+.quiz-tete h3{font-size:clamp(1.35rem,3.2vw,1.85rem);color:var(--ink);margin-bottom:18px}
+.quiz-jauge{height:6px;background:var(--sable);border-radius:99px;overflow:hidden}
+.quiz-avance{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--green),var(--gold));border-radius:99px;transition:width .4s ease}
+.quiz-etape{margin:10px 0 0;font-family:var(--titre);font-weight:700;font-size:.82rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+
+.quiz-mise{font-size:1.06rem;color:var(--ink);margin-bottom:20px;text-wrap:pretty}
+.quiz-choix{display:grid;gap:12px}
+.quiz-option{display:block;width:100%;text-align:left;font-family:var(--texte);font-size:1rem;line-height:1.45;
+  background:#fff;color:var(--ink);border:2px solid var(--line);border-radius:14px;padding:16px 18px;cursor:pointer;
+  transition:border-color .18s ease,background .18s ease,transform .18s ease}
+.quiz-option:hover:not(:disabled){border-color:var(--gold);transform:translateY(-2px)}
+.quiz-option:disabled{cursor:default}
+.quiz-option .lettre{font-family:var(--titre);font-weight:800;color:var(--gold-fonce);margin-right:8px}
+.quiz-option.juste{border-color:var(--green);background:rgba(27,107,74,.1)}
+.quiz-option.juste .lettre{color:var(--green)}
+.quiz-option.faux{border-color:var(--rouge);background:rgba(168,69,47,.1)}
+.quiz-option.faux .lettre{color:var(--rouge)}
+.quiz-option .marque{float:right;font-family:var(--titre);font-weight:800;margin-left:10px}
+.quiz-option.juste .marque{color:var(--green)}
+.quiz-option.faux .marque{color:var(--rouge)}
+
+/* la flashcard, sous la réponse */
+.quiz-flash{margin-top:18px;background:var(--sable);border-radius:16px;padding:20px 22px;border-left:4px solid var(--gold);
+  animation:quiz-apparait .38s ease both}
+.quiz-verdict{font-family:var(--titre);font-weight:800;font-size:1.02rem;margin-bottom:8px}
+.quiz-verdict.ok{color:var(--green)} .quiz-verdict.ko{color:var(--rouge)}
+.quiz-expli{margin:0;color:#463829;font-size:.97rem}
+.quiz-expli em{font-style:normal;font-weight:700;color:var(--ink)}
+@keyframes quiz-apparait{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+/* le score final */
+.quiz-modules{text-align:left;background:var(--sable);border-radius:16px;padding:20px 22px;margin:0 0 22px;border-left:4px solid var(--gold)}
+.quiz-modules b{display:block;font-family:var(--titre);color:var(--ink);margin-bottom:11px}
+.quiz-modules ul{list-style:none;display:grid;gap:9px}
+.quiz-modules li{display:flex;gap:10px;color:#463829;font-size:.95rem;line-height:1.45}
+.quiz-modules li::before{content:"→";flex:0 0 auto;color:var(--gold-fonce);font-weight:800}
+.quiz-score{text-align:center;animation:quiz-apparait .4s ease both}
+.quiz-note{font-family:var(--titre);font-weight:800;font-size:3.4rem;color:var(--green);line-height:1}
+.quiz-note span{font-size:1.5rem;color:var(--muted)}
+.quiz-score p{margin:14px auto 22px;max-width:440px;color:#463829}
+.quiz-score .bouton{width:100%;max-width:340px}
+
+/* navigation */
+.quiz-pied{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:26px;padding-top:20px;border-top:1px solid var(--line)}
+.quiz-fleche{width:46px;height:46px;flex:0 0 auto;border-radius:50%;border:1px solid var(--line);background:#fff;color:var(--green);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:border-color .18s ease,background .18s ease,opacity .18s ease}
+.quiz-fleche svg{width:20px;height:20px}
+.quiz-fleche:hover:not(:disabled){border-color:var(--gold);background:var(--sable)}
+.quiz-fleche:disabled{opacity:.3;cursor:not-allowed}
+/* Le bouton « Suivant » est nommé, et pas une simple flèche : on ne
+   passe à la question d'après qu'après avoir lu l'explication. */
+.quiz-suivant{display:inline-flex;align-items:center;gap:9px;font-family:var(--titre);font-weight:700;font-size:.96rem;
+  padding:12px 22px;border:0;border-radius:12px;background:var(--green);color:#fff;cursor:pointer;
+  transition:background .18s ease,opacity .18s ease}
+.quiz-suivant:hover:not(:disabled){background:var(--deep)}
+.quiz-suivant:disabled{opacity:.34;cursor:not-allowed}
+/* display:inline-flex l'emporterait sur l'attribut hidden : on le dit
+   explicitement, sinon le bouton reste affiché sur l'écran de résultat. */
+.quiz-suivant[hidden]{display:none}
+.quiz-suivant svg{width:17px;height:17px}
+.quiz-points{display:flex;gap:8px}
+.quiz-point{width:9px;height:9px;border-radius:50%;background:var(--sable);border:1px solid var(--line);transition:background .2s ease,transform .2s ease}
+.quiz-point.faite{background:var(--gold)}
+.quiz-point.active{background:var(--green);border-color:var(--green);transform:scale(1.35)}
+
+@media (max-width:860px){
+  .quiz-fond{padding:14px}
+  .quiz-carte{padding:30px 22px 24px;border-radius:20px;max-height:calc(100vh - 28px)}
+  .quiz-option{padding:14px 15px;font-size:.96rem}
+}
+
+/* ==================================================================
+   Douleur / Promesse — l'effet miroir « avant / après »
+   Deux colonnes côte à côte : c'est le contraste qui convainc, pas le
+   texte seul. Volontairement pas de croix rouge côté Douleur : un
+   simple tiret, ton descriptif, presque clinique.
+   ================================================================== */
+.miroir{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:36px;align-items:stretch}
+.colonne{border-radius:20px;padding:32px 30px}
+.col-douleur{background:#EFE6D9;border:1px solid rgba(44,24,16,.1)}
+.col-promesse{background:#fff;border:1px solid rgba(201,169,110,.5);box-shadow:0 16px 38px rgba(201,169,110,.18)}
+.colonne h3{font-size:1.24rem;line-height:1.22}
+.col-douleur h3{color:#5b4433}
+.col-promesse h3{color:var(--green)}
+.bascule{display:block;font-family:var(--titre);font-weight:700;font-size:.72rem;letter-spacing:.18em;text-transform:uppercase;color:var(--gold-fonce);margin-bottom:9px}
+.colonne ul{list-style:none;margin-top:20px;display:grid;gap:15px}
+.colonne li{display:flex;gap:12px;line-height:1.5;font-size:.99rem}
+.colonne li::before{flex:0 0 auto;font-family:var(--titre);font-weight:800;line-height:1.5}
+.col-douleur li{color:#4a3a2c}
+.col-douleur li::before{content:"—";color:rgba(44,24,16,.38)}
+.col-promesse li{color:#3a2c1f}
+.col-promesse li::before{content:"✓";color:var(--gold-fonce)}
+.miroir-cta{margin-top:28px;text-align:center}
+.miroir-cta a{font-family:var(--titre);font-weight:700;font-size:.98rem;color:var(--green);border-bottom:1px solid rgba(27,107,74,.32);padding-bottom:3px}
+.miroir-cta a:hover{color:var(--deep);border-bottom-color:var(--gold)}
+
+/* ---------- Hero : deux boutons et la ligne de repères ---------- */
+.hero-actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:6px}
+.hero-actions .bouton{flex:1 1 auto;min-width:0;white-space:nowrap;padding:15px 20px;font-size:.95rem}
+.hero-reperes{margin-top:22px;font-family:var(--titre);font-weight:700;font-size:.86rem;letter-spacing:.03em;color:var(--gold-fonce)}
+.hero .programme{font-size:1.02rem;color:#42352a;margin-bottom:24px}
+
+/* ---------- Encart du test de niveau, dans la Formation ---------- */
+.test-carte{margin-top:56px;background:var(--deep);color:#f5efe6;border-radius:22px;padding:38px 42px;
+  display:grid;grid-template-columns:minmax(0,1fr) auto;gap:30px;align-items:center;box-shadow:0 20px 46px rgba(16,56,42,.2)}
+.test-carte h3{color:#fff;font-size:1.5rem;margin-bottom:10px}
+.test-carte p{color:rgba(245,239,230,.78);margin:0;font-size:1rem}
+.test-carte .bouton{white-space:nowrap}
+.formation-cta{margin-top:34px;text-align:center}
+
+/* ---------- Compte à rebours ---------- */
+.compte-titre{font-family:var(--titre);font-weight:700;font-size:.76rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-fonce);margin-bottom:12px}
+.compte{display:flex;justify-content:center;gap:10px}
+.compte-case{min-width:64px;background:var(--deep);color:#f5efe6;border-radius:12px;padding:11px 8px}
+.compte-nb{display:block;font-family:var(--titre);font-weight:800;font-size:1.5rem;line-height:1;font-variant-numeric:tabular-nums}
+.compte-lib{display:block;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:rgba(245,239,230,.62);margin-top:5px}
+.bande-compte{font-variant-numeric:tabular-nums;color:#e6cd9c}
+.bande-sep{opacity:.5;margin:0 4px}
+
+/* ---------- Tarif : standard barré + prix de lancement ---------- */
+.prix-duo{display:flex;flex-wrap:wrap;justify-content:center;align-items:stretch;gap:16px;margin:8px 0 22px}
+.prix-bloc{flex:1 1 190px;max-width:240px;border-radius:14px;padding:18px 16px;display:flex;flex-direction:column;justify-content:center;gap:5px}
+/* Même raison que pour le bouton du test : display:flex l'emporterait
+   sur hidden, et le prix barré resterait visible après l'échéance. */
+.prix-bloc[hidden]{display:none}
+.prix-standard{background:var(--sable);border:1px solid var(--line)}
+.prix-lancement{position:relative;background:rgba(27,107,74,.07);border:2px solid var(--green)}
+.prix-oeil{font-family:var(--titre);font-weight:700;font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.prix-lancement .prix-oeil{color:var(--green)}
+.prix-valeur{font-family:var(--titre);font-weight:800;font-size:2rem;line-height:1.05;color:var(--muted);text-decoration:line-through;text-decoration-thickness:2px}
+.prix-lancement .prix-valeur{font-size:2.7rem;color:var(--green);text-decoration:none}
+.prix-remise{position:absolute;top:-14px;right:-10px;background:var(--gold);color:#231a0e;font-family:var(--titre);font-weight:800;font-size:.82rem;padding:6px 12px;border-radius:999px;box-shadow:0 6px 16px rgba(201,169,110,.42)}
+.prix-note{color:#463829;max-width:520px;margin:0 auto 24px!important}
+.prix-dates{border-top:1px solid var(--line);margin-top:22px;padding-top:20px;display:grid;gap:7px}
+.prix-dates p{margin:0;color:#463829;font-size:.98rem}
+.prix-dates b{font-family:var(--titre);color:var(--ink)}
+.tarif .bouton{margin-top:22px}
+
+/* ---------- Apparition ---------- */
+[data-reveal]{opacity:0;transform:translateY(26px);transition:opacity .7s ease,transform .7s ease}
+[data-reveal].vu{opacity:1;transform:none}
+[data-d="1"]{transition-delay:.08s}[data-d="2"]{transition-delay:.16s}[data-d="3"]{transition-delay:.24s}
+
+/* ---------- Mobile ---------- */
+@media (max-width:860px){
+  .section{padding:64px 0}
+  .format,.format-liste,.modules,.mois-grille,.cadrans,.membres-grille,.apropos-haut,.pied-haut,.sessions-intro{grid-template-columns:1fr}
+  .fl-item{padding:16px 0}
+  .fl-item:first-child{border-top:0}
+  .bandeau-texte{max-width:82%;padding:20px 22px}
+  .sessions-appel .bouton{width:100%}
+  .bandeau-texte{max-width:100%;text-align:left}
+  .bandeau-next::before{background:linear-gradient(to bottom,rgba(255,250,240,.9),rgba(255,250,240,.55) 55%,rgba(255,250,240,.25))}
+  .visuel-pancarte{max-width:300px;margin:0 auto 8px}
+  .modules{grid-template-columns:1fr 1fr}
+  .apropos-photo{max-width:280px;margin:0 auto}
+  .hero-carte{padding:30px 26px 32px}
+  .pied-bas{flex-direction:column}
+  /* Les deux colonnes du miroir s'empilent : Douleur d'abord,
+     Promesse ensuite — l'ordre de lecture fait le basculement. */
+  .miroir{grid-template-columns:1fr;gap:18px}
+  .colonne{padding:26px 22px}
+  .test-carte{grid-template-columns:1fr;padding:30px 24px;gap:22px}
+  .test-carte .bouton{width:100%}
+  .hero-actions .bouton{width:100%;flex:1 1 100%}
+  .compte-case{min-width:0;flex:1 1 0;padding:9px 4px}
+  .compte-nb{font-size:1.25rem}
+  .prix-bloc{max-width:none}
+}
+@media (max-width:640px){ .bande-long{display:none} }
+@media (max-width:520px){ .modules{grid-template-columns:1fr} .format{grid-template-columns:1fr} }
+@media (prefers-reduced-motion:reduce){
+  [data-reveal]{opacity:1;transform:none;transition:none} .hero-fleche span{animation:none} html{scroll-behavior:auto}
+  .mascotte-corps,.mascotte-drapeau{animation:none}
+}
+</style>
+
+<!-- ===================== BANDE + ENTÊTE ===================== -->
+<!-- La bande annonce l'offre fondatrice et son compte à rebours. Le
+     texte long disparaît sur petit écran, le décompte reste. -->
+<div class="bande" id="bande"><a href="#tarif">Inscris-toi maintenant<span class="bande-long"> — offre fondatrice <span id="bande-remise"></span></span><span class="bande-sep">·</span><span class="bande-compte" id="bande-compte"></span></a></div>
+<header class="entete">
+  <div class="barre">
+    <span class="marque">Fluent &amp; Forward</span>
+    <button class="bouton-menu" id="ouvrir-menu" aria-label="Ouvrir le menu" aria-expanded="false"><span></span><span></span><span></span></button>
+  </div>
+</header>
+
+<!-- ===================== MENU LATÉRAL ===================== -->
+<div class="voile" id="voile"></div>
+<aside class="panneau" id="panneau" aria-hidden="true">
+  <div class="panneau-haut">
+    <span class="marque">Fluent &amp; Forward</span>
+    <button class="fermer" id="fermer-menu" aria-label="Fermer le menu">&times;</button>
+  </div>
+  <nav>
+    <a href="#accueil">Accueil</a>
+    <a href="#formation">La formation</a>
+    <a href="#sessions">Les sessions</a>
+    <a href="#apropos">À propos</a>
+    <a href="#membres">Mon Accélérateur</a>
+  </nav>
+  <a class="bouton bouton-or" href="__CALENDLY__" target="_blank" rel="noopener">Réserver un appel</a>
+</aside>
+
+<!-- ===================== HERO ===================== -->
+<section class="hero" id="accueil">
+  <div class="hero-fond" style="background-image:url(__PORTES__)"></div>
+  <div class="contenu">
+    <div class="hero-carte" data-reveal>
+      <h1>Votre anglais ne devrait jamais vous faire paraitre <em>moins compétent que vous ne l'êtes.</em></h1>
+      <p class="accroche">Prenez la parole, convainquez et négociez en anglais avec assurance, sans traduire chaque phrase dans votre tête.</p>
+      <p class="programme">Un programme intensif de 8 semaines pour transformer votre anglais professionnel en véritable levier de performance.</p>
+      <div class="hero-actions">
+        <a class="bouton bouton-vert" href="#test" data-test>Évaluer mon profil</a>
+        <a class="bouton bouton-clair" href="#formation">Découvrir le programme</a>
+      </div>
+      <p class="hero-reperes">8 semaines · Sessions live · Coaching individuel</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== LA FORMATION ===================== -->
+<section class="section" id="formation">
+  <div class="contenu">
+    <div class="etroit" data-reveal>
+      <span class="oeil">Business English Accelerator</span>
+      <h2>L'anglais professionnel, quand ça compte vraiment.</h2>
+      <p class="sous" style="margin-top:16px">Un programme intensif de 8 semaines pour cadres et indépendants francophones qui veulent défendre leur expertise en anglais avec la même autorité qu'en français — en réunion, au téléphone, ou face à un client.</p>
+      <p style="margin-top:18px;color:#463829">Ce programme s'adresse aux professionnels francophones qui <strong>maîtrisent déjà leur métier</strong>, mais dont l'anglais reste un frein à l'oral dans un contexte professionnel : cadres, indépendants, entrepreneurs, qui négocient, présentent ou échangent régulièrement avec des interlocuteurs anglophones ou qui souhaitent s'ouvrir à une clientèle anglophone.</p>
+    </div>
+
+    <!-- Effet miroir avant / après : la colonne de gauche décrit la
+         situation d'aujourd'hui, celle de droite ce qui change. -->
+    <div class="miroir">
+      <div class="colonne col-douleur" data-reveal>
+        <h3>Vous reconnaissez-vous dans l'une de ces situations&nbsp;?</h3>
+        <ul>
+          <li>Vous restez silencieux en réunion, alors que vous auriez eu l'argument en français.</li>
+          <li>Vous relisez un email trois fois avant de l'envoyer, de peur qu'il sonne mal.</li>
+          <li>Vous laissez un collègue anglophone prendre la parole à votre place, par sécurité.</li>
+          <li>Vous préparez une présentation client des heures à l'avance, rien que pour anticiper les questions en anglais.</li>
+          <li>Vous négociez moins fermement en anglais qu'en français — pas par manque d'expertise, mais par manque d'aisance.</li>
+          <li>Vous évitez certains appels ou certains clients anglophones, quand vous pourriez les décrocher.</li>
+        </ul>
+      </div>
+      <div class="colonne col-promesse" data-reveal data-d="1">
+        <span class="bascule">Ce que change l'Accelerator</span>
+        <h3>Après 8 semaines, voici ce qui change</h3>
+        <ul>
+          <li>Vous prenez la parole en réunion sans reformuler trois fois votre phrase dans votre tête.</li>
+          <li>Vous répondez à un email professionnel en anglais aussi vite qu'en français.</li>
+          <li>Vous défendez un dossier, un prix ou une position sans perdre en assurance.</li>
+          <li>Vous animez ou participez à un appel client sans redouter la prochaine question.</li>
+          <li>Vous négociez avec la même fermeté, dans les deux langues.</li>
+          <li>Vous acceptez les opportunités anglophones au lieu de les éviter.</li>
+        </ul>
+      </div>
+    </div>
+    <p class="miroir-cta" data-reveal><a href="__CALENDLY__" target="_blank" rel="noopener">Verifier si le programme vous correspond</a></p>
+
+    <h3 style="margin-top:56px;font-size:1.3rem;color:var(--ink)" data-reveal>Le format</h3>
+    <div class="format-liste" data-reveal>
+      <div class="fl-item"><span class="fl-terme">8 semaines</span><span class="fl-desc">structurées en 8 modules progressifs.</span></div>
+      <div class="fl-item"><span class="fl-terme">Leçons en vidéo courtes</span><span class="fl-desc">à votre rythme, accessibles à tout moment depuis votre espace personnel.</span></div>
+      <div class="fl-item"><span class="fl-terme">Sessions live en groupe</span><span class="fl-desc">toutes les semaines, pour pratiquer à l'oral dans des mises en situation réelles.</span></div>
+      <div class="fl-item"><span class="fl-terme">2 coachings individuels</span><span class="fl-desc">avec moi, en semaine 4 et semaine 8, pour ajuster le programme à votre réalité professionnelle.</span></div>
+      <div class="fl-item"><span class="fl-terme">Un Kit de Vocabulaire</span><span class="fl-desc">par module, en deux niveaux : l'essentiel à retenir tout de suite, et pour aller plus loin si vous voulez approfondir.</span></div>
+      <div class="fl-item"><span class="fl-terme">Nombre de participants limité par groupe</span><span class="fl-desc">pour un accompagnement réellement personnalisé.</span></div>
+    </div>
+
+    <h3 style="margin-top:56px;font-size:1.3rem;color:var(--ink)" data-reveal>Le contenu — 8 modules</h3>
+    <div class="modules">
+      <div class="module" data-reveal><div class="num">Module 1</div><h3>Think &amp; Speak Like a Business Person</h3><p>Poser les bases : la posture, la structure de pensée et les réflexes de l'anglais business.</p></div>
+      <div class="module" data-reveal data-d="1"><div class="num">Module 2</div><h3>Professional Communication Essentials</h3><p>Emails, échanges écrits et oraux du quotidien, sans hésitation ni traduction mentale.</p></div>
+      <div class="module" data-reveal data-d="2"><div class="num">Module 3</div><h3>Meetings &amp; Calls Mastery</h3><p>Conduire, participer et peser dans une conversation professionnelle en anglais.</p></div>
+      <div class="module" data-reveal data-d="3"><div class="num">Module 4</div><h3>Presenting your business with Confidence</h3><p>Pitcher, argumenter et convaincre à l'oral, devant un client ou une audience.</p></div>
+      <div class="module" data-reveal><div class="num">Module 5</div><h3>Networking Like a Pro</h3><p>Maîtriser les discussions pour créer des connexions qui comptent.</p></div>
+      <div class="module" data-reveal data-d="1"><div class="num">Module 6</div><h3>Sales &amp; Negotiation English</h3><p>Vocabulaire et réflexes pour négocier, proposer, closer.</p></div>
+      <div class="module" data-reveal data-d="2"><div class="num">Module 7</div><h3>Confidence &amp; Fluency</h3><p>Ancrer les acquis, travailler sur la prononciation et la façon de s'exprimer.</p></div>
+      <div class="module" data-reveal data-d="3"><div class="num">Module 8</div><h3>Industry-Specific English</h3><p>Aller plus loin dans sa niche, maîtriser le vocabulaire spécifique à son secteur.</p></div>
+    </div>
+
+    <p class="formation-cta" data-reveal>
+      <a class="bouton bouton-clair" href="__CALENDLY__" target="_blank" rel="noopener">Verifier si le programme vous correspond</a>
+    </p>
+
+    <!-- Le test de niveau. Les questions vivent dans le script ; cet
+         encart est la porte d'entrée, juste avant le bloc tarif. -->
+    <div class="test-carte" id="test" style="scroll-margin-top:120px" data-reveal>
+      <div>
+        <span class="oeil">Test de niveau — 8 questions</span>
+        <h3>Testez votre anglais professionnel</h3>
+        <p>Huit situations réelles, deux formulations au choix. À la fin, votre score et les modules du programme sur lesquels vous avez le plus à gagner. Deux minutes, sans inscription.</p>
+      </div>
+      <button class="bouton bouton-or" type="button" data-test>Commencer le test</button>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== LES SESSIONS ===================== -->
+<section class="section section-sable section-bandeau" id="sessions">
+  <div class="bandeau-next" style="background-image:url(__NEXTSTEP__)" role="img" aria-label="Panneau « Next Step » indiquant un chemin qui s'éloigne vers un coucher de soleil.">
+    <div class="bandeau-zone">
+      <div class="bandeau-texte" data-reveal>
+        <span class="oeil">Les prochaines sessions</span>
+        <h2>Choisissez le mois qui vous convient</h2>
+      </div>
+    </div>
+  </div>
+  <div class="contenu">
+    <p class="sous bandeau-sous" data-reveal>Les places sont limitées par session, pour garantir un accompagnement individualisé. Réserver un appel avec Aurélie pour choisir votre créneau.</p>
+
+    <!-- Les trois mois sont dessinés par le script à partir du tableau
+         Google Sheet d'Aurélie. Le contenu ci-dessous n'est jamais vu :
+         il est remplacé dès le chargement. -->
+    <div class="mois-grille" id="mois-grille"></div>
+
+    <div class="sessions-appel" data-reveal>
+      <a class="bouton bouton-vert" href="__CALENDLY__" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+        Réserver un appel avec Aurélie
+      </a>
+      <a class="bouton bouton-or" href="#" data-whatsapp>Je veux plus d'informations</a>
+    </div>
+
+    <!-- Tarif et inscription -->
+    <div class="etroit" id="tarif" style="margin:64px auto 0;scroll-margin-top:120px" data-reveal>
+      <h3 style="font-size:1.3rem;color:var(--ink);text-align:center">Tarif et inscription</h3>
+      <div class="tarif">
+        <span class="oeil">Cohorte Fondatrice</span>
+        <div class="prix-duo">
+          <div class="prix-bloc prix-standard">
+            <span class="prix-oeil">Tarif standard</span>
+            <span class="prix-valeur" id="prix-standard">—</span>
+          </div>
+          <div class="prix-bloc prix-lancement">
+            <span class="prix-remise" id="prix-remise"></span>
+            <span class="prix-oeil">Prix de lancement</span>
+            <span class="prix-valeur" id="prix-lancement">—</span>
+          </div>
+        </div>
+        <p class="prix-note">Avant de vous engager, on vérifie ensemble que le programme correspond à votre niveau et vos objectifs, pas d'inscription à l'aveugle.</p>
+
+        <!-- Compte à rebours de l'offre fondatrice. Passée l'échéance,
+             le script masque ce bloc et le prix de lancement : il ne
+             reste que le tarif standard, sans décompte figé à zéro. -->
+        <div id="zone-compte">
+          <p class="compte-titre">L'offre fondatrice se termine dans</p>
+          <div class="compte" id="compte-tarif" role="timer" aria-live="off"></div>
+        </div>
+
+        <div class="prix-dates">
+          <p><b>Démarrage : 14 septembre 2026</b></p>
+          <p id="tarif-sessions">Places limitées par session, pour garantir un accompagnement individualisé.</p>
+        </div>
+        <a class="bouton bouton-or" href="__CALENDLY__" target="_blank" rel="noopener">Verifier si le programme vous correspond</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== À PROPOS ===================== -->
+<section class="section" id="apropos">
+  <div class="contenu">
+    <div class="apropos-haut">
+      <div data-reveal>
+        <span class="oeil">À propos de moi</span>
+        <h2>De la réalité à la formation</h2>
+        <p style="margin-top:16px;color:#463829">Avant d'enseigner l'anglais professionnel, je l'ai vécu de l'intérieur. 12 ans dans le secteur bancaire international et l'immobilier de luxe, où chaque réunion, chaque négociation, chaque email engageait quelque chose de concret et ne laissait pas de place à l'approximation.</p>
+        <p style="color:#463829">Bilingue anglais-français, aujourd'hui, je mets cette double culture au service de professionnels francophones qui maîtrisent leur métier, mais cherchent encore l'aisance pour le défendre avec la même autorité en anglais.</p>
+        <p style="color:#463829">Certifiée TEFL niveau 5, je ne suis pas seulement formatrice : je suis passée par les mêmes salles de réunion que vous.</p>
+      </div>
+      <div class="visuel apropos-photo" data-reveal data-d="1">
+        <div class="visuel-flou" style="background-image:url(__AURELIE__)"></div>
+        <img class="visuel-net" src="__AURELIE__" alt="Aurélie, formatrice en anglais professionnel">
+      </div>
+    </div>
+
+    <div class="methode" data-reveal>
+      <h3>Ma méthode</h3>
+      <p style="color:#463829">Je ne crois pas à l'anglais appris hors-sol — les listes de vocabulaire sans contexte, la grammaire pour la grammaire. Ma méthode s'appuie sur le Task-Based Learning : vous apprenez en faisant, à partir de situations réelles de votre quotidien professionnel — un email à rédiger, une réunion à préparer, un client à convaincre.</p>
+      <p style="color:#463829">Chaque module part d'une tâche concrète, pas d'une règle abstraite. Vous ne mémorisez pas une leçon : vous vous entraînez à résoudre une situation que vous rencontrerez réellement — pour qu'au moment où ça compte, le réflexe soit déjà là.</p>
+    </div>
+
+    <!-- Le paragraphe « Pour qui » a rejoint la présentation du
+         programme, plus haut : il n'est pas répété ici. -->
+    <div class="pourqui-bloc">
+      <div class="etroit" data-reveal>
+        <h3 style="font-size:1.5rem;color:var(--ink)">Pour qui ?</h3>
+      </div>
+      <div class="cadrans">
+        <div class="cadran" data-reveal>
+          <h3>Professionnel individuel</h3>
+          <p>Vous êtes cadre, indépendant ou entrepreneur, et l'anglais vous freine à l'oral dans votre quotidien professionnel — réunions, appels, présentations. Vous voulez progresser à votre rythme, dans un petit groupe, avec un accompagnement individualisé.</p>
+          <a class="bouton bouton-vert" href="__CALENDLY__" target="_blank" rel="noopener">Découvrir le Business English Accelerator</a>
+        </div>
+        <div class="cadran" data-reveal data-d="1">
+          <h3>Entreprise</h3>
+          <p>Vos équipes échangent régulièrement avec des interlocuteurs anglophones et l'anglais professionnel devient un enjeu collectif — pas seulement individuel. Chaque entreprise a ses propres réalités métier, ses interlocuteurs, ses urgences : la formation est donc <strong>conçue sur mesure</strong>, à partir des besoins concrets de vos équipes.</p>
+          <a class="bouton bouton-clair" href="#" data-mail-projet>Discutons de votre projet</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== MON ACCÉLÉRATEUR ===================== -->
+<section class="section section-deep" id="membres" style="background:var(--deep)">
+  <div class="contenu">
+    <div class="etroit centre" style="margin:0 auto" data-reveal>
+      <span class="oeil">Mon Accélérateur</span>
+      <h2 style="color:#fff">L'espace des membres</h2>
+      <p class="sous" style="margin-top:14px">Retrouvez vos modules, vos leçons vidéo et vos Kits de Vocabulaire. Les comptes ne se créent pas tout seuls — chaque demande est validée à la main par Aurélie avant qu'un accès soit ouvert.</p>
+    </div>
+
+    <div class="membres-grille">
+      <!-- Connexion -->
+      <div class="carte-form" data-reveal>
+        <h3>Accéder à mes modules</h3>
+        <p class="aide">L'espace participants ouvre au démarrage de votre session.</p>
+        <!-- Pas de connexion sur le site : aucun compte, aucun mot de passe,
+             aucun code. L'accès est ouvert à la main par Aurélie, après
+             validation de la demande ci-contre. -->
+        <div class="encart-ferme">
+          <b>Vous n'avez pas encore de compte</b>
+          <p>Demandez d'abord un accès avec le formulaire ci-contre. Aurélie valide chaque demande à la main, puis vous transmet la marche à suivre par email.</p>
+        </div>
+        <p class="aide" style="margin:20px 0 0">Une question sur votre inscription ou votre session&nbsp;? Écrivez directement à Aurélie.</p>
+        <a class="bouton bouton-clair" href="#" data-email data-objet="Question sur mon accès participant" style="margin-top:14px">Écrire à Aurélie</a>
+      </div>
+
+      <!-- Demande d'accès -->
+      <div class="carte-form" data-reveal data-d="1">
+        <h3>Demander un accès</h3>
+        <p class="aide">Quelques informations suffisent. Aurélie valide la demande, puis envoie les identifiants par email.</p>
+        <form id="form-acces" novalidate>
+          <div class="champ"><label for="a-prenom">Prénom</label><input type="text" id="a-prenom" autocomplete="given-name"></div>
+          <div class="champ"><label for="a-nom">Nom</label><input type="text" id="a-nom" autocomplete="family-name"></div>
+          <div class="champ"><label for="a-email">Adresse email</label><input type="email" id="a-email" autocomplete="email"><span class="note">C'est à cette adresse que les identifiants seront envoyés.</span></div>
+          <div class="champ">
+            <label for="a-tel">Numéro de téléphone</label>
+            <div class="champ-tel">
+              <select id="a-indicatif" aria-label="Indicatif international">
+                <optgroup label="France et Outre-mer">
+                  <option value="+33">France (+33)</option>
+                  <option value="+262" selected>La Réunion (+262)</option>
+                  <option value="+262">Mayotte (+262)</option>
+                  <option value="+590">Guadeloupe (+590)</option>
+                  <option value="+596">Martinique (+596)</option>
+                  <option value="+594">Guyane (+594)</option>
+                  <option value="+590">Saint-Martin (+590)</option>
+                  <option value="+590">Saint-Barthélemy (+590)</option>
+                  <option value="+508">Saint-Pierre-et-Miquelon (+508)</option>
+                  <option value="+687">Nouvelle-Calédonie (+687)</option>
+                  <option value="+689">Polynésie française (+689)</option>
+                  <option value="+681">Wallis-et-Futuna (+681)</option>
+                </optgroup>
+                <optgroup label="Europe">
+                  <option value="+32">Belgique (+32)</option>
+                  <option value="+41">Suisse (+41)</option>
+                  <option value="+352">Luxembourg (+352)</option>
+                  <option value="+44">Royaume-Uni (+44)</option>
+                  <option value="+353">Irlande (+353)</option>
+                  <option value="+49">Allemagne (+49)</option>
+                  <option value="+34">Espagne (+34)</option>
+                  <option value="+39">Italie (+39)</option>
+                  <option value="+351">Portugal (+351)</option>
+                  <option value="+31">Pays-Bas (+31)</option>
+                </optgroup>
+                <optgroup label="Amériques">
+                  <option value="+1">Canada (+1)</option>
+                  <option value="+1">États-Unis (+1)</option>
+                  <option value="+55">Brésil (+55)</option>
+                  <option value="+52">Mexique (+52)</option>
+                </optgroup>
+                <optgroup label="Afrique et océan Indien">
+                  <option value="+230">Maurice (+230)</option>
+                  <option value="+261">Madagascar (+261)</option>
+                  <option value="+269">Comores (+269)</option>
+                  <option value="+248">Seychelles (+248)</option>
+                  <option value="+212">Maroc (+212)</option>
+                  <option value="+213">Algérie (+213)</option>
+                  <option value="+216">Tunisie (+216)</option>
+                  <option value="+221">Sénégal (+221)</option>
+                  <option value="+225">Côte d'Ivoire (+225)</option>
+                  <option value="+237">Cameroun (+237)</option>
+                  <option value="+27">Afrique du Sud (+27)</option>
+                </optgroup>
+                <optgroup label="Asie et Océanie">
+                  <option value="+971">Émirats arabes unis (+971)</option>
+                  <option value="+65">Singapour (+65)</option>
+                  <option value="+86">Chine (+86)</option>
+                  <option value="+91">Inde (+91)</option>
+                  <option value="+81">Japon (+81)</option>
+                  <option value="+61">Australie (+61)</option>
+                </optgroup>
+              </select>
+              <input type="tel" id="a-tel" autocomplete="tel-national" placeholder="692 12 34 56">
+            </div>
+          </div>
+          <div class="champ"><label for="a-besoin">En deux mots, votre besoin (facultatif)</label><textarea id="a-besoin" placeholder="Réunions en anglais, appels clients, présentations…"></textarea></div>
+          <label class="rgpd"><input type="checkbox" id="a-rgpd"> J'accepte que ces informations soient utilisées pour traiter ma demande d'accès. <a href="politique-confidentialite.html" target="_blank" rel="noopener">En savoir plus</a></label>
+          <!-- Piège à robots : ce champ reste invisible et vide pour un
+               humain. Un automate le remplit et se trahit. -->
+          <div class="piege" aria-hidden="true"><label for="a-site">Site web</label><input type="text" id="a-site" name="site" tabindex="-1" autocomplete="off"></div>
+          <!-- Vérification anti-robots Cloudflare. Reste vide tant que la
+               clé de site n'est pas renseignée dans le script. -->
+          <div id="zone-turnstile"></div>
+          <button type="submit" class="bouton bouton-or">Envoyer ma demande</button>
+          <div class="retour" id="retour-acces" role="status"></div>
+        </form>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== PIED ===================== -->
+<footer class="pied">
+  <div class="contenu">
+    <div class="pied-haut">
+      <div class="pied-guide">
+        <h3>Télécharge ton guide gratuit</h3>
+        <p>Les premiers réflexes pour prendre la parole en anglais professionnel, sans bloquer.</p>
+        <!-- Le guide est délivré par la page de capture, qui recueille
+             l'adresse et envoie le PDF. On y renvoie donc directement. -->
+        <a class="bouton bouton-or" href="__GUIDE__" target="_blank" rel="noopener">Recevoir le guide</a>
+      </div>
+      <div class="pied-liens">
+        <a href="#membres">Mon Accélérateur</a>
+        <a href="mentions-legales.html">Mentions légales</a>
+        <a href="politique-confidentialite.html">Politique de confidentialité</a>
+        <div class="ronds">
+          <a class="rond" href="#" data-email data-objet="Renseignement" aria-label="Envoyer un email">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="21" y1="3" x2="10.5" y2="13.5"/><polygon points="21 3 14.5 21 10.5 13.5 3 9.5 21 3"/></svg>
+          </a>
+          <a class="rond" href="https://www.linkedin.com/in/ameer-aurelie" target="_blank" rel="noopener" aria-label="LinkedIn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-4 0v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
+          </a>
+          <a class="rond" href="https://www.instagram.com/businessenglish_byaurelie" target="_blank" rel="noopener" aria-label="Instagram">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5.5"/><circle cx="12" cy="12" r="4"/><line x1="17.6" y1="6.4" x2="17.61" y2="6.4"/></svg>
+          </a>
+        </div>
+      </div>
+    </div>
+    <div class="pied-bas">
+      <span>Fluent &amp; Forward — Business English Accelerator</span>
+      <span>© <span class="annee">2026</span> Aurélie Queva — Tous droits réservés</span>
+    </div>
+  </div>
+</footer>
+
+<!-- ===================== MASCOTTE — TEST DE NIVEAU =====================
+     Le petit drapeau anglais suit le visiteur sur toute la page.
+     Au clic, il ouvre l'accès au test de niveau. Le test lui-même
+     n'existe pas encore : la fenêtre ci-dessous est le point d'entrée,
+     il suffira d'y brancher la destination le moment venu. -->
+<button class="mascotte" id="mascotte" aria-label="Teste ton niveau avec moi">
+  <span class="mascotte-bulle" id="mascotte-bulle">Teste ton niveau avec moi</span>
+  <span class="mascotte-corps">
+    <img class="mascotte-drapeau" src="__MASCOTTE__" alt="" aria-hidden="true">
+  </span>
+</button>
+
+<!-- ===================== FENÊTRE CONTACT PAR EMAIL =====================
+     Ouvrir directement la messagerie ne fonctionne pas partout (navigateur
+     sans logiciel de courrier associé, page intégrée…). Cette fenêtre donne
+     donc toujours une issue : ouvrir sa messagerie, ouvrir Gmail, ou
+     simplement copier l'adresse et le message. -->
+<div class="popup-fond" id="fenetre-mail">
+  <div class="popup popup-large" role="dialog" aria-modal="true" aria-labelledby="titre-mail">
+    <button class="fermer-popup" id="fermer-mail" aria-label="Fermer">&times;</button>
+    <span class="oeil" style="color:var(--gold-fonce)">Écrire à Aurélie</span>
+    <h3 id="titre-mail">Envoyer votre message</h3>
+    <p id="mail-intro">Choisissez la façon qui vous arrange : votre messagerie s'ouvre avec le message déjà préparé, ou vous copiez tout en un clic.</p>
+    <div class="mail-adresse">
+      <span id="mail-adresse" class="mail-valeur">…</span>
+      <button type="button" class="mail-copier" id="copier-adresse">Copier</button>
+    </div>
+    <div class="mail-actions">
+      <a class="bouton bouton-vert" id="mail-direct" href="#">Ouvrir ma messagerie</a>
+      <a class="bouton bouton-clair" id="mail-gmail" href="#" target="_blank" rel="noopener">Ouvrir dans Gmail</a>
+    </div>
+    <button type="button" class="mail-copier mail-copier-large" id="copier-message">Copier le message pré-rédigé</button>
+    <div class="retour" id="retour-mail" role="status"></div>
+  </div>
+</div>
+
+<!-- ===================== LE QUIZ =====================
+     Ouvert par la mascotte : la fenêtre grandit depuis le drapeau
+     jusqu'au centre de la page. Cinq mises en situation, deux choix,
+     correction immédiate et explication sous la réponse. -->
+<div class="quiz-fond" id="quiz">
+  <div class="quiz-carte" id="quiz-carte" role="dialog" aria-modal="true" aria-labelledby="quiz-titre">
+    <button class="fermer-popup" id="fermer-quiz" aria-label="Fermer le quiz">&times;</button>
+    <div class="quiz-tete">
+      <span class="oeil">Fluent &amp; Forward</span>
+      <h3 id="quiz-titre">Testez votre anglais professionnel</h3>
+      <div class="quiz-jauge"><span class="quiz-avance" id="quiz-avance"></span></div>
+      <p class="quiz-etape" id="quiz-etape">Question 1 sur 8</p>
+    </div>
+    <div class="quiz-corps" id="quiz-corps" aria-live="polite"></div>
+    <div class="quiz-pied">
+      <button class="quiz-fleche" id="quiz-prec" aria-label="Question précédente">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H6M12 5l-7 7 7 7"/></svg>
+      </button>
+      <div class="quiz-points" id="quiz-points"></div>
+      <button class="quiz-suivant" id="quiz-suiv">
+        <span id="quiz-suiv-texte">Suivant</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13M12 5l7 7-7 7"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== POPUP RENTRÉE ===================== -->
+<div class="popup-fond" id="popup-rentree">
+  <div class="popup" role="dialog" aria-modal="true" aria-labelledby="popup-titre">
+    <button class="fermer-popup" id="fermer-popup" aria-label="Fermer">&times;</button>
+    <span class="oeil" style="color:var(--gold-fonce)">Cohorte Fondatrice</span>
+    <div class="promo" id="popup-remise">—</div>
+    <h3 id="popup-titre">Le programme à <span id="popup-prix">—</span> au lieu de <span id="popup-plein">—</span></h3>
+    <p id="popup-texte">Démarrage le 14 septembre 2026, places limitées. L'offre fondatrice se termine bientôt.</p>
+    <a class="bouton bouton-vert" href="__CALENDLY__" target="_blank" rel="noopener">Réserver mon appel</a>
+  </div>
+</div>
+
+<script>
+/* ==================================================================
+   Fluent & Forward — interactions de la maquette
+   Menu latéral, bande d'appel, apparition au défilement, popup de
+   rentrée, adresse email recomposée au clic, formulaire de démonstration.
+   ================================================================== */
+(function(){
+  "use strict";
+  var reduit = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /* Un seul endroit pour le lien de prise de rendez-vous, réutilisé par
+     les sessions et par le résultat du test. */
+  var CALENDLY="__CALENDLY__";
+
+  /* ---- Menu latéral ---- */
+  var voile=document.getElementById("voile"),panneau=document.getElementById("panneau"),
+      ouvrir=document.getElementById("ouvrir-menu"),fermer=document.getElementById("fermer-menu");
+  function basculer(actif){
+    panneau.classList.toggle("ouvert",actif);voile.classList.toggle("ouvert",actif);
+    panneau.setAttribute("aria-hidden",actif?"false":"true");
+    ouvrir.setAttribute("aria-expanded",actif?"true":"false");
+    document.body.style.overflow=actif?"hidden":"";
+  }
+  ouvrir.addEventListener("click",function(){basculer(true)});
+  fermer.addEventListener("click",function(){basculer(false)});
+  voile.addEventListener("click",function(){basculer(false)});
+  panneau.addEventListener("click",function(e){if(e.target.closest("a[href^='#']"))basculer(false)});
+  addEventListener("keydown",function(e){if(e.key==="Escape"&&panneau.classList.contains("ouvert"))basculer(false)});
+
+  /* ---- Bande d'appel : se cache en descendant, revient en montant ---- */
+  var bande=document.getElementById("bande"),dernierY=pageYOffset;
+  addEventListener("scroll",function(){
+    var y=pageYOffset;
+    if(y>dernierY+4 && y>120) bande.classList.add("cachee");
+    else if(y<dernierY-4 || y<80) bande.classList.remove("cachee");
+    dernierY=y;
+  },{passive:true});
+
+  /* ---- Apparition au défilement ----
+     observerReveal s'applique aussi aux blocs créés après coup, comme
+     les sessions dessinées à partir du tableau d'Aurélie. */
+  var obs=null;
+  if("IntersectionObserver" in window && !reduit){
+    obs=new IntersectionObserver(function(entrees){
+      entrees.forEach(function(e){if(e.isIntersecting){e.target.classList.add("vu");obs.unobserve(e.target)}});
+    },{threshold:.14,rootMargin:"0px 0px -8% 0px"});
+  }
+  function observerReveal(racine){
+    var cibles=[].slice.call((racine||document).querySelectorAll("[data-reveal]"));
+    if(racine&&racine.hasAttribute&&racine.hasAttribute("data-reveal")) cibles.push(racine);
+    if(obs) cibles.forEach(function(el){ obs.observe(el); });
+    else cibles.forEach(function(el){ el.classList.add("vu"); });
+  }
+  observerReveal(document);
+
+  /* ==================================================================
+     L'offre fondatrice — prix, remise et compte à rebours
+
+     Les trois valeurs ci-dessous sont les seules à modifier quand
+     l'offre change. La remise n'est jamais écrite à la main : elle est
+     calculée à partir des deux prix, pour qu'elle ne puisse pas
+     contredire ce qui est affiché juste à côté.
+
+     Passée l'échéance, le prix de lancement, la remise et le décompte
+     disparaissent d'eux-mêmes : il ne reste que le tarif standard. Un
+     compte à rebours arrêté sur zéro fait plus de mal que pas d'offre
+     du tout.
+     ================================================================== */
+  var PRIX_STANDARD  = 799;
+  var PRIX_LANCEMENT = 349;
+  var FIN_OFFRE      = new Date(2026,8,10,23,59,59); /* 10 septembre 2026, minuit */
+
+  var REMISE = Math.round((1-PRIX_LANCEMENT/PRIX_STANDARD)*100);
+  function euros(n){ return n.toLocaleString("fr-FR")+" €"; }
+  function offreEnCours(){ return Date.now() < FIN_OFFRE.getTime(); }
+
+  function poser(id,texte){ var e=document.getElementById(id); if(e) e.textContent=texte; }
+  poser("prix-standard",euros(PRIX_STANDARD));
+  poser("prix-lancement",euros(PRIX_LANCEMENT));
+  poser("prix-remise","−"+REMISE+" %");
+  poser("bande-remise","−"+REMISE+" %");
+  poser("popup-remise","−"+REMISE+" %");
+  poser("popup-prix",euros(PRIX_LANCEMENT));
+  poser("popup-plein",euros(PRIX_STANDARD));
+
+  var caseCompte=document.getElementById("compte-tarif"),
+      zoneCompte=document.getElementById("zone-compte"),
+      bandeCompte=document.getElementById("bande-compte");
+
+  function deuxChiffres(n){ return (n<10?"0":"")+n; }
+
+  /* Quand l'offre est passée : on retire le prix barré (il n'y a plus
+     qu'un prix), la pastille de remise, le décompte et la mention dans
+     la bande. Le site reste juste, sans intervention. */
+  function offreTerminee(){
+    var bloc=document.querySelector(".prix-standard");
+    if(bloc) bloc.hidden=true;
+    var lanc=document.querySelector(".prix-lancement");
+    if(lanc){ lanc.style.border="1px solid var(--line)"; lanc.style.background="var(--sable)"; }
+    poser("prix-lancement",euros(PRIX_STANDARD));
+    var pastille=document.getElementById("prix-remise"); if(pastille) pastille.hidden=true;
+    if(zoneCompte) zoneCompte.hidden=true;
+    var bande=document.getElementById("bande");
+    if(bande) bande.innerHTML='<a href="#tarif">Inscris-toi maintenant</a>';
+  }
+
+  function majCompte(){
+    var reste=FIN_OFFRE.getTime()-Date.now();
+    if(reste<=0){ offreTerminee(); return false; }
+    var s=Math.floor(reste/1000),
+        j=Math.floor(s/86400), h=Math.floor(s%86400/3600),
+        m=Math.floor(s%3600/60), sec=s%60;
+    if(caseCompte){
+      caseCompte.innerHTML=
+        [[j,"jours"],[h,"heures"],[m,"minutes"],[sec,"secondes"]].map(function(p){
+          return '<span class="compte-case"><span class="compte-nb">'+deuxChiffres(p[0])+
+                 '</span><span class="compte-lib">'+p[1]+'</span></span>';
+        }).join("");
+    }
+    if(bandeCompte) bandeCompte.textContent=j+" j "+deuxChiffres(h)+" h "+deuxChiffres(m)+" m "+deuxChiffres(sec)+" s";
+    return true;
+  }
+
+  if(offreEnCours()){ majCompte(); setInterval(majCompte,1000); }
+  else offreTerminee();
+
+  /* ---- Offre fondatrice : annoncée à chaque arrivée sur la page ----
+     Volontairement sans mémoire : l'offre doit être vue par tout le monde,
+     à chaque visite. Le court délai laisse la page s'afficher d'abord.
+     Une fois l'échéance passée, la fenêtre ne s'ouvre plus. */
+  var pop=document.getElementById("popup-rentree");
+  function fermerPop(){pop.classList.remove("ouvert")}
+  if(!document.body.hasAttribute("data-sans-offre") && offreEnCours())
+    setTimeout(function(){pop.classList.add("ouvert")},500);
+  document.getElementById("fermer-popup").addEventListener("click",fermerPop);
+  pop.addEventListener("click",function(e){if(e.target===pop)fermerPop()});
+  addEventListener("keydown",function(e){if(e.key==="Escape"&&pop.classList.contains("ouvert"))fermerPop()});
+
+  /* ---- Coordonnées recomposées à la dernière seconde ----
+     Ni l'adresse email ni le numéro WhatsApp ne figurent en clair dans la
+     page : ils sont stockés en morceaux et l'adresse du lien n'est écrite
+     qu'au premier survol / appui, juste avant que le clic parte. Les robots
+     qui lisent le code source ne trouvent rien à récolter. */
+  var BOITE=["contact","fluentandforward","com"];
+  var TEL=["262","693","441","835"];
+  var MSG_WA="Bonjour Aurélie, je souhaite avoir plus d'informations sur le Business English Accelerator.";
+  var CORPS_PROJET="Bonjour Aurélie,\n\nJe représente une entreprise et j'aimerais discuter d'une formation en anglais professionnel adaptée à mes équipes.\n\nPour démarrer, voici quelques informations :\n- Nom de l'entreprise : \n- Nombre de personnes concernées : \n- Objectif principal (réunions, appels, présentations, clientèle anglophone…) : \n\nMerci et à bientôt.";
+
+  function adresseMail(objet,corps){
+    var u="mailto:"+BOITE[0]+"@"+BOITE[1]+"."+BOITE[2]+"?subject="+encodeURIComponent(objet||"Renseignement");
+    if(corps) u+="&body="+encodeURIComponent(corps);
+    return u;
+  }
+
+  /* Pose l'adresse sur le lien avant que le clic ne parte. On n'annule pas
+     le clic : c'est la navigation normale du lien qui fait le travail, seule
+     façon fiable de sortir vers WhatsApp ou la messagerie. */
+  function armer(lien,fabriquer){
+    var pret=false;
+    function poser(){ if(pret) return; pret=true; lien.setAttribute("href",fabriquer()); }
+    lien.addEventListener("mouseenter",poser);
+    lien.addEventListener("pointerdown",poser);
+    lien.addEventListener("touchstart",poser,{passive:true});
+    lien.addEventListener("focus",poser);
+    lien.addEventListener("click",poser,true);
+  }
+
+  [].forEach.call(document.querySelectorAll("[data-whatsapp]"),function(b){
+    b.setAttribute("target","_blank"); b.setAttribute("rel","noopener");
+    armer(b,function(){ return "https://wa.me/"+TEL.join("")+"?text="+encodeURIComponent(MSG_WA); });
+  });
+
+  /* ---- Fenêtre « écrire à Aurélie » ----
+     Plutôt que de compter sur l'ouverture automatique de la messagerie,
+     qui échoue dès qu'aucun logiciel de courrier n'est associé, on propose
+     les trois issues : messagerie, Gmail, ou copie du message. */
+  var fenetreMail=document.getElementById("fenetre-mail"),
+      retourMail=document.getElementById("retour-mail"),
+      messageCourant="";
+
+  function ouvrirMail(objet,corps){
+    var adresse=BOITE[0]+"@"+BOITE[1]+"."+BOITE[2];
+    messageCourant=corps||"";
+    document.getElementById("mail-adresse").textContent=adresse;
+    document.getElementById("mail-direct").setAttribute("href",adresseMail(objet,corps));
+    document.getElementById("mail-gmail").setAttribute("href",
+      "https://mail.google.com/mail/?view=cm&fs=1&to="+encodeURIComponent(adresse)+
+      "&su="+encodeURIComponent(objet||"Renseignement")+(corps?"&body="+encodeURIComponent(corps):""));
+    document.getElementById("copier-message").hidden=!corps;
+    retourMail.textContent="";
+    fenetreMail.classList.add("ouvert");
+  }
+  function fermerMail(){ fenetreMail.classList.remove("ouvert"); }
+
+  function copier(texte,libelle){
+    function reussi(){ retourMail.textContent=libelle+" copié dans le presse-papiers."; }
+    function rate(){ retourMail.textContent="La copie automatique a été refusée : sélectionnez le texte à la main."; }
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(texte).then(reussi,rate);
+    }else{
+      try{
+        var z=document.createElement("textarea");
+        z.value=texte; z.style.position="fixed"; z.style.opacity="0";
+        document.body.appendChild(z); z.select();
+        document.execCommand("copy"); document.body.removeChild(z); reussi();
+      }catch(e){ rate(); }
+    }
+  }
+
+  [].forEach.call(document.querySelectorAll("[data-email]"),function(b){
+    b.addEventListener("click",function(e){ e.preventDefault(); ouvrirMail(b.getAttribute("data-objet"),""); });
+  });
+  [].forEach.call(document.querySelectorAll("[data-mail-projet]"),function(b){
+    b.addEventListener("click",function(e){
+      e.preventDefault();
+      ouvrirMail("Formation d'anglais sur mesure pour mon entreprise",CORPS_PROJET);
+    });
+  });
+  document.getElementById("fermer-mail").addEventListener("click",fermerMail);
+  fenetreMail.addEventListener("click",function(e){ if(e.target===fenetreMail) fermerMail(); });
+  addEventListener("keydown",function(e){ if(e.key==="Escape"&&fenetreMail.classList.contains("ouvert")) fermerMail(); });
+  document.getElementById("copier-adresse").addEventListener("click",function(){
+    copier(document.getElementById("mail-adresse").textContent,"Adresse");
+  });
+  document.getElementById("copier-message").addEventListener("click",function(){
+    copier(messageCourant,"Message");
+  });
+
+  /* ==================================================================
+     Les sessions — pilotées depuis le Google Sheet d'Aurélie
+
+     Le tableau comporte trois colonnes, une par mois. Chaque colonne
+     porte le nom du mois (texte libre) et deux sessions de 10 places.
+     Pour chaque session : le nombre de places restantes, et une case à
+     cocher qui décide si la session paraît sur le site.
+
+     Les valeurs ci-dessous servent de secours : si le tableau est
+     injoignable, ce sont elles qui s'affichent, et le site reste juste
+     plutôt que vide.
+     ================================================================== */
+  var ADRESSE_SESSIONS="https://script.google.com/macros/s/AKfycbwK0XxvWhNiwoWVsROAHi7EFQFRMymFOcH5gxV-KSZ3C5F39DPcT1YxSp83iJq9oMbO/exec";
+  var PLACES_PAR_SESSION=10;
+
+  var SESSIONS_SECOURS={ colonnes:[
+    { mois:"Septembre 2026", sessions:[ {places:4,publier:true},  {places:0,publier:false} ] },
+    { mois:"Octobre 2026",   sessions:[ {places:6,publier:true},  {places:0,publier:false} ] },
+    { mois:"Novembre 2026",  sessions:[ {places:10,publier:true}, {places:0,publier:false} ] }
+  ]};
+
+  var grilleMois=document.getElementById("mois-grille");
+
+  function badgeDe(places){
+    if(places<=0)  return {classe:"complet",texte:"Complet"};
+    if(places<=5)  return {classe:"urgent", texte:"Plus que "+places+(places>1?" places":" place")};
+    return {classe:"dispo", texte:places+" places disponibles"};
+  }
+
+  function dessinerSessions(donnees){
+    if(!grilleMois||!donnees||!donnees.colonnes) return;
+    var lien=CALENDLY;
+    grilleMois.innerHTML="";
+
+    donnees.colonnes.forEach(function(col,i){
+      var ouvertes=(col.sessions||[]).filter(function(s){ return s.publier; });
+
+      var bloc=document.createElement("div");
+      bloc.className="mois";
+      bloc.setAttribute("data-reveal","");
+      if(i>0) bloc.setAttribute("data-d",String(i));
+
+      var soustitre = ouvertes.length===0 ? "Aucune session ouverte pour l'instant"
+                    : ouvertes.length===1 ? "Une session programmée"
+                    : "Deux sessions programmées";
+
+      var html='<div class="mois-titre">'+(col.mois||"")+'<small>'+soustitre+'</small></div>';
+
+      if(ouvertes.length===0){
+        html+='<p class="mois-vide">Les prochaines dates seront annoncées ici. Réserver un appel pour être prévenu en priorité.</p>';
+      }else{
+        ouvertes.forEach(function(s,k){
+          /* Le nombre affiché est borné ici aussi, et pas seulement dans
+             le script Google : une faute de frappe dans le tableau ne
+             doit jamais annoncer plus de places qu'il n'en existe. */
+          var places=Math.min(PLACES_PAR_SESSION,Math.max(0,parseInt(s.places,10)||0)),
+              b=badgeDe(places), nom="Session "+(k+1);
+          if(places<=0){
+            html+='<div class="session session-complet"><div class="nom">'+nom+'</div>'+
+                  '<span class="badge complet">Complet</span></div>';
+          }else{
+            html+='<a class="session session-cta" href="'+lien+'" target="_blank" rel="noopener">'+
+                  '<div class="nom">'+nom+'</div><span class="badge '+b.classe+'">'+b.texte+'</span></a>';
+          }
+        });
+      }
+      bloc.innerHTML=html;
+      grilleMois.appendChild(bloc);
+    });
+
+    /* Les blocs viennent d'être créés : ils doivent entrer dans la
+       ronde des apparitions au défilement comme le reste de la page. */
+    if(typeof observerReveal==="function") observerReveal(grilleMois);
+
+    ligneSessionsTarif(donnees);
+  }
+
+  /* La ligne « Prochaines sessions disponibles » du bloc tarif est
+     tirée du même tableau que la grille au-dessus : les deux ne peuvent
+     donc pas se contredire. La première colonne est celle de la cohorte
+     fondatrice, dont la date de démarrage est annoncée juste au-dessus :
+     on ne la répète pas ici. */
+  function ligneSessionsTarif(donnees){
+    var cible=document.getElementById("tarif-sessions");
+    if(!cible||!donnees||!donnees.colonnes) return;
+
+    var suite=donnees.colonnes.slice(1).map(function(col){
+      var libres=(col.sessions||[]).reduce(function(t,s){
+        return t + (s.publier ? Math.min(PLACES_PAR_SESSION,Math.max(0,parseInt(s.places,10)||0)) : 0);
+      },0);
+      if(libres<=0) return null;
+      /* « Octobre 2026 » → « Octobre » : le mois suffit dans cette ligne. */
+      var mois=String(col.mois||"").replace(/\s*\d{4}\s*$/,"").trim();
+      return mois+" ("+libres+(libres>1?" places disponibles":" place disponible")+")";
+    }).filter(Boolean);
+
+    cible.textContent = suite.length
+      ? "Prochaines sessions disponibles : "+suite.join(". ")+"."
+      : "Places limitées par session, pour garantir un accompagnement individualisé.";
+  }
+
+  dessinerSessions(SESSIONS_SECOURS);
+
+  if(ADRESSE_SESSIONS){
+    fetch(ADRESSE_SESSIONS,{cache:"no-store"})
+      .then(function(r){ return r.json(); })
+      .then(function(d){ if(d&&d.colonnes&&d.colonnes.length) dessinerSessions(d); })
+      .catch(function(){ /* tableau injoignable : on garde les valeurs de secours */ });
+  }
+
+  /* ==================================================================
+     Le test de niveau — « Testez votre anglais professionnel »
+
+     Huit mises en situation en français, deux formulations en anglais.
+     Ce n'est pas un exercice de mémorisation : chaque question vise un
+     réflexe professionnel précis et renvoie à un module du programme,
+     pour que le résultat final dise quelque chose d'utile.
+
+     Deux règles de fonctionnement :
+       — l'ordre des deux réponses est tiré au sort à chaque ouverture,
+         pour que la bonne ne soit jamais à la même place ;
+       — on ne passe à la question suivante qu'en cliquant « Suivant »,
+         après avoir lu l'explication. Pas d'enchaînement automatique.
+
+     Les choix de réponse et les exemples restent en anglais : les
+     traduire viderait l'exercice de son sens.
+     ================================================================== */
+  var QUESTIONS=[
+    {
+      module:"Module 2 — Professional Communication Essentials",
+      mise:"Vous proposez un rendez-vous à un client. Que dites-vous ?",
+      choix:["I demand a meeting next week.","I'd like to schedule one next week."],
+      bonne:1,
+      ok:"Le bon ton, sans agressivité.",
+      ko:"Plus fort que prévu — ça sonne comme une exigence.",
+      expli:"<em>Demand</em> en anglais est beaucoup plus fort qu'en français (équivalant à « exiger »). Pour une demande neutre, <em>schedule</em> est le réflexe correct."
+    },
+    {
+      module:"Module 1 — Think &amp; Speak Like a Business Person",
+      mise:"Un collègue pense, à tort, que la réunion est reportée. Comment le corriger ?",
+      choix:["The meeting is actually still on.","The meeting is currently still on."],
+      bonne:0,
+      ok:"Exact, ici « actually » corrige l'erreur.",
+      ko:"Pas faux, mais ça ne corrige pas l'erreur.",
+      expli:"<em>Actually</em> sert à corriger une fausse impression — exactement le cas ici. <em>Currently</em> indique juste un moment présent, sans rectifier l'erreur du collègue."
+    },
+    {
+      module:"Module 3 — Meetings &amp; Calls Mastery",
+      mise:"Vous proposez d'aborder un sujet en réunion. Quelle formulation est correcte ?",
+      choix:["Can we discuss about this?","Can we discuss this?"],
+      bonne:1,
+      ok:"Pas de préposition ici !",
+      ko:"Presque — un mot de trop.",
+      expli:"<em>Discuss</em> est déjà transitif en anglais — pas besoin de <em>about</em>. Piège fréquent, calqué sur le français « discuter de »."
+    },
+    {
+      module:"Module 6 — Sales &amp; Negotiation English",
+      mise:"Vous évoquez un sujet délicat avec un client. Quel mot choisir ?",
+      choix:["This is a sensible topic.","This is a sensitive topic."],
+      bonne:1,
+      ok:"Le vrai mot pour « sensible » en français !",
+      ko:"Ce mot ne veut pas dire ce qu'on croit en anglais.",
+      expli:"Faux-ami classique : <em>sensible</em> en anglais veut dire raisonnable / pragmatique, pas émotionnellement délicat. Pour un sujet sensible, il faut <em>sensitive</em>."
+    },
+    {
+      module:"Module 5 — Networking Like a Pro",
+      mise:"Vous voulez proposer un point rapide après un appel. Quelle expression utiliser ?",
+      choix:["Let's touch base after the call.","Let's stay in touch after the call."],
+      bonne:0,
+      ok:"L'expression business exacte.",
+      ko:"Correct, mais plus social que professionnel.",
+      expli:"<em>Touch base</em> signifie précisément « faire un point rapide bientôt » — plus adapté en pro que <em>stay in touch</em>, plutôt utilisé en fin de relation."
+    },
+    {
+      module:"Module 2 — Professional Communication Essentials",
+      mise:"Vous informez un client qu'un remboursement est possible, sans certitude. Que dire ?",
+      choix:["You will eventually get a refund.","You may possibly get a refund."],
+      bonne:1,
+      ok:"Une promesse ferme, pas une hypothèse.",
+      ko:"Ce mot promet plus que vous ne voulez.",
+      expli:"<em>Eventually</em> affirme une certitude différée (ça arrivera, juste plus tard) — pas une possibilité. Pour exprimer un doute, <em>may / possibly</em> est plus juste."
+    },
+    {
+      module:"Module 6 — Sales &amp; Negotiation English",
+      mise:"Vous venez d'annoncer votre prix. Quelle est la meilleure réaction ?",
+      choix:["Say nothing and wait.","Explain why the price is fair."],
+      bonne:0,
+      ok:"Le silence travaille pour vous.",
+      ko:"Réflexe naturel, mais ça affaiblit votre position.",
+      expli:"Combler le silence après une offre affaiblit votre position — le silence met la pression sur l'autre partie pour réagir en premier."
+    },
+    {
+      module:"Module 1 — Think &amp; Speak Like a Business Person",
+      mise:"Vous voulez intervenir en réunion sans attendre qu'on vous le demande. Que dites-vous ?",
+      choix:["I'd like to add something.","Can I say something, maybe?"],
+      bonne:0,
+      ok:"Direct et assuré, sans être brusque.",
+      ko:"Ce petit mot vous rend moins crédible.",
+      expli:"<em>Maybe</em> ajoute une hésitation qui affaiblit la prise de parole — exactement le réflexe qui garde silencieux en réunion."
+    }
+  ];
+
+  var mascotte=document.getElementById("mascotte"),
+      quiz=document.getElementById("quiz"),
+      quizCarte=document.getElementById("quiz-carte");
+
+  if(quiz&&quizCarte){
+    /* reponses[i] retient l'indice d'origine de la réponse choisie, pas
+       sa place à l'écran : le tirage au sort de l'ordre n'a donc aucune
+       incidence sur la correction. */
+    var reponses=QUESTIONS.map(function(){return null;}),
+        ordres=[],
+        pos=0, fini=false,
+        corps=document.getElementById("quiz-corps"),
+        etape=document.getElementById("quiz-etape"),
+        avance=document.getElementById("quiz-avance"),
+        points=document.getElementById("quiz-points"),
+        prec=document.getElementById("quiz-prec"),
+        suiv=document.getElementById("quiz-suiv"),
+        suivTexte=document.getElementById("quiz-suiv-texte");
+
+    /* L'ordre des deux réponses est retiré au sort à chaque ouverture du
+       test : la bonne n'est jamais prévisible. */
+    function melanger(){
+      ordres=QUESTIONS.map(function(){ return Math.random()<0.5 ? [0,1] : [1,0]; });
+    }
+    melanger();
+
+    function reinitialiser(){
+      reponses=QUESTIONS.map(function(){return null;});
+      pos=0; fini=false;
+      melanger();
+    }
+
+    /* La bulle se montre d'elle-même une fois, pour signaler la mascotte. */
+    if(mascotte) setTimeout(function(){
+      mascotte.classList.add("montre");
+      setTimeout(function(){ mascotte.classList.remove("montre"); },4200);
+    },5200);
+
+    function pastilles(){
+      points.innerHTML="";
+      QUESTIONS.forEach(function(q,i){
+        var d=document.createElement("span");
+        d.className="quiz-point"+(reponses[i]!==null?" faite":"")+((!fini&&i===pos)?" active":"");
+        points.appendChild(d);
+      });
+    }
+
+    function majNav(){
+      prec.disabled = fini ? false : (pos===0);
+      /* on n'avance que si la question courante est répondue */
+      suiv.disabled = fini || reponses[pos]===null;
+      suiv.hidden = fini;
+      suivTexte.textContent = (pos===QUESTIONS.length-1) ? "Voir mon résultat" : "Suivant";
+      pastilles();
+      var faites=reponses.filter(function(r){return r!==null;}).length;
+      avance.style.width=Math.round((fini?QUESTIONS.length:faites)/QUESTIONS.length*100)+"%";
+      etape.textContent = fini ? "Résultat" : ("Question "+(pos+1)+" sur "+QUESTIONS.length);
+    }
+
+    function flashDe(q,juste){
+      var flash=document.createElement("div");
+      flash.className="quiz-flash";
+      flash.innerHTML='<p class="quiz-verdict '+(juste?"ok":"ko")+'">'+(juste?q.ok:q.ko)+'</p>'+
+                      '<p class="quiz-expli">'+q.expli+'</p>';
+      return flash;
+    }
+
+    function repondre(origine){
+      if(reponses[pos]!==null) return;
+      reponses[pos]=origine;
+      var q=QUESTIONS[pos], ordre=ordres[pos], juste=(origine===q.bonne);
+      [].forEach.call(corps.querySelectorAll(".quiz-option"),function(o,k){
+        o.disabled=true;
+        if(ordre[k]===q.bonne){ o.classList.add("juste"); o.querySelector(".marque").textContent="✓"; }
+        else if(ordre[k]===origine){ o.classList.add("faux"); o.querySelector(".marque").textContent="✕"; }
+      });
+      corps.appendChild(flashDe(q,juste));
+      majNav();
+    }
+
+    /* Le résultat : le score, puis les modules correspondant aux
+       questions ratées. C'est la seule partie qui parle du programme. */
+    function resultat(){
+      var note=reponses.reduce(function(t,r,i){return t+(r===QUESTIONS[i].bonne?1:0);},0);
+
+      var manques=[];
+      reponses.forEach(function(r,i){
+        if(r!==QUESTIONS[i].bonne && manques.indexOf(QUESTIONS[i].module)<0)
+          manques.push(QUESTIONS[i].module);
+      });
+
+      var msg = note===QUESTIONS.length
+        ? "Sans faute. Vous avez les bons réflexes sur le papier — reste le plus difficile : les avoir sous la main en réunion, au téléphone, face à un client qui ne vous laisse pas trois secondes pour réfléchir. C'est précisément ce que le programme entraîne, en situation."
+        : note>=6
+          ? "Les bases sont solides. Ce sont les nuances qui vous coûtent des points, et ce sont elles qui changent la portée d'un message en situation réelle."
+          : note>=4
+            ? "Un socle réel, mais plusieurs réflexes professionnels restent à installer — ceux qui reviennent tous les jours dans les échanges."
+            : "Les fondamentaux méritent d'être repris : ces pièges reviennent en permanence dans les échanges professionnels, et ils se corrigent vite avec la bonne méthode.";
+
+      var html='<div class="quiz-score">'+
+        '<div class="quiz-note">'+note+'<span>/'+QUESTIONS.length+'</span></div>'+
+        '<p>'+msg+'</p>';
+
+      if(manques.length){
+        html+='<div class="quiz-modules"><b>Vos points à travailler en priorité</b><ul>'+
+              manques.map(function(m){ return '<li>'+m+'</li>'; }).join("")+
+              '</ul></div>';
+      }
+
+      html+='<a class="bouton bouton-vert" href="'+CALENDLY+'" target="_blank" rel="noopener">Verifier si le programme vous correspond</a>'+
+            '<p class="note-test"><button type="button" class="mail-copier" data-refaire>Refaire le test</button></p>'+
+            '</div>';
+
+      corps.innerHTML=html;
+      corps.querySelector("[data-refaire]").addEventListener("click",function(){
+        reinitialiser(); dessiner();
+      });
+      majNav();
+    }
+
+    function dessiner(){
+      corps.innerHTML="";
+      if(fini){ resultat(); return; }
+
+      var q=QUESTIONS[pos], ordre=ordres[pos], rep=reponses[pos];
+      var html='<p class="quiz-mise">'+q.mise+'</p><div class="quiz-choix">';
+      ordre.forEach(function(origine,k){
+        var cl="quiz-option", marque="";
+        if(rep!==null){
+          if(origine===q.bonne){ cl+=" juste"; marque="✓"; }
+          else if(origine===rep){ cl+=" faux"; marque="✕"; }
+        }
+        html+='<button class="'+cl+'" data-o="'+origine+'"'+(rep!==null?" disabled":"")+'>'+
+              '<span class="marque">'+marque+'</span><span class="lettre">'+"AB".charAt(k)+'.</span>"'+
+              q.choix[origine]+'"</button>';
+      });
+      html+='</div>';
+      corps.innerHTML=html;
+
+      [].forEach.call(corps.querySelectorAll(".quiz-option"),function(o){
+        o.addEventListener("click",function(){ repondre(+o.getAttribute("data-o")); });
+      });
+      if(rep!==null) corps.appendChild(flashDe(q,rep===q.bonne));
+      majNav();
+    }
+
+    prec.addEventListener("click",function(){
+      if(fini){ fini=false; pos=QUESTIONS.length-1; dessiner(); return; }
+      if(pos>0){ pos--; dessiner(); }
+    });
+    suiv.addEventListener("click",function(){
+      if(reponses[pos]===null) return;
+      if(pos<QUESTIONS.length-1){ pos++; dessiner(); }
+      else { fini=true; dessiner(); }
+      quizCarte.scrollTop=0;
+    });
+
+    /* La fenêtre grandit depuis l'élément qui l'ouvre — la mascotte ou
+       le bouton du test — jusqu'au centre de la page. */
+    function ouvrirQuiz(depuis){
+      if(mascotte) mascotte.classList.remove("montre");
+      if(fini||reponses[0]!==null) reinitialiser();
+      dessiner();
+      /* La fenêtre est déjà en place dans la page (simplement invisible) :
+         on peut donc la mesurer et poser l'origine AVANT de lancer
+         l'agrandissement, sinon il partirait du centre. */
+      var source=depuis||mascotte;
+      if(source){
+        var m=source.getBoundingClientRect(), c=quizCarte.getBoundingClientRect();
+        quizCarte.style.transformOrigin=(m.left+m.width/2-c.left)+"px "+(m.top+m.height/2-c.top)+"px";
+      }
+      void quizCarte.offsetWidth;
+      quizCarte.scrollTop=0;
+      quiz.classList.add("ouvert");
+      document.body.style.overflow="hidden";
+    }
+    function fermerQuiz(){ quiz.classList.remove("ouvert"); document.body.style.overflow=""; }
+
+    if(mascotte) mascotte.addEventListener("click",function(){ ouvrirQuiz(mascotte); });
+    /* Les autres portes d'entrée : le bouton du hero et l'encart de la
+       section Formation. */
+    [].forEach.call(document.querySelectorAll("[data-test]"),function(b){
+      b.addEventListener("click",function(e){ e.preventDefault(); ouvrirQuiz(b); });
+    });
+    document.getElementById("fermer-quiz").addEventListener("click",fermerQuiz);
+    quiz.addEventListener("click",function(e){ if(e.target===quiz) fermerQuiz(); });
+    addEventListener("keydown",function(e){ if(e.key==="Escape"&&quiz.classList.contains("ouvert")) fermerQuiz(); });
+  }
+
+  /* ==================================================================
+     Formulaire de demande d'accès
+
+     Trois filtres contre les robots, du plus discret au plus solide :
+       1. le champ piège, invisible : s'il est rempli, c'est un automate ;
+       2. le délai minimal : un robot répond en une seconde, pas un humain ;
+       3. Cloudflare Turnstile, qui vérifie sans jeu d'images.
+
+     Turnstile ne s'active que si la clé de site est renseignée
+     ci-dessous. Tant qu'elle est vide, le formulaire fonctionne
+     normalement avec les deux premiers filtres.
+     ================================================================== */
+  var CLE_TURNSTILE="0x4AAAAAAEfnqTQcl-mVO67F"; /* clé de site Turnstile (publique) */
+  /* Même script que les sessions : il lit le tableau (doGet) et reçoit les
+     demandes d'accès (doPost). Une seule adresse pour les deux. */
+  var ADRESSE_COLLECTEUR="https://script.google.com/macros/s/AKfycbwK0XxvWhNiwoWVsROAHi7EFQFRMymFOcH5gxV-KSZ3C5F39DPcT1YxSp83iJq9oMbO/exec";
+  var jetonTurnstile="", ouvertureFormulaire=Date.now();
+
+  if(CLE_TURNSTILE){
+    window.turnstileCharge=function(){
+      if(!window.turnstile) return;
+      window.turnstile.render("#zone-turnstile",{
+        sitekey:CLE_TURNSTILE, theme:"light", language:"fr",
+        callback:function(t){ jetonTurnstile=t; },
+        "expired-callback":function(){ jetonTurnstile=""; }
+      });
+    };
+    var s=document.createElement("script");
+    s.src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=turnstileCharge";
+    s.async=true; s.defer=true;
+    document.head.appendChild(s);
+  }
+
+  var form=document.getElementById("form-acces"),retour=document.getElementById("retour-acces");
+  if(form){
+    form.addEventListener("submit",function(e){
+      e.preventDefault();
+      var prenom=document.getElementById("a-prenom").value.trim(),
+          nom=document.getElementById("a-nom").value.trim(),
+          email=document.getElementById("a-email").value.trim(),
+          indicatif=document.getElementById("a-indicatif").value,
+          tel=document.getElementById("a-tel").value.trim(),
+          besoin=document.getElementById("a-besoin").value.trim(),
+          rgpd=document.getElementById("a-rgpd").checked,
+          piege=document.getElementById("a-site").value;
+
+      /* Filtre 1 : le champ invisible doit rester vide. On ne dit rien,
+         pour ne pas renseigner l'automate sur ce qui l'a trahi. */
+      if(piege){ retour.textContent="Merci, votre demande a bien été envoyée."; form.reset(); return; }
+
+      /* Filtre 2 : un formulaire rempli en moins de trois secondes
+         n'a pas été rempli par une personne. */
+      if(Date.now()-ouvertureFormulaire<3000){
+        retour.textContent="Merci de prendre un instant pour vérifier vos informations avant l'envoi.";
+        return;
+      }
+
+      if(!prenom||!email||!tel||!rgpd){
+        retour.textContent="Merci de renseigner votre prénom, votre email, votre téléphone et d'accepter le traitement.";
+        return;
+      }
+      if(CLE_TURNSTILE&&!jetonTurnstile){
+        retour.textContent="Merci de valider la vérification anti-robots juste au-dessus.";
+        return;
+      }
+
+      var telComplet=indicatif+" "+tel;
+
+      if(ADRESSE_COLLECTEUR){
+        /* Voie normale : la demande part dans le tableau d'Aurélie.
+           Le jeton Turnstile l'accompagne ; c'est le collecteur qui le
+           vérifie auprès de Cloudflare avant d'enregistrer la ligne. */
+        fetch(ADRESSE_COLLECTEUR,{method:"POST",mode:"no-cors",
+          headers:{"Content-Type":"text/plain;charset=utf-8"},
+          body:JSON.stringify({prenom:prenom,nom:nom,email:email,
+            telephone:telComplet,besoin:besoin,jeton:jetonTurnstile})});
+        retour.textContent="Merci "+prenom+" ! Votre demande est transmise à Aurélie, qui vous répondra par email.";
+      }else{
+        /* Tant que le collecteur n'est pas branché, la demande part par
+           messagerie plutôt que de disparaître : mieux vaut une étape de
+           plus qu'une demande perdue. */
+        var corps="Bonjour Aurélie,\n\nJe souhaite un accès à l'espace participants.\n\n"+
+                  "Prénom : "+prenom+"\nNom : "+nom+"\nEmail : "+email+"\nTéléphone : "+telComplet+
+                  (besoin?"\nBesoin : "+besoin:"")+"\n\nMerci.";
+        retour.textContent="Merci "+prenom+" ! Votre messagerie s'ouvre avec la demande pré-remplie : il ne reste qu'à l'envoyer.";
+        location.href=adresseMail("Demande d'accès — "+prenom+" "+nom,corps);
+      }
+
+      form.reset();
+      ouvertureFormulaire=Date.now();
+      if(CLE_TURNSTILE&&window.turnstile){ window.turnstile.reset(); jetonTurnstile=""; }
+    });
+  }
+
+  /* ---- Année ---- */
+  [].forEach.call(document.querySelectorAll(".annee"),function(e){e.textContent=new Date().getFullYear()});
+})();
+</script>

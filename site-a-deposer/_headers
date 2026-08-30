@@ -1,0 +1,49 @@
+# ==================================================================
+# Fluent & Forward — en-têtes de sécurité (Cloudflare Pages)
+#
+# Ce fichier se dépose tel quel à la racine du site. Cloudflare Pages
+# le lit automatiquement et ajoute ces en-têtes à chaque réponse.
+# Il ne s'affiche jamais aux visiteurs.
+# ==================================================================
+
+/*
+  # Empêche d'autres sites d'afficher le nôtre dans un cadre invisible
+  # pour piéger les clics des visiteurs.
+  X-Frame-Options: DENY
+
+  # Empêche le navigateur de « deviner » le type d'un fichier, ce qui
+  # peut transformer un fichier anodin en script exécutable.
+  X-Content-Type-Options: nosniff
+
+  # Ne transmet pas l'adresse de nos pages aux sites externes visités
+  # depuis le site (Calendly, WhatsApp, réseaux sociaux).
+  Referrer-Policy: strict-origin-when-cross-origin
+
+  # Coupe l'accès aux capteurs et périphériques : le site n'en a aucun
+  # besoin, autant les refuser franchement.
+  Permissions-Policy: geolocation=(), microphone=(), camera=(), payment=(), usb=(), interest-cohort=()
+
+  # Impose le HTTPS pendant deux ans, sous-domaines compris.
+  # VOLONTAIREMENT DÉSACTIVÉ POUR L'INSTANT : retirer le # ci-dessous
+  # UNIQUEMENT une fois le site réellement joignable en HTTPS (étape 7
+  # du guide). Activée trop tôt, cette ligne rend le site injoignable
+  # pendant deux ans, sans retour en arrière possible.
+  # Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
+
+  # Politique de contenu : liste ce que la page a le droit de charger.
+  # Tout le reste est refusé par le navigateur, y compris un script
+  # qu'un attaquant parviendrait à injecter.
+  #   default-src 'self'      rien d'externe par défaut
+  #   img-src ... data:       les visuels sont intégrés en data:URI
+  #   style/font ...          Google Fonts, seul service externe utilisé
+  #   connect-src ...         l'envoi des formulaires vers Google Apps Script
+  #   frame-ancestors 'none'  personne ne peut nous encadrer
+  #   form-action 'self'      un formulaire ne peut pas partir ailleurs
+  #   frame-src ...           le cadre de vérification anti-robots Turnstile
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://challenges.cloudflare.com; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests
+
+# L'espace membres : jamais mis en cache par les intermédiaires,
+# pour qu'une page privée ne reste pas dans un cache partagé.
+/membres/*
+  Cache-Control: private, no-store
+  X-Robots-Tag: noindex, nofollow
