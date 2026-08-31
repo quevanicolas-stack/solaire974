@@ -25,7 +25,6 @@ REMPLACEMENTS = {
     '__PORTES__':   images['portes'],
     '__NEXTSTEP__': images['nextstep'],
     '__AURELIE__':  images['aurelie'],
-    '__MASCOTTE__': images['mascotte'],
 }
 
 page = (BASE / 'maquette.tpl.html').read_text(encoding='utf-8')
