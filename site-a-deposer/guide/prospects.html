@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prospects enregistrés — Fluent &amp; Forward</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/style.css">
+<style>
+  .tableau-enveloppe { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--rayon); background: #fff; margin-top: 24px; }
+  table { width: 100%; border-collapse: collapse; min-width: 640px; }
+  th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--line); font-size: .93rem; }
+  thead th { background: var(--sand); font-family: var(--titre); font-weight: 700; font-size: .76rem; letter-spacing: .06em; text-transform: uppercase; }
+  tbody tr:last-child td { border-bottom: none; }
+  td.date { font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--muted); }
+  .tuiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 28px; }
+  td.oui-non { font-weight: 600; }
+  .tuile { background: var(--sand); border-radius: var(--rayon); padding: 20px 22px; }
+  .tuile .valeur { font-family: var(--titre); font-weight: 800; font-size: 2rem; color: var(--green); font-variant-numeric: tabular-nums; }
+  .tuile .libelle { font-size: .88rem; color: var(--muted); margin-top: 2px; }
+  .vide { background: var(--sand); border-radius: var(--rayon); padding: 28px; margin-top: 24px; color: var(--muted); }
+  @media (max-width: 680px) { .tuiles { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<header class="entete">
+  <div class="contenu barre">
+    <a class="marque" href="index.html">Fluent &amp; Forward</a>
+    <a class="bouton bouton-vert" href="index.html">Retour à la page</a>
+  </div>
+</header>
+
+<main>
+  <section class="section">
+    <div class="contenu">
+      <span class="oeil">Interne</span>
+      <h2>Prospects enregistrés sur ce navigateur</h2>
+      <p class="chapeau" style="margin-top:16px">
+        Cette page lit la copie de secours conservée localement par le navigateur.
+        Elle ne montre <strong>que</strong> les contacts saisis depuis cet appareil et ce
+        navigateur — ce n'est pas le fichier de sauvegarde central. Elle sert à ne rien
+        perdre pendant les tests, ou tant que le collecteur n'est pas branché.
+      </p>
+
+      <div class="tuiles" id="tuiles"></div>
+
+      <div id="zone-tableau"></div>
+
+      <div class="groupe-boutons" style="display:flex; gap:12px; margin-top:26px; flex-wrap:wrap">
+        <button class="bouton bouton-vert" id="exporter">Exporter en CSV</button>
+        <button class="bouton" id="vider"
+                style="background:transparent; border-color:var(--line); color:var(--ink)">
+          Vider la liste locale
+        </button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="pied">
+  <div class="contenu">
+    <span class="marque">Fluent &amp; Forward</span>
+    <div class="pied-bas">
+      <span>Page interne — ne pas diffuser.</span>
+      <span><a href="index.html">Accueil</a></span>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/prospects.js"></script>
+</body>
+</html>

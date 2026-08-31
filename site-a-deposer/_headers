@@ -47,3 +47,24 @@
   #   img-src     www.facebook.com       l'image de mesure (tr?id=…)
   #   connect-src www.facebook.com       les envois du script
   Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; img-src 'self' data: https://www.facebook.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com https://connect.facebook.net; frame-src https://challenges.cloudflare.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://challenges.cloudflare.com https://www.facebook.com; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests
+
+# La page de capture du guide vit sous /guide/. Elle avait son propre
+# fichier _headers quand elle était publiée séparément ; Cloudflare ne
+# lit que celui de la racine, ses règles utiles sont donc reprises ici.
+
+# L'écran de suivi des prospects est réservé à Aurélie : il ne doit
+# apparaître dans aucun moteur de recherche.
+/guide/prospects.html
+  X-Robots-Tag: noindex, nofollow, noarchive
+  Cache-Control: private, no-store
+
+# La page de remerciement n'a de sens qu'après le formulaire : la
+# référencer permettrait d'atteindre le guide sans laisser ses
+# coordonnées.
+/guide/stop-avoiding.html
+  X-Robots-Tag: noindex, nofollow
+
+# Le PDF lui-même ne doit pas être indexé : il se mérite par le
+# formulaire, pas par une recherche.
+/guide/assets/stop-avoiding-english-essentials.pdf
+  X-Robots-Tag: noindex, nofollow

@@ -1,0 +1,472 @@
+/* ==================================================================
+   Fluent & Forward — landing page « Stop Avoiding - English Essentials »
+   Structure et contenus conformes au brief du 16 août.
+   Charte reprise du support de cours (bloc :root de module1-seance1).
+   ================================================================== */
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  /* Charte de marque — identique aux slides */
+  --cream:  #FAF7F2;
+  --ink:    #2C1810;
+  --green:  #1B6B4A;
+  --gold:   #C9A96E;
+  --sand:   #E8DDD0;
+  --deep:   #10382A;
+  --deeper: #0B2A20;
+  --muted:  rgba(44, 24, 16, .60);
+  --line:   rgba(44, 24, 16, .13);
+  --red:    #A8452F;
+
+  --muted-clair: rgba(250, 247, 242, .70);
+  --line-clair:  rgba(250, 247, 242, .18);
+  --titre: 'Plus Jakarta Sans', 'Segoe UI', system-ui, sans-serif;
+  --texte: 'DM Sans', 'Segoe UI', system-ui, sans-serif;
+  --largeur: 1060px;
+  --rayon: 14px;
+  --transition: .18s ease;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--texte);
+  font-size: 17px;
+  line-height: 1.65;
+  color: var(--ink);
+  background: var(--cream);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 {
+  font-family: var(--titre);
+  font-weight: 800;
+  line-height: 1.14;
+  letter-spacing: -.02em;
+  text-wrap: balance;
+}
+
+h1 { font-size: clamp(1.65rem, 2.9vw, 2.5rem); }
+h2 { font-size: clamp(1.55rem, 2.7vw, 2.2rem); }
+h3 { font-size: 1.12rem; font-weight: 700; letter-spacing: -.01em; }
+
+p { margin-bottom: 1.05em; }
+p:last-child { margin-bottom: 0; }
+
+a { color: var(--green); text-decoration: none; transition: color var(--transition); }
+a:hover { color: var(--deep); text-decoration: underline; }
+
+img { max-width: 100%; height: auto; display: block; }
+
+:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
+
+/* ---------- Structure ---------- */
+.contenu { width: 100%; max-width: var(--largeur); margin: 0 auto; padding: 0 24px; }
+.contenu-etroit { max-width: 720px; }
+
+.section { padding: 84px 0; }
+.section-sable { background: var(--sand); }
+.section-verte { background: var(--deep); color: var(--cream); }
+.section-verte h2, .section-verte h3 { color: #fff; }
+
+.centre { text-align: center; }
+
+.oeil {
+  display: inline-block;
+  font-family: var(--titre);
+  font-weight: 700;
+  font-size: .68rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--green);
+  margin-bottom: 16px;
+}
+.section-verte .oeil { color: var(--gold); }
+
+.chapeau { font-size: 1.12rem; color: var(--muted); max-width: 62ch; }
+.centre .chapeau { margin-left: auto; margin-right: auto; }
+.section-verte .chapeau { color: var(--muted-clair); }
+
+.pastille {
+  display: inline-block;
+  font-family: var(--titre);
+  font-weight: 700;
+  font-size: .66rem;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: var(--gold);
+  color: var(--ink);
+}
+
+/* Marqueur des éléments restant à confirmer côté client */
+.a-confirmer {
+  background: rgba(201, 169, 110, .30);
+  border-bottom: 2px dotted var(--gold);
+  padding: 0 3px;
+  border-radius: 3px;
+  color: inherit;
+}
+
+/* ---------- Boutons ---------- */
+.bouton {
+  display: inline-block;
+  font-family: var(--titre);
+  font-weight: 700;
+  font-size: 1rem;
+  padding: 15px 28px;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  cursor: pointer;
+  text-align: center;
+  line-height: 1.25;
+  transition: background var(--transition), color var(--transition),
+              transform var(--transition);
+}
+.bouton:hover { text-decoration: none; transform: translateY(-1px); }
+.bouton-vert { background: var(--green); color: #fff; }
+.bouton-vert:hover { background: var(--deep); color: #fff; }
+.bouton-or { background: var(--gold); color: var(--ink); }
+.bouton-or:hover { background: #b8975c; color: var(--ink); }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+  html { scroll-behavior: auto; }
+}
+
+/* ---------- Barre supérieure ---------- */
+.entete {
+  position: sticky;
+  top: 0;
+  z-index: 60;
+  background: rgba(250, 247, 242, .95);
+  backdrop-filter: blur(9px);
+  border-bottom: 1px solid var(--line);
+}
+.barre {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  min-height: 64px;
+}
+.marque {
+  font-family: var(--titre);
+  font-weight: 800;
+  font-size: 1.05rem;
+  color: var(--green);
+  letter-spacing: -.02em;
+}
+.marque:hover { text-decoration: none; color: var(--deep); }
+.entete .bouton { padding: 10px 18px; font-size: .88rem; }
+
+/* ---------- Section 1 : hero ---------- */
+.heros {
+  background: var(--deep);
+  color: var(--cream);
+  padding: 76px 0 84px;
+  position: relative;
+  overflow: hidden;
+}
+.heros::before {
+  content: "";
+  position: absolute;
+  top: -200px; right: -160px;
+  width: 560px; height: 560px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(201, 169, 110, .16) 0%, rgba(201, 169, 110, 0) 68%);
+  pointer-events: none;
+}
+.heros .contenu { position: relative; }
+.heros h1 { color: #fff; max-width: 20ch; margin-bottom: 24px; }
+.heros h1 .chiffre { color: var(--gold); }
+.heros .chapeau { color: var(--muted-clair); font-size: 1.18rem; max-width: 54ch; }
+
+/* ---------- Bloc de capture ---------- */
+.capture { margin-top: 34px; max-width: 560px; }
+.centre .capture { margin-left: auto; margin-right: auto; }
+
+.capture-ligne { display: flex; gap: 12px; align-items: flex-start; }
+.capture-ligne .champ { flex: 1 1 auto; margin: 0; }
+.capture-ligne .bouton { flex: 0 0 auto; }
+
+.champ input {
+  width: 100%;
+  padding: 15px 16px;
+  font-family: var(--texte);
+  font-size: 1rem;
+  color: var(--ink);
+  background: #fff;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+.champ input::placeholder { color: rgba(44, 24, 16, .45); }
+.champ input:focus {
+  outline: none;
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(201, 169, 110, .28);
+}
+.champ input[aria-invalid="true"] { border-color: var(--red); }
+
+.erreur-champ {
+  display: none;
+  font-size: .86rem;
+  margin-top: 7px;
+  color: #F0B4A4;
+}
+.section-sable .erreur-champ, .section-claire .erreur-champ { color: var(--red); }
+.erreur-champ.visible { display: block; }
+
+.reassurance {
+  font-size: .92rem;
+  color: var(--muted-clair);
+  margin-top: 14px;
+}
+.section-sable .reassurance { color: var(--muted); }
+
+.retour-formulaire {
+  display: none;
+  margin-top: 16px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  font-size: .95rem;
+  line-height: 1.55;
+  background: rgba(201, 169, 110, .16);
+  border: 1px solid rgba(201, 169, 110, .45);
+  color: var(--cream);
+}
+.section-sable .retour-formulaire { color: var(--deep); background: rgba(27, 107, 74, .10); border-color: rgba(27, 107, 74, .35); }
+.retour-formulaire.visible { display: block; }
+
+/* ---------- Section 2 : contenu du guide ---------- */
+.liste-guide { list-style: none; display: grid; gap: 14px; margin-top: 38px; }
+
+.liste-guide li {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  background: var(--cream);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--gold);
+  border-radius: var(--rayon);
+  padding: 22px 24px;
+}
+.liste-guide .puce {
+  font-family: var(--titre);
+  font-weight: 800;
+  font-size: .75rem;
+  color: var(--gold);
+  flex: 0 0 auto;
+  padding-top: 5px;
+  letter-spacing: .06em;
+}
+.liste-guide .texte { font-size: 1.02rem; line-height: 1.5; }
+.liste-guide .texte strong { font-family: var(--titre); font-weight: 700; }
+
+/* ---------- Section 3 : qui je suis ---------- */
+.portrait {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 48px;
+  align-items: center;
+}
+.portrait img {
+  width: 100%;
+  border-radius: var(--rayon);
+  box-shadow: 0 18px 44px rgba(11, 42, 32, .18);
+}
+.portrait .texte { font-size: 1.1rem; line-height: 1.6; }
+.signature {
+  font-family: var(--titre);
+  font-weight: 700;
+  color: var(--green);
+  margin-top: 20px;
+  font-size: 1rem;
+}
+
+/* ---------- Section 5 : teasing programme ---------- */
+.encart-cohorte {
+  display: inline-block;
+  margin-top: 26px;
+  padding: 14px 22px;
+  border: 1px solid var(--line-clair);
+  border-radius: 10px;
+  font-family: var(--titre);
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--gold);
+}
+
+/* ---------- Pied de page ---------- */
+.pied {
+  background: var(--deeper);
+  color: var(--muted-clair);
+  padding: 44px 0 24px;
+  font-size: .9rem;
+}
+.pied a { color: var(--muted-clair); }
+.pied a:hover { color: var(--gold); }
+.pied .marque { color: var(--gold); display: inline-block; margin-bottom: 10px; }
+.pied-bas {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line-clair);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: .83rem;
+  color: rgba(250, 247, 242, .45);
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 860px) {
+  .portrait { grid-template-columns: 260px 1fr; gap: 32px; }
+}
+
+@media (max-width: 680px) {
+  body { font-size: 16px; }
+  .section { padding: 56px 0; }
+  .heros { padding: 50px 0 58px; }
+  .heros h1 { max-width: none; }
+  .capture-ligne { flex-direction: column; }
+  .capture-ligne .bouton { width: 100%; }
+  .portrait { grid-template-columns: 1fr; gap: 28px; }
+  .portrait img { max-width: 300px; margin: 0 auto; }
+  .entete .marque { font-size: .95rem; }
+  .entete .bouton { padding: 9px 13px; font-size: .78rem; }
+  .liste-guide li { padding: 18px 18px; gap: 12px; }
+}
+
+/* ---------- Formulaire à deux champs + bouton pleine largeur ---------- */
+.capture-ligne { flex-wrap: wrap; }
+.capture-ligne .champ { flex: 1 1 200px; }
+.champ label {
+  display: block;
+  font-family: var(--titre);
+  font-weight: 700;
+  font-size: .78rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  margin-bottom: 7px;
+  color: rgba(250, 247, 242, .80);
+}
+.section-sable .champ label, .section-claire .champ label { color: var(--muted); }
+
+.bouton-large { width: 100%; margin-top: 14px; }
+.bouton-large:disabled { opacity: .65; cursor: progress; transform: none; }
+
+.capture { max-width: 600px; }
+
+/* ---------- Bandeau d'accueil centré ----------
+   Le contenu du hero est court : aligné à gauche il laissait la moitié
+   droite vide. Le bloc est centré, les champs restent alignés à gauche. */
+.heros .contenu { text-align: center; }
+.heros h1 { max-width: 26ch; margin-left: auto; margin-right: auto; }
+.heros .chapeau { margin-left: auto; margin-right: auto; }
+.heros .capture { margin-left: auto; margin-right: auto; text-align: left; }
+.heros .reassurance { text-align: center; }
+
+/* ---------- Encart cohorte ----------
+   Doré sur crème manquait de contraste : le vert sert sur fond clair,
+   le doré est réservé aux sections vertes. */
+.encart-cohorte { color: var(--green); border-color: var(--line); }
+.section-verte .encart-cohorte { color: var(--gold); border-color: var(--line-clair); }
+
+/* ---------- Accroche du hero ----------
+   Les deux statistiques sont traitées comme deux blocs distincts, côte à côte
+   sur la largeur utile de la page, empilés en dessous de 760 px. */
+/* Les deux statistiques sont empilées, chacune sur toute la largeur.
+   Le pourcentage ouvre la phrase, en ligne, pour que le texte occupe
+   vraiment la largeur au lieu de se casser en colonne. */
+.accroche {
+  display: block;
+  max-width: none;
+  margin: 26px 0 32px;
+}
+.phrase-stat {
+  display: block;
+  font-size: clamp(1.15rem, 2vw, 1.65rem);
+  font-weight: 700;
+  line-height: 1.4;
+  color: #fff;
+  text-wrap: pretty;
+}
+.phrase-stat + .phrase-stat {
+  margin-top: 26px;
+  padding-top: 26px;
+  border-top: 1px solid var(--line-clair);
+}
+.pourcentage {
+  font-size: 1.7em;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -.03em;
+  color: var(--gold);
+  margin-right: .12em;
+}
+
+/* ---------- Ligne cohorte + contact WhatsApp ---------- */
+.ligne-cohorte {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  margin-top: 26px;
+}
+.encart-cohorte { margin: 0; }
+
+.bouton-whatsapp {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 22px;
+}
+.bouton-whatsapp svg { width: 20px; height: 20px; flex: 0 0 auto; }
+
+
+@media (max-width: 760px) {
+  .ligne-cohorte { flex-direction: column; align-items: flex-start; }
+  .bouton-whatsapp { width: 100%; justify-content: center; }
+}
+
+/* ---------- Cases de consentement ---------- */
+.consentements {
+  display: grid;
+  gap: 11px;
+  margin-top: 20px;
+  text-align: left;
+}
+.case {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: .89rem;
+  line-height: 1.5;
+  color: var(--muted-clair);
+  cursor: pointer;
+}
+.section-sable .case, .section-claire .case { color: var(--muted); }
+.case input {
+  width: 17px;
+  height: 17px;
+  margin-top: 3px;
+  flex: 0 0 auto;
+  accent-color: var(--gold);
+  cursor: pointer;
+}
+.case input[aria-invalid="true"] { outline: 2px solid var(--red); outline-offset: 2px; }
+
+/* La règle .heros h1 plus haut est plus spécifique que .accroche : on la
+   neutralise ici pour que les deux statistiques occupent la largeur utile. */
+.heros h1.accroche {
+  max-width: none;
+  margin-left: 0;
+  margin-right: 0;
+}
+/* Le bloc cohorte garde sa largeur de contenu au lieu de pousser le bouton
+   à la ligne. */
+.ligne-cohorte .encart-cohorte { flex: 0 1 auto; }

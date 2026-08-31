@@ -13,9 +13,13 @@ SORTIE = BASE / 'site-a-deposer' / 'index.html'
 # Lien de prise de rendez-vous, unique pour tout le site.
 CALENDLY = 'https://calendly.com/aurelieameerpro/30min'
 
-# Page de capture du guide gratuit, hébergée à part.
-# C'est la seule adresse à changer si la landing déménage.
-GUIDE = 'https://quevanicolas-stack.github.io/cours-d-anglais/landing/'
+# Page de capture du guide gratuit. Elle est désormais servie par le
+# site lui-même, sous /guide/ : une seule mise en ligne, un seul domaine.
+#
+# IMPORTANT : ce lien vise la page de capture, jamais le PDF. Le guide
+# n'est remis qu'après le formulaire, qui recueille les coordonnées du
+# prospect. Un lien direct vers le PDF ferait perdre le contact.
+GUIDE = '/guide/'
 
 images = json.loads((BASE / 'data-uris.json').read_text(encoding='utf-8'))
 

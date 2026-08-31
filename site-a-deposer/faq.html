@@ -144,10 +144,33 @@ src="https://www.facebook.com/tr?id=1098827892487740&ev=PageView&noscript=1"/>
     <div class="faq-fin">
       <h2>Une question qui n'est pas là ?</h2>
       <p>Le plus simple reste d'en parler de vive voix.</p>
-      <a class="faq-bouton" href="https://calendly.com/aurelieameerpro/30min" target="_blank" rel="noopener">Vérifier si le programme vous correspond</a>
+      <a class="faq-bouton" id="faq-whatsapp" href="#" target="_blank" rel="noopener">Poser ma question sur WhatsApp</a>
     </div>
   </div>
 </main>
+
+<script>
+/* Le numéro WhatsApp n'apparaît pas dans le code de la page : il est
+   recomposé à partir de ses quatre morceaux, et l'adresse du lien n'est
+   écrite qu'au premier survol ou appui, juste avant le départ du clic. */
+(function(){
+  "use strict";
+  var TEL=["262","693","441","835"];
+  var MSG="Bonjour, j'ai une question sur le Business English Accelerator après avoir lu la FAQ.";
+  var lien=document.getElementById("faq-whatsapp");
+  if(!lien) return;
+  var pret=false;
+  function poser(){
+    if(pret) return; pret=true;
+    lien.setAttribute("href","https://wa.me/"+TEL.join("")+"?text="+encodeURIComponent(MSG));
+  }
+  lien.addEventListener("mouseenter",poser);
+  lien.addEventListener("pointerdown",poser);
+  lien.addEventListener("touchstart",poser,{passive:true});
+  lien.addEventListener("focus",poser);
+  lien.addEventListener("click",poser,true);
+})();
+</script>
 
 <footer class="pied">
   <div class="contenu">
