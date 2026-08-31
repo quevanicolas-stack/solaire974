@@ -35,18 +35,23 @@
   # qu'un attaquant parviendrait à injecter.
   #   default-src 'self'      rien d'externe par défaut
   #   img-src ... data:       les visuels sont intégrés en data:URI
-  #   style/font ...          Google Fonts, seul service externe utilisé
+  #   style-src 'self'        les polices et les styles viennent du site
+  #   font-src 'self'         les fichiers de police aussi
   #   connect-src ...         l'envoi des formulaires vers Google Apps Script
   #   frame-ancestors 'none'  personne ne peut nous encadrer
   #   form-action 'self'      un formulaire ne peut pas partir ailleurs
   #   frame-src ...           le cadre de vérification anti-robots Turnstile
   #
-  # Le pixel Meta impose trois ouvertures supplémentaires, sans
-  # lesquelles il serait silencieusement bloqué par le navigateur :
-  #   script-src  connect.facebook.net   le script fbevents.js
-  #   img-src     www.facebook.com       l'image de mesure (tr?id=…)
-  #   connect-src www.facebook.com       les envois du script
-  Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; img-src 'self' data: https://www.facebook.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com https://connect.facebook.net; frame-src https://challenges.cloudflare.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://challenges.cloudflare.com https://www.facebook.com; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests
+  # Depuis que les polices sont servies par le site, plus aucun domaine
+  # extérieur n'intervient dans l'affichage d'une page. Le seul service
+  # tiers qui subsiste est la vérification anti-robots du formulaire.
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://challenges.cloudflare.com; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests
+
+# Les polices ne changent jamais : on les garde en cache un an, ce qui
+# évite de les retélécharger d'une page à l'autre et d'une visite à
+# l'autre.
+/assets/polices/*
+  Cache-Control: public, max-age=31536000, immutable
 
 # La page de capture du guide vit sous /guide/. Elle avait son propre
 # fichier _headers quand elle était publiée séparément ; Cloudflare ne
