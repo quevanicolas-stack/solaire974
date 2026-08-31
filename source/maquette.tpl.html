@@ -1,6 +1,28 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
 <meta charset="utf-8">
-<title>Fluent &amp; Forward — Business English Accelerator</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fluent &amp; Forward — Business English Accelerator</title>
+<meta name="description" content="Un programme intensif de 8 semaines pour les professionnels francophones qui veulent retrouver en anglais le même impact et la même autorité qu'en français. Sessions live, coaching individuel, 10 places par groupe.">
+<meta name="robots" content="index,follow">
+<link rel="canonical" href="https://fluentandforward.com/">
+
+<!-- Ce qui s'affiche quand on colle le lien dans une conversation ou
+     sur un réseau : sans ces lignes, il ne reste qu'une adresse nue. -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Fluent &amp; Forward">
+<meta property="og:locale" content="fr_FR">
+<meta property="og:url" content="https://fluentandforward.com/">
+<meta property="og:title" content="Votre anglais ne devrait jamais vous faire paraître moins compétent que vous ne l'êtes.">
+<meta property="og:description" content="Un programme intensif de 8 semaines pour prendre la parole, convaincre et négocier en anglais avec assurance.">
+<meta property="og:image" content="https://fluentandforward.com/assets/partage.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Des portes de couleur ouvertes dans une prairie, au soleil couchant.">
+<meta name="twitter:card" content="summary_large_image">
+
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="assets/polices/polices.css">
 <style>
 /* ==================================================================
@@ -324,6 +346,38 @@ strong{font-weight:700}
 .quiz-modules ul{list-style:none;display:grid;gap:9px}
 .quiz-modules li{display:flex;gap:10px;color:#463829;font-size:.95rem;line-height:1.45}
 .quiz-modules li::before{content:"→";flex:0 0 auto;color:var(--gold-fonce);font-weight:800}
+/* Le formulaire de fin de test. Le visiteur vient de se prouver à
+   lui-même qu'il a des lacunes : c'est le moment de la page où il a le
+   plus envie d'une réponse, et donc le meilleur endroit pour lui
+   proposer d'être rappelé. */
+.quiz-suite{margin:0 0 20px;text-align:left;background:#fff;border:1px solid var(--line);
+  border-radius:16px;padding:22px 24px}
+.quiz-suite b{display:block;font-family:var(--titre);font-size:1.04rem;color:var(--ink);margin-bottom:4px}
+.quiz-suite .quiz-pourquoi{margin:0 0 16px;font-size:.94rem;color:#5b4433}
+.quiz-champs{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.quiz-champ{display:flex;flex-direction:column;gap:5px}
+.quiz-champ.large{grid-column:1 / -1}
+.quiz-champ label{font-family:var(--titre);font-weight:700;font-size:.8rem;color:#5b4433}
+.quiz-champ input{width:100%;background:var(--cream);border:1px solid var(--line);border-radius:10px;
+  padding:11px 13px;font-family:var(--texte);font-size:.98rem;color:var(--ink)}
+.quiz-champ input:focus{outline:2px solid var(--gold);outline-offset:1px;border-color:transparent}
+.quiz-champ input.manque{border-color:var(--rouge);background:rgba(168,69,47,.05)}
+.quiz-suite .rgpd-test{display:flex;gap:10px;align-items:flex-start;margin:14px 0 16px;
+  font-size:.86rem;color:#5b4433;line-height:1.45}
+.quiz-suite .rgpd-test input{margin-top:3px;flex:0 0 auto}
+/* Un cran de spécificité de plus que .quiz-score .bouton, qui plafonne
+   les boutons du résultat à 340 px : celui-ci doit tenir toute la
+   largeur de son encadré. */
+.quiz-suite form .bouton{width:100%;max-width:none}
+.quiz-retour{margin:12px 0 0;min-height:1.2em;font-family:var(--titre);font-weight:700;
+  font-size:.92rem;color:var(--green);text-align:center}
+.quiz-retour.raté{color:var(--rouge)}
+.quiz-merci{background:rgba(27,107,74,.07);border:1px solid rgba(27,107,74,.28);border-radius:16px;
+  padding:22px 24px;margin:0 0 20px;text-align:left;animation:quiz-apparait .38s ease both}
+.quiz-merci b{display:block;font-family:var(--titre);font-size:1.04rem;color:var(--green);margin-bottom:6px}
+.quiz-merci p{margin:0;font-size:.95rem;color:#463829}
+.quiz-ou{margin:0 0 12px!important;font-size:.88rem;color:var(--muted)}
+@media (max-width:520px){ .quiz-champs{grid-template-columns:1fr} }
 .quiz-score{text-align:center;animation:quiz-apparait .4s ease both}
 .quiz-note{font-family:var(--titre);font-weight:800;font-size:3.4rem;color:var(--green);line-height:1}
 .quiz-note span{font-size:1.5rem;color:var(--muted)}
@@ -474,6 +528,8 @@ strong{font-weight:700}
   [data-reveal]{opacity:1;transform:none;transition:none} .hero-fleche span{animation:none} html{scroll-behavior:auto}
 }
 </style>
+</head>
+<body>
 
 <!-- ===================== BANDE + ENTÊTE ===================== -->
 <!-- La bande annonce l'offre fondatrice et son compte à rebours. Le
@@ -1344,6 +1400,9 @@ strong{font-weight:700}
     var reponses=QUESTIONS.map(function(){return null;}),
         ordres=[],
         pos=0, fini=false,
+        /* envoye retient le prénom une fois les coordonnées parties :
+           on ne redemande pas deux fois la même chose à la même personne. */
+        envoye=null, jetonTest="", widgetTest=null,
         corps=document.getElementById("quiz-corps"),
         etape=document.getElementById("quiz-etape"),
         avance=document.getElementById("quiz-avance"),
@@ -1363,6 +1422,14 @@ strong{font-weight:700}
       reponses=QUESTIONS.map(function(){return null;});
       pos=0; fini=false;
       melanger();
+    }
+
+    /* Le prénom est réinjecté dans la page : on neutralise les chevrons
+       et les guillemets avant de l'écrire. */
+    function echapper(t){
+      return String(t).replace(/[&<>"']/g,function(c){
+        return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+      });
     }
 
     function pastilles(){
@@ -1436,6 +1503,45 @@ strong{font-weight:700}
               '</ul></div>';
       }
 
+      /* Le résumé qui accompagnera la demande : c'est ce qu'Aurélie lit
+         avant de décrocher son téléphone. */
+      var resume="Test de niveau — "+note+"/"+QUESTIONS.length+
+                 (manques.length ? " · à travailler : "+manques.map(function(m){
+                    return m.split(" — ")[0];
+                  }).join(", ") : " · sans faute");
+
+      if(envoye){
+        /* Les coordonnées sont déjà parties : on ne redemande rien. */
+        html+='<div class="quiz-merci"><b>C\'est noté, merci '+echapper(envoye)+'.</b>'+
+              '<p>Aurélie vous recontacte pour reprendre ces points avec vous. '+
+              'Si vous préférez avancer tout de suite, le rendez-vous est juste en dessous.</p></div>';
+      }else{
+        html+='<div class="quiz-suite">'+
+          '<b>Vous voulez qu\'on reprenne ces points ensemble&nbsp;?</b>'+
+          '<p class="quiz-pourquoi">Laissez vos coordonnées : Aurélie vous rappelle pour faire le point '+
+          'sur votre résultat et vous dire, franchement, si le programme vous correspond.</p>'+
+          '<form id="form-test" novalidate>'+
+            '<div class="quiz-champs">'+
+              '<div class="quiz-champ"><label for="t-prenom">Prénom</label>'+
+              '<input type="text" id="t-prenom" autocomplete="given-name"></div>'+
+              '<div class="quiz-champ"><label for="t-email">Adresse email</label>'+
+              '<input type="email" id="t-email" autocomplete="email"></div>'+
+              '<div class="quiz-champ large"><label for="t-tel">Téléphone <span style="font-weight:400">(facultatif)</span></label>'+
+              '<input type="tel" id="t-tel" autocomplete="tel" placeholder="+262 692 12 34 56"></div>'+
+            '</div>'+
+            '<div class="piege" aria-hidden="true"><label for="t-site">Site web</label>'+
+            '<input type="text" id="t-site" tabindex="-1" autocomplete="off"></div>'+
+            '<div id="zone-turnstile-test" style="margin:14px 0 2px"></div>'+
+            '<label class="rgpd-test"><input type="checkbox" id="t-rgpd"> '+
+            'J\'accepte d\'être recontacté(e) au sujet de mon résultat. '+
+            '<a href="politique-confidentialite.html" target="_blank" rel="noopener">En savoir plus</a></label>'+
+            '<button type="submit" class="bouton bouton-or">Être rappelé(e) sur mon résultat</button>'+
+            '<p class="quiz-retour" id="retour-test" role="status"></p>'+
+          '</form>'+
+        '</div>'+
+        '<p class="quiz-ou">ou, si vous préférez réserver directement&nbsp;:</p>';
+      }
+
       html+='<a class="bouton bouton-vert" href="'+CALENDLY+'" target="_blank" rel="noopener">Vérifier si le programme vous correspond</a>'+
             '<p class="note-test"><button type="button" class="mail-copier" data-refaire>Refaire le test</button></p>'+
             '</div>';
@@ -1444,7 +1550,79 @@ strong{font-weight:700}
       corps.querySelector("[data-refaire]").addEventListener("click",function(){
         reinitialiser(); dessiner();
       });
+
+      var formTest=document.getElementById("form-test");
+      if(formTest){
+        brancherFormTest(formTest,resume);
+        /* Le collecteur vérifie le jeton avant d'écrire la ligne : sans
+           vérification ici, la demande partirait pour être refusée en
+           silence. On pose donc un widget propre à ce formulaire. */
+        jetonTest="";
+        if(CLE_TURNSTILE && window.turnstile){
+          try{
+            widgetTest=window.turnstile.render("#zone-turnstile-test",{
+              sitekey:CLE_TURNSTILE, theme:"light", language:"fr",
+              callback:function(t){ jetonTest=t; },
+              "expired-callback":function(){ jetonTest=""; }
+            });
+          }catch(e){ widgetTest=null; }
+        }
+      }
+
       majNav();
+    }
+
+    /* Envoi des coordonnées vers le tableur d'Aurélie. Le score et les
+       modules manqués partent dans la colonne « Besoin » : elle sait donc
+       de quoi parler avant même d'appeler. */
+    function brancherFormTest(formulaire,resume){
+      var ouverture=Date.now(),
+          retour=document.getElementById("retour-test");
+
+      function echec(texte){ retour.textContent=texte; retour.classList.add("raté"); }
+
+      formulaire.addEventListener("submit",function(e){
+        e.preventDefault();
+        var prenom=document.getElementById("t-prenom"),
+            email=document.getElementById("t-email"),
+            tel=document.getElementById("t-tel").value.trim(),
+            rgpd=document.getElementById("t-rgpd").checked,
+            piege=document.getElementById("t-site").value;
+
+        /* Champ invisible rempli : c'est un automate. On ne le détrompe pas. */
+        if(piege){ envoye=prenom.value.trim()||"à vous"; dessiner(); return; }
+
+        /* Un formulaire rempli en moins de deux secondes après huit
+           questions n'a pas été rempli par une personne. */
+        if(Date.now()-ouverture<2000){
+          echec("Merci de prendre un instant avant l'envoi."); return;
+        }
+
+        var p=prenom.value.trim(), a=email.value.trim();
+        prenom.classList.toggle("manque",!p);
+        email.classList.toggle("manque",!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(a));
+        if(!p||!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(a)){
+          echec("Merci d'indiquer votre prénom et une adresse email valide."); return;
+        }
+        if(!rgpd){ echec("Merci de cocher la case d'accord avant l'envoi."); return; }
+        /* Si la vérification n'a pas pu s'afficher (service injoignable,
+           extension de blocage), on n'enferme pas le visiteur : on envoie
+           sans jeton plutôt que de lui refuser le passage. */
+        if(widgetTest!==null && !jetonTest){
+          echec("Merci de valider la vérification anti-robots juste au-dessus."); return;
+        }
+
+        retour.classList.remove("raté");
+        retour.textContent="Envoi…";
+
+        if(ADRESSE_COLLECTEUR){
+          fetch(ADRESSE_COLLECTEUR,{method:"POST",mode:"no-cors",
+            headers:{"Content-Type":"text/plain;charset=utf-8"},
+            body:JSON.stringify({prenom:p,nom:"",email:a,telephone:tel,besoin:resume,jeton:jetonTest})});
+        }
+        envoye=p;
+        dessiner();
+      });
     }
 
     function dessiner(){
@@ -1612,3 +1790,6 @@ strong{font-weight:700}
   [].forEach.call(document.querySelectorAll(".annee"),function(e){e.textContent=new Date().getFullYear()});
 })();
 </script>
+
+</body>
+</html>

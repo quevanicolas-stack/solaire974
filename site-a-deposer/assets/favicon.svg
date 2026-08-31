@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Fluent &amp; Forward">
+  <rect width="64" height="64" rx="14" fill="#10382A"/>
+  <!-- F majuscule, tracé plein -->
+  <path d="M20 15h22v7H27.5v8H40v7H27.5v12H20Z" fill="#FAF7F2"/>
+  <!-- accent doré : la barre qui avance -->
+  <rect x="20" y="53" width="24" height="3.5" rx="1.75" fill="#C9A96E"/>
+</svg>
