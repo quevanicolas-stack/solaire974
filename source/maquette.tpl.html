@@ -372,15 +372,22 @@ strong{font-weight:700}
 .quiz-retour{margin:12px 0 0;min-height:1.2em;font-family:var(--titre);font-weight:700;
   font-size:.92rem;color:var(--green);text-align:center}
 .quiz-retour.raté{color:var(--rouge)}
-/* Le remerciement, seul à l'écran avant que l'adresse soit donnée.
-   Volontairement chaleureux et sans chiffre : la note viendra après. */
-.quiz-bravo{margin:0 0 22px;padding:4px 0 0}
-.quiz-coche{display:inline-flex;align-items:center;justify-content:center;width:56px;height:56px;
-  border-radius:50%;background:rgba(27,107,74,.1);color:var(--green);font-size:1.7rem;
-  font-weight:800;margin-bottom:16px}
-.quiz-bravo b{display:block;font-family:var(--titre);font-size:1.3rem;color:var(--ink);
-  line-height:1.25;margin-bottom:10px}
-.quiz-bravo p{margin:0 auto;max-width:440px;color:#463829;font-size:.99rem}
+/* L'annonce de la dernière étape, seule à l'écran avant que l'adresse
+   soit donnée. Ni note ni corrigé : la retenue fait la valeur. */
+.quiz-bravo{margin:0 0 18px;padding:2px 0 0}
+.quiz-coche{display:inline-flex;align-items:center;justify-content:center;width:46px;height:46px;
+  border-radius:50%;background:rgba(27,107,74,.1);color:var(--green);font-size:1.4rem;
+  font-weight:800;margin-bottom:12px}
+.quiz-bravo b{display:block;font-family:var(--titre);font-size:1.24rem;color:var(--ink);
+  line-height:1.25}
+
+/* La mention d'information, sous le bouton. Discrète mais lisible :
+   contraste suffisant, taille correcte, lien accessible. Elle informe
+   sans dresser d'obstacle — ce qui n'est pas la même chose que cacher. */
+.quiz-suite .quiz-mention{margin:12px 0 0!important;max-width:none;font-size:.83rem;
+  line-height:1.5;color:#5b4433;text-align:center}
+.quiz-mention a{color:#5b4433;text-decoration:underline;text-underline-offset:2px}
+.quiz-mention a:hover{color:var(--green)}
 .quiz-merci{background:rgba(27,107,74,.07);border:1px solid rgba(27,107,74,.28);border-radius:16px;
   padding:22px 24px;margin:0 0 20px;text-align:left;animation:quiz-apparait .38s ease both}
 .quiz-merci b{display:block;font-family:var(--titre);font-size:1.04rem;color:var(--green);margin-bottom:6px}
@@ -1579,10 +1586,7 @@ strong{font-weight:700}
         html +=
           '<div class="quiz-bravo">' +
             '<span class="quiz-coche">✓</span>' +
-            '<b>Merci d\'avoir joué le jeu.</b>' +
-            '<p>Huit situations réelles — celles qui reviennent en réunion, au téléphone ' +
-            'et face à un client — affrontées en deux minutes. C\'est déjà la démarche des ' +
-            'professionnels qui progressent vraiment : se confronter, plutôt que réviser.</p>' +
+            '<b>Dernière étape</b>' +
           '</div>' +
 
           '<div class="quiz-suite">' +
@@ -1595,10 +1599,14 @@ strong{font-weight:700}
               '<div class="piege" aria-hidden="true"><label for="t-site">Site web</label>' +
               '<input type="text" id="t-site" tabindex="-1" autocomplete="off"></div>' +
               '<div id="zone-turnstile-test" style="margin:14px 0 2px"></div>' +
-              '<label class="rgpd-test"><input type="checkbox" id="t-rgpd"> ' +
-              'J\'accepte de recevoir mes résultats et d\'être recontacté(e) à ce sujet. ' +
-              '<a href="politique-confidentialite.html" target="_blank" rel="noopener">En savoir plus</a></label>' +
               '<button type="submit" class="bouton bouton-or">Voir mes résultats</button>' +
+              /* L'information remplace la case à cocher : elle dit la même
+                 chose, en une ligne, sans transformer la validation en
+                 formalité. Elle reste lisible — la subtilité s'arrête où
+                 commencerait la dissimulation. */
+              '<p class="quiz-mention">Résultats affichés aussitôt. Aurélie pourra vous ' +
+              'écrire à ce sujet, et il suffit d\'un mot pour que cela s\'arrête. ' +
+              '<a href="politique-confidentialite.html" target="_blank" rel="noopener">Vos données</a></p>' +
               '<p class="quiz-retour" id="retour-test" role="status"></p>' +
             '</form>' +
           '</div>';
@@ -1805,7 +1813,6 @@ strong{font-weight:700}
       formulaire.addEventListener("submit", function(e){
         e.preventDefault();
         var email = document.getElementById("t-email"),
-            rgpd  = document.getElementById("t-rgpd").checked,
             piege = document.getElementById("t-site").value;
 
         /* Champ invisible rempli : c'est un automate. On ne le détrompe pas. */
@@ -1826,7 +1833,6 @@ strong{font-weight:700}
         if(!adresseOk){
           echec("Merci d'indiquer une adresse email valide."); return;
         }
-        if(!rgpd){ echec("Merci de cocher la case d'accord avant l'envoi."); return; }
 
         var p = a.split("@")[0].replace(/[._-]+/g, " ").trim();
         p = p ? p.charAt(0).toUpperCase() + p.slice(1) : "vous";
