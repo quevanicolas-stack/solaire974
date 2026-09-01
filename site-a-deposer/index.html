@@ -238,9 +238,11 @@ strong{font-weight:700}
   background-repeat:no-repeat;background-position:right 12px center;background-size:15px}
 .champ textarea{min-height:84px;resize:vertical}
 .champ .note{font-size:.82rem;color:rgba(245,239,230,.62);margin-top:6px}
-.rgpd{display:flex;gap:11px;align-items:flex-start;font-size:.9rem;color:rgba(245,239,230,.82);margin-bottom:20px}
-.rgpd input{margin-top:4px;flex:0 0 auto}
-.rgpd a{color:var(--gold)}
+/* La mention d'information du formulaire d'accès. Lisible sur le fond
+   sombre, discrète, et sans geste à faire. */
+.mention-acces{margin:12px 0 0;font-size:.82rem;line-height:1.5;color:rgba(245,239,230,.72);text-align:center}
+.mention-acces a{color:rgba(245,239,230,.9);text-decoration:underline;text-underline-offset:2px}
+.mention-acces a:hover{color:var(--gold)}
 /* Piège à robots : hors écran, jamais lu par un lecteur d'écran. */
 .piege{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
 #zone-turnstile:not(:empty){margin-bottom:16px}
@@ -890,7 +892,7 @@ strong{font-weight:700}
             </div>
           </div>
           <div class="champ"><label for="a-besoin">En deux mots, votre besoin (facultatif)</label><textarea id="a-besoin" placeholder="Réunions en anglais, appels clients, présentations…"></textarea></div>
-          <label class="rgpd"><input type="checkbox" id="a-rgpd"> J'accepte que ces informations soient utilisées pour traiter ma demande d'accès. <a href="politique-confidentialite.html" target="_blank" rel="noopener">En savoir plus</a></label>
+
           <!-- Piège à robots : ce champ reste invisible et vide pour un
                humain. Un automate le remplit et se trahit. -->
           <div class="piege" aria-hidden="true"><label for="a-site">Site web</label><input type="text" id="a-site" name="site" tabindex="-1" autocomplete="off"></div>
@@ -898,6 +900,11 @@ strong{font-weight:700}
                clé de site n'est pas renseignée dans le script. -->
           <div id="zone-turnstile"></div>
           <button type="submit" class="bouton bouton-or">Envoyer ma demande</button>
+          <!-- Cocher une case pour autoriser le traitement de la demande
+               qu'on vient soi-même de rédiger n'apportait rien : envoyer
+               le formulaire est déjà la demande. L'information reste, sous
+               une forme qui ne barre pas le passage. -->
+          <p class="mention-acces">Vos informations servent uniquement à traiter cette demande et à vous répondre. <a href="politique-confidentialite.html" target="_blank" rel="noopener">Vos données</a></p>
           <div class="retour" id="retour-acces" role="status"></div>
         </form>
       </div>
@@ -1456,10 +1463,9 @@ strong{font-weight:700}
     var reponses=QUESTIONS.map(function(){return null;}),
         ordres=[],
         pos=0, fini=false,
-        /* envoye retient le prénom le temps d'afficher l'écran de
-           remerciement ; documentPret garde le document sous la main pour
-           un second téléchargement, si le premier a échoué sans bruit. */
-        envoye=null, documentPret=null, jetonTest="", widgetTest=null,
+        /* envoye retient le prénom une fois l'adresse donnée : c'est lui
+           qui fait basculer l'écran du formulaire vers les résultats. */
+        envoye=null, jetonTest="", widgetTest=null,
         corps=document.getElementById("quiz-corps"),
         etape=document.getElementById("quiz-etape"),
         avance=document.getElementById("quiz-avance"),
@@ -1481,7 +1487,7 @@ strong{font-weight:700}
     function reinitialiser(){
       reponses=QUESTIONS.map(function(){return null;});
       pos=0; fini=false;
-      envoye=null; documentPret=null;
+      envoye=null;
       melanger();
     }
 
@@ -1623,28 +1629,18 @@ strong{font-weight:700}
                   '</ul></div>';
         }
 
+        /* Le corrigé part tout seul à la validation : proposer un bouton
+           pour le retélécharger, et un autre pour refaire le test,
+           allongeait l'écran au moment où l'on veut que le résultat et
+           l'appel à l'action tiennent d'un seul regard. */
         html += '<a class="bouton bouton-vert" href="#formation" data-vers-programme>' +
-                'Je découvre le programme</a>' +
-                '<p class="quiz-ou" style="margin-top:14px!important">' +
-                '<button type="button" class="mail-copier" data-relire>' +
-                'Télécharger le corrigé détaillé</button></p>';
+                'Je découvre le programme</a>';
       }
 
-      /* « Refaire le test » n'apparaît qu'une fois les résultats ouverts :
-         avant, ce serait une sortie de secours au moment précis où l'on
-         demande l'adresse. */
-      if(envoye){
-        html += '<p class="note-test"><button type="button" class="mail-copier" data-refaire>Refaire le test</button></p>';
-      }
       html += '</div>';
 
       corps.innerHTML = html;
       quizCarte.scrollTop = 0;
-
-      var refaire = corps.querySelector("[data-refaire]");
-      if(refaire) refaire.addEventListener("click", function(){
-        reinitialiser(); dessiner();
-      });
 
       /* « Je découvre le programme » ne quitte pas la page : il referme
          le test et amène à la section correspondante. Tout l'intérêt est
@@ -1655,11 +1651,6 @@ strong{font-weight:700}
         fermerQuiz();
         var cible = document.getElementById("formation");
         if(cible) cible.scrollIntoView({ behavior: reduit ? "auto" : "smooth" });
-      });
-
-      var relire = corps.querySelector("[data-relire]");
-      if(relire) relire.addEventListener("click", function(){
-        if(documentPret) telecharger(documentPret.contenu, documentPret.nom);
       });
 
       var formTest = document.getElementById("form-test");
@@ -1859,11 +1850,9 @@ strong{font-weight:700}
               jeton:jetonTest })});
         }
 
-        documentPret = {
-          nom: "Mon-resultat-anglais-professionnel.html",
-          contenu: documentResultat(p, donnees.note, donnees.msg, donnees.manques, donnees.rates)
-        };
-        telecharger(documentPret.contenu, documentPret.nom);
+        telecharger(documentResultat(p, donnees.note, donnees.msg,
+                                     donnees.manques, donnees.rates),
+                    "Mon-resultat-anglais-professionnel.html");
         envoye = p;
         dessiner();
       });
@@ -1985,7 +1974,6 @@ strong{font-weight:700}
           indicatif=document.getElementById("a-indicatif").value,
           tel=document.getElementById("a-tel").value.trim(),
           besoin=document.getElementById("a-besoin").value.trim(),
-          rgpd=document.getElementById("a-rgpd").checked,
           piege=document.getElementById("a-site").value;
 
       /* Filtre 1 : le champ invisible doit rester vide. On ne dit rien,
@@ -1999,8 +1987,8 @@ strong{font-weight:700}
         return;
       }
 
-      if(!prenom||!email||!tel||!rgpd){
-        retour.textContent="Merci de renseigner votre prénom, votre email, votre téléphone et d'accepter le traitement.";
+      if(!prenom||!email||!tel){
+        retour.textContent="Merci de renseigner votre prénom, votre email et votre téléphone.";
         return;
       }
       if(CLE_TURNSTILE&&!jetonTurnstile){

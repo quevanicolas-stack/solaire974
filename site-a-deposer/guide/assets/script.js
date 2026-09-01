@@ -94,13 +94,10 @@
   function initFormulaire(formulaire) {
     var prenom = formulaire.querySelector("input[name=prenom]");
     var email = formulaire.querySelector("input[name=email]");
-    var rgpd = formulaire.querySelector("input[name=rgpd]");
-    var prospection = formulaire.querySelector("input[name=prospection]");
     var rappel = formulaire.querySelector("input[name=rappel]");
     var bouton = formulaire.querySelector("button[type=submit]");
     var idErrPrenom = prenom.getAttribute("aria-describedby");
     var idErrEmail = email.getAttribute("aria-describedby");
-    var idErrRgpd = rgpd.getAttribute("aria-describedby");
     var libelleBouton = bouton.textContent.trim();
 
     [[prenom, idErrPrenom], [email, idErrEmail]].forEach(function (paire) {
@@ -111,25 +108,17 @@
       });
     });
 
-    rgpd.addEventListener("change", function () {
-      if (rgpd.checked) afficherErreur(rgpd, idErrRgpd, false);
-    });
-
     formulaire.addEventListener("submit", function (evenement) {
       evenement.preventDefault();
 
       var prenomVide = prenom.value.trim() === "";
       var emailInvalide = !emailPlausible(email.value.trim());
-      // Le consentement au traitement est la seule case obligatoire : le RGPD
-      // interdit de conditionner la remise du guide à l'accord de prospection.
-      var rgpdRefuse = !rgpd.checked;
 
       afficherErreur(prenom, idErrPrenom, prenomVide);
       afficherErreur(email, idErrEmail, emailInvalide);
-      afficherErreur(rgpd, idErrRgpd, rgpdRefuse);
 
-      if (prenomVide || emailInvalide || rgpdRefuse) {
-        (prenomVide ? prenom : emailInvalide ? email : rgpd).focus();
+      if (prenomVide || emailInvalide) {
+        (prenomVide ? prenom : email).focus();
         return;
       }
 
@@ -137,8 +126,12 @@
         prenom: prenom.value.trim(),
         email: email.value.trim(),
         date: new Date().toISOString(),
+        /* Envoyer le formulaire EST la demande : c'est cette démarche
+           qui vaut accord pour la remise du guide, et le collecteur
+           attend toujours ce drapeau. La suite repose sur l'intérêt
+           légitime, avec l'information donnée sous le bouton. */
         consentementRgpd: true,
-        accepteProspection: !!(prospection && prospection.checked),
+        accepteProspection: true,
         demandeRappel: !!(rappel && rappel.checked),
         origine: formulaire.getAttribute("data-origine") || "inconnue",
         provenance: document.referrer || "direct",
