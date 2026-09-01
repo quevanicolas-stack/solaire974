@@ -43,9 +43,14 @@
   #   frame-src ...           le cadre de vérification anti-robots Turnstile
   #
   # Depuis que les polices sont servies par le site, plus aucun domaine
-  # extérieur n'intervient dans l'affichage d'une page. Le seul service
-  # tiers qui subsiste est la vérification anti-robots du formulaire.
-  Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://challenges.cloudflare.com; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests
+  # extérieur n'intervient dans l'affichage d'une page. Restent deux
+  # services de Cloudflare :
+  #   challenges.cloudflare.com    la vérification anti-robots du formulaire
+  #   static.cloudflareinsights.com le mouchard de Web Analytics, que
+  #     Cloudflare injecte lui-même dans la page. Sans cette autorisation
+  #     le navigateur le bloque en silence, et le tableau de bord des
+  #     visites reste vide — c'était le cas jusqu'ici.
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com https://static.cloudflareinsights.com; frame-src https://challenges.cloudflare.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://challenges.cloudflare.com https://cloudflareinsights.com; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests
 
 # Les polices ne changent jamais : on les garde en cache un an, ce qui
 # évite de les retélécharger d'une page à l'autre et d'une visite à

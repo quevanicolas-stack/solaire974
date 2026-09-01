@@ -1,0 +1,16 @@
+# Fluent & Forward — instructions aux robots d'indexation.
+# Ce fichier était demandé une cinquantaine de fois par jour et
+# répondait « page introuvable ». Autant qu'il dise quelque chose.
+
+User-agent: *
+Allow: /
+
+# Le guide se mérite par le formulaire : ni la page de remerciement,
+# ni le PDF ne doivent apparaître dans un moteur de recherche, sans
+# quoi ils deviendraient un raccourci pour l'obtenir sans laisser ses
+# coordonnées.
+Disallow: /guide/stop-avoiding.html
+Disallow: /guide/prospects.html
+Disallow: /guide/assets/stop-avoiding-english-essentials.pdf
+
+Sitemap: https://fluentandforward.com/sitemap.xml
