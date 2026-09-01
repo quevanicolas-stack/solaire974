@@ -372,6 +372,15 @@ strong{font-weight:700}
 .quiz-retour{margin:12px 0 0;min-height:1.2em;font-family:var(--titre);font-weight:700;
   font-size:.92rem;color:var(--green);text-align:center}
 .quiz-retour.raté{color:var(--rouge)}
+/* Le remerciement, seul à l'écran avant que l'adresse soit donnée.
+   Volontairement chaleureux et sans chiffre : la note viendra après. */
+.quiz-bravo{margin:0 0 22px;padding:4px 0 0}
+.quiz-coche{display:inline-flex;align-items:center;justify-content:center;width:56px;height:56px;
+  border-radius:50%;background:rgba(27,107,74,.1);color:var(--green);font-size:1.7rem;
+  font-weight:800;margin-bottom:16px}
+.quiz-bravo b{display:block;font-family:var(--titre);font-size:1.3rem;color:var(--ink);
+  line-height:1.25;margin-bottom:10px}
+.quiz-bravo p{margin:0 auto;max-width:440px;color:#463829;font-size:.99rem}
 .quiz-merci{background:rgba(27,107,74,.07);border:1px solid rgba(27,107,74,.28);border-radius:16px;
   padding:22px 24px;margin:0 0 20px;text-align:left;animation:quiz-apparait .38s ease both}
 .quiz-merci b{display:block;font-family:var(--titre);font-size:1.04rem;color:var(--green);margin-bottom:6px}
@@ -569,7 +578,7 @@ strong{font-weight:700}
       <p class="accroche">Prenez la parole en anglais avec assurance, sans traduire chaque phrase dans votre tête.</p>
       <p class="programme">Un programme intensif de 8 semaines pour transformer votre anglais professionnel en véritable levier de performance.</p>
       <div class="hero-actions">
-        <a class="bouton bouton-vert" href="#test" data-test>Évaluer mon profil</a>
+        <a class="bouton bouton-vert" href="#test" data-test>1 minute pour tester mon niveau</a>
         <a class="bouton bouton-clair" href="#formation">Découvrir le programme</a>
       </div>
       <p class="hero-reperes">8 semaines · Sessions live · Coaching individuel</p>
@@ -653,7 +662,7 @@ strong{font-weight:700}
         <h3>Testez votre anglais professionnel</h3>
         <p>Huit situations réelles, deux formulations au choix. À la fin, votre score et les modules du programme sur lesquels vous avez le plus à gagner. Deux minutes, sans inscription.</p>
       </div>
-      <button class="bouton bouton-or" type="button" data-test>Commencer le test</button>
+      <button class="bouton bouton-or" type="button" data-test>1 minute pour tester mon niveau</button>
     </div>
   </div>
 </section>
@@ -946,9 +955,23 @@ strong{font-weight:700}
   </div>
 </div>
 
+<!-- ===================== FENÊTRE D'ACCUEIL =====================
+     Proposée trois secondes après l'arrivée. Elle n'annonce ni offre ni
+     prix : elle propose quelque chose à faire, pour que le visiteur
+     reste sur la page au lieu de la survoler. -->
+<div class="popup-fond" id="fenetre-accueil">
+  <div class="popup" role="dialog" aria-modal="true" aria-labelledby="titre-accueil">
+    <button class="fermer-popup" id="fermer-accueil" aria-label="Fermer">&times;</button>
+    <span class="oeil" style="color:var(--gold-fonce)">Test de niveau</span>
+    <h3 id="titre-accueil">Quel est ton vrai niveau en anglais business&nbsp;?</h3>
+    <p>Huit situations réelles, celles qui reviennent en réunion et face à un client. Deux réponses au choix, aucune inscription.</p>
+    <button class="bouton bouton-or" type="button" data-test>1 minute pour tester mon niveau</button>
+  </div>
+</div>
+
 <!-- ===================== LE QUIZ =====================
-     Ouvert par les boutons « Évaluer mon profil » et « Commencer le
-     test » : la fenêtre grandit depuis le bouton cliqué jusqu'au centre
+     Ouvert par les boutons « 1 minute pour tester mon niveau » et par
+     la fenêtre d'accueil : il grandit depuis le bouton cliqué jusqu'au centre
      de la page. Huit mises en situation, deux choix, correction
      immédiate et explication sous la réponse. -->
 <div class="quiz-fond" id="quiz">
@@ -1098,9 +1121,31 @@ strong{font-weight:700}
   if(offreEnCours()){ majCompte(); setInterval(majCompte,1000); }
   else offreTerminee();
 
-  /* L'offre n'est plus annoncée par une fenêtre à l'ouverture : elle vit
-     dans la bande du haut, qui reste visible en permanence, et dans le
-     bloc tarif. Rien ne s'interpose entre le visiteur et la page. */
+  /* ---- La fenêtre d'accueil ----
+     Trois secondes après l'arrivée : le temps que la page s'affiche et
+     que le visiteur ait vu de quoi il retourne. Elle ne parle ni de prix
+     ni d'offre — elle propose une chose à faire.
+
+     Elle ne revient pas si le test a déjà été ouvert, et elle ne
+     s'ouvre plus une fois fermée. */
+  var accueil=document.getElementById("fenetre-accueil"), accueilVu=false;
+
+  function fermerAccueil(){ accueil.classList.remove("ouvert"); accueilVu=true; }
+
+  if(accueil){
+    setTimeout(function(){
+      if(!accueilVu && !document.body.hasAttribute("data-sans-accueil"))
+        accueil.classList.add("ouvert");
+    },3000);
+    document.getElementById("fermer-accueil").addEventListener("click",fermerAccueil);
+    accueil.addEventListener("click",function(e){ if(e.target===accueil) fermerAccueil(); });
+    addEventListener("keydown",function(e){
+      if(e.key==="Escape"&&accueil.classList.contains("ouvert")) fermerAccueil();
+    });
+  }
+
+  /* L'offre, elle, n'a plus de fenêtre : elle vit dans la bande du haut,
+     visible en permanence, et dans le bloc tarif. */
 
   /* ---- Coordonnées recomposées à la dernière seconde ----
      Ni l'adresse email ni le numéro WhatsApp ne figurent en clair dans la
@@ -1492,15 +1537,20 @@ strong{font-weight:700}
       majNav();
     }
 
-    /* Le résultat : le score, les modules correspondant aux questions
-       ratées, puis le document à emporter. C'est la seule partie qui
-       parle du programme. */
+    /* L'écran de fin, en deux temps.
+
+       D'abord un remerciement seul : ni note, ni corrigé, ni modules. La
+       personne vient de fournir un effort, on le reconnaît, et on lui
+       propose de découvrir ce qu'elle vaut. C'est cette retenue qui
+       donne sa valeur à l'adresse email.
+
+       Ensuite, l'adresse donnée, tout s'ouvre sur place — score,
+       priorités, document — et le programme est présenté dans la
+       foulée, sans quitter la page. */
     function resultat(){
       var note = reponses.reduce(function(t,r,i){
         return t + (r === QUESTIONS[i].bonne ? 1 : 0); }, 0);
 
-      /* Le détail de chaque erreur : c'est la matière du document remis
-         au visiteur, et ce qui lui donne sa valeur. */
       var manques = [], rates = [];
       reponses.forEach(function(r,i){
         if(r === QUESTIONS[i].bonne) return;
@@ -1518,64 +1568,85 @@ strong{font-weight:700}
             ? "Un socle réel, mais plusieurs réflexes professionnels restent à installer — ceux qui reviennent tous les jours dans les échanges."
             : "Les fondamentaux méritent d'être repris : ces pièges reviennent en permanence dans les échanges professionnels, et ils se corrigent vite avec la bonne méthode.";
 
-      /* Le résumé d'une ligne qu'Aurélie lit avant de décrocher. */
       var resume = "Test de niveau — " + note + "/" + QUESTIONS.length +
                    (manques.length ? " · à travailler : " + manques.map(function(m){
                       return m.split(" — ")[0]; }).join(", ") : " · sans faute");
 
-      var html = '<div class="quiz-score">' +
-        '<div class="quiz-note">' + note + '<span>/' + QUESTIONS.length + '</span></div>' +
-        '<p>' + msg + '</p>';
+      var html = '<div class="quiz-score">';
 
-      if(manques.length){
-        html += '<div class="quiz-modules"><b>Vos points à travailler en priorité</b><ul>' +
-                manques.map(function(m){ return '<li>' + m + '</li>'; }).join("") +
-                '</ul></div>';
-      }
+      if(!envoye){
+        /* ---- Premier temps : merci, et rien d'autre ---- */
+        html +=
+          '<div class="quiz-bravo">' +
+            '<span class="quiz-coche">✓</span>' +
+            '<b>Merci d\'avoir joué le jeu.</b>' +
+            '<p>Huit situations réelles — celles qui reviennent en réunion, au téléphone ' +
+            'et face à un client — affrontées en deux minutes. C\'est déjà la démarche des ' +
+            'professionnels qui progressent vraiment : se confronter, plutôt que réviser.</p>' +
+          '</div>' +
 
-      if(envoye){
-        /* Le document vient de partir. On laisse un second lien : un
-           téléchargement peut échouer sans que le visiteur s'en aperçoive. */
-        html += '<div class="quiz-merci"><b>C\'est à vous, ' + echapper(envoye) + '.</b>' +
-                '<p>Votre résultat est dans vos téléchargements. Aurélie vous recontacte ' +
-                'pour le reprendre avec vous.</p>' +
-                '<p style="margin-top:10px"><button type="button" class="mail-copier" data-relire>' +
-                'Télécharger à nouveau</button></p></div>';
+          '<div class="quiz-suite">' +
+            '<b>Je découvre gratuitement mes résultats et recommandations</b>' +
+            '<p class="quiz-pourquoi">Votre score, les formulations exactes attendues et ' +
+            'les modules sur lesquels vous avez le plus à gagner.</p>' +
+            '<form id="form-test" novalidate>' +
+              '<div class="quiz-champ large"><label for="t-email">Votre adresse email</label>' +
+              '<input type="email" id="t-email" autocomplete="email" placeholder="prenom@entreprise.com"></div>' +
+              '<div class="piege" aria-hidden="true"><label for="t-site">Site web</label>' +
+              '<input type="text" id="t-site" tabindex="-1" autocomplete="off"></div>' +
+              '<div id="zone-turnstile-test" style="margin:14px 0 2px"></div>' +
+              '<label class="rgpd-test"><input type="checkbox" id="t-rgpd"> ' +
+              'J\'accepte de recevoir mes résultats et d\'être recontacté(e) à ce sujet. ' +
+              '<a href="politique-confidentialite.html" target="_blank" rel="noopener">En savoir plus</a></label>' +
+              '<button type="submit" class="bouton bouton-or">Voir mes résultats</button>' +
+              '<p class="quiz-retour" id="retour-test" role="status"></p>' +
+            '</form>' +
+          '</div>';
+
       }else{
-        html += '<div class="quiz-suite">' +
-          '<b>Repartez avec votre résultat par écrit</b>' +
-          '<p class="quiz-pourquoi">Vous recevez le détail de vos réponses, l\'explication de ' +
-          'chaque erreur et les modules à travailler — à garder sous la main. ' +
-          'Aurélie vous rappelle ensuite pour en parler avec vous.</p>' +
-          '<form id="form-test" novalidate>' +
-            '<div class="quiz-champs">' +
-              '<div class="quiz-champ"><label for="t-prenom">Prénom</label>' +
-              '<input type="text" id="t-prenom" autocomplete="given-name"></div>' +
-              '<div class="quiz-champ"><label for="t-email">Adresse email</label>' +
-              '<input type="email" id="t-email" autocomplete="email"></div>' +
-              '<div class="quiz-champ large"><label for="t-tel">Téléphone <span style="font-weight:400">(facultatif, pour être rappelé)</span></label>' +
-              '<input type="tel" id="t-tel" autocomplete="tel" placeholder="+262 692 12 34 56"></div>' +
-            '</div>' +
-            '<div class="piege" aria-hidden="true"><label for="t-site">Site web</label>' +
-            '<input type="text" id="t-site" tabindex="-1" autocomplete="off"></div>' +
-            '<div id="zone-turnstile-test" style="margin:14px 0 2px"></div>' +
-            '<label class="rgpd-test"><input type="checkbox" id="t-rgpd"> ' +
-            'J\'accepte de recevoir mon résultat et d\'être recontacté(e) à ce sujet. ' +
-            '<a href="politique-confidentialite.html" target="_blank" rel="noopener">En savoir plus</a></label>' +
-            '<button type="submit" class="bouton bouton-or">Télécharger mon résultat</button>' +
-            '<p class="quiz-retour" id="retour-test" role="status"></p>' +
-          '</form>' +
-        '</div>' +
-        '<p class="quiz-ou">ou, si vous préférez réserver directement&nbsp;:</p>';
+        /* ---- Second temps : tout est ouvert ---- */
+        html +=
+          '<div class="quiz-note">' + note + '<span>/' + QUESTIONS.length + '</span></div>' +
+          '<p>' + msg + '</p>';
+
+        if(manques.length){
+          html += '<div class="quiz-modules"><b>Vos points à travailler en priorité</b><ul>' +
+                  manques.map(function(m){ return '<li>' + m + '</li>'; }).join("") +
+                  '</ul></div>';
+        }
+
+        html += '<a class="bouton bouton-vert" href="#formation" data-vers-programme>' +
+                'Je découvre le programme</a>' +
+                '<p class="quiz-ou" style="margin-top:14px!important">' +
+                '<button type="button" class="mail-copier" data-relire>' +
+                'Télécharger le corrigé détaillé</button></p>';
       }
 
-      html += '<a class="bouton bouton-vert" href="' + CALENDLY + '" target="_blank" rel="noopener">Vérifier si le programme vous correspond</a>' +
-              '<p class="note-test"><button type="button" class="mail-copier" data-refaire>Refaire le test</button></p>' +
-              '</div>';
+      /* « Refaire le test » n'apparaît qu'une fois les résultats ouverts :
+         avant, ce serait une sortie de secours au moment précis où l'on
+         demande l'adresse. */
+      if(envoye){
+        html += '<p class="note-test"><button type="button" class="mail-copier" data-refaire>Refaire le test</button></p>';
+      }
+      html += '</div>';
 
       corps.innerHTML = html;
-      corps.querySelector("[data-refaire]").addEventListener("click", function(){
+      quizCarte.scrollTop = 0;
+
+      var refaire = corps.querySelector("[data-refaire]");
+      if(refaire) refaire.addEventListener("click", function(){
         reinitialiser(); dessiner();
+      });
+
+      /* « Je découvre le programme » ne quitte pas la page : il referme
+         le test et amène à la section correspondante. Tout l'intérêt est
+         de garder la personne ici. */
+      var vers = corps.querySelector("[data-vers-programme]");
+      if(vers) vers.addEventListener("click", function(e){
+        e.preventDefault();
+        fermerQuiz();
+        var cible = document.getElementById("formation");
+        if(cible) cible.scrollIntoView({ behavior: reduit ? "auto" : "smooth" });
       });
 
       var relire = corps.querySelector("[data-relire]");
@@ -1733,14 +1804,12 @@ strong{font-weight:700}
 
       formulaire.addEventListener("submit", function(e){
         e.preventDefault();
-        var prenom = document.getElementById("t-prenom"),
-            email  = document.getElementById("t-email"),
-            tel    = document.getElementById("t-tel").value.trim(),
-            rgpd   = document.getElementById("t-rgpd").checked,
-            piege  = document.getElementById("t-site").value;
+        var email = document.getElementById("t-email"),
+            rgpd  = document.getElementById("t-rgpd").checked,
+            piege = document.getElementById("t-site").value;
 
         /* Champ invisible rempli : c'est un automate. On ne le détrompe pas. */
-        if(piege){ envoye = prenom.value.trim() || "à vous"; dessiner(); return; }
+        if(piege){ envoye = "vous"; dessiner(); return; }
 
         /* Un formulaire rempli en moins de deux secondes après huit
            questions n'a pas été rempli par une personne. */
@@ -1748,14 +1817,20 @@ strong{font-weight:700}
           echec("Merci de prendre un instant avant l'envoi."); return;
         }
 
-        var p = prenom.value.trim(), a = email.value.trim(),
+        /* Une seule chose est demandée : l'adresse. Le prénom se déduit
+           de sa partie gauche, faute de mieux, pour personnaliser le
+           document sans allonger le formulaire. */
+        var a = email.value.trim(),
             adresseOk = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(a);
-        prenom.classList.toggle("manque", !p);
         email.classList.toggle("manque", !adresseOk);
-        if(!p || !adresseOk){
-          echec("Merci d'indiquer votre prénom et une adresse email valide."); return;
+        if(!adresseOk){
+          echec("Merci d'indiquer une adresse email valide."); return;
         }
         if(!rgpd){ echec("Merci de cocher la case d'accord avant l'envoi."); return; }
+
+        var p = a.split("@")[0].replace(/[._-]+/g, " ").trim();
+        p = p ? p.charAt(0).toUpperCase() + p.slice(1) : "vous";
+        var tel = "";
         /* Si la vérification n'a pas pu s'afficher (service injoignable,
            extension de blocage), on n'enferme pas le visiteur : on envoie
            sans jeton plutôt que de lui refuser le passage. */
@@ -1764,7 +1839,7 @@ strong{font-weight:700}
         }
 
         retour.classList.remove("raté");
-        retour.textContent = "Préparation de votre résultat…";
+        retour.textContent = "Un instant, on prépare vos résultats…";
 
         if(ADRESSE_COLLECTEUR){
           fetch(ADRESSE_COLLECTEUR, { method:"POST", mode:"no-cors",
@@ -1848,7 +1923,13 @@ strong{font-weight:700}
     /* Les deux portes d'entrée : le bouton du hero et l'encart de la
        section Formation. */
     [].forEach.call(document.querySelectorAll("[data-test]"),function(b){
-      b.addEventListener("click",function(e){ e.preventDefault(); ouvrirQuiz(b); });
+      b.addEventListener("click",function(e){
+        e.preventDefault();
+        /* Le bouton de la fenêtre d'accueil en fait partie : on la ferme
+           avant d'ouvrir le test, sinon elle resterait derrière. */
+        if(typeof fermerAccueil==="function") fermerAccueil();
+        ouvrirQuiz(b);
+      });
     });
     document.getElementById("fermer-quiz").addEventListener("click",fermerQuiz);
     quiz.addEventListener("click",function(e){ if(e.target===quiz) fermerQuiz(); });
