@@ -739,7 +739,11 @@ strong{font-weight:700}
       </div>
       <div class="visuel apropos-photo" data-reveal data-d="1">
         <div class="visuel-flou" style="background-image:url(__AURELIE__)"></div>
-        <img class="visuel-net" src="__AURELIE__" alt="Aurélie, formatrice en anglais professionnel">
+        <!-- Les dimensions réelles sont déclarées : le navigateur réserve
+             la place avant même d'avoir l'image, et la page ne saute pas
+             pendant le chargement. -->
+        <img class="visuel-net" src="__AURELIE__" width="560" height="841"
+             alt="Aurélie Queva, formatrice en anglais professionnel, dans un intérieur clair">
       </div>
     </div>
   </div>
@@ -1400,9 +1404,10 @@ strong{font-weight:700}
     var reponses=QUESTIONS.map(function(){return null;}),
         ordres=[],
         pos=0, fini=false,
-        /* envoye retient le prénom une fois les coordonnées parties :
-           on ne redemande pas deux fois la même chose à la même personne. */
-        envoye=null, jetonTest="", widgetTest=null,
+        /* envoye retient le prénom le temps d'afficher l'écran de
+           remerciement ; documentPret garde le document sous la main pour
+           un second téléchargement, si le premier a échoué sans bruit. */
+        envoye=null, documentPret=null, jetonTest="", widgetTest=null,
         corps=document.getElementById("quiz-corps"),
         etape=document.getElementById("quiz-etape"),
         avance=document.getElementById("quiz-avance"),
@@ -1418,9 +1423,13 @@ strong{font-weight:700}
     }
     melanger();
 
+    /* Un nouveau passage, c'est un nouveau résultat : le formulaire
+       revient, quel que soit le bouton d'entrée et même si le visiteur a
+       déjà téléchargé un document plus tôt dans la visite. */
     function reinitialiser(){
       reponses=QUESTIONS.map(function(){return null;});
       pos=0; fini=false;
+      envoye=null; documentPret=null;
       melanger();
     }
 
@@ -1430,6 +1439,15 @@ strong{font-weight:700}
       return String(t).replace(/[&<>"']/g,function(c){
         return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
       });
+    }
+
+    /* Les noms de modules sont écrits pour la page, donc avec des
+       entités HTML. Le tableur d'Aurélie, lui, attend du texte : sans ce
+       passage, elle lirait « Sales &amp;amp; Negotiation English ». */
+    function enClair(t){
+      return String(t).replace(/&amp;/g,"&").replace(/&lt;/g,"<")
+                      .replace(/&gt;/g,">").replace(/&#39;/g,"'")
+                      .replace(/&quot;/g,'"').replace(/&nbsp;/g," ");
     }
 
     function pastilles(){
@@ -1474,86 +1492,102 @@ strong{font-weight:700}
       majNav();
     }
 
-    /* Le résultat : le score, puis les modules correspondant aux
-       questions ratées. C'est la seule partie qui parle du programme. */
+    /* Le résultat : le score, les modules correspondant aux questions
+       ratées, puis le document à emporter. C'est la seule partie qui
+       parle du programme. */
     function resultat(){
-      var note=reponses.reduce(function(t,r,i){return t+(r===QUESTIONS[i].bonne?1:0);},0);
+      var note = reponses.reduce(function(t,r,i){
+        return t + (r === QUESTIONS[i].bonne ? 1 : 0); }, 0);
 
-      var manques=[];
+      /* Le détail de chaque erreur : c'est la matière du document remis
+         au visiteur, et ce qui lui donne sa valeur. */
+      var manques = [], rates = [];
       reponses.forEach(function(r,i){
-        if(r!==QUESTIONS[i].bonne && manques.indexOf(QUESTIONS[i].module)<0)
-          manques.push(QUESTIONS[i].module);
+        if(r === QUESTIONS[i].bonne) return;
+        var q = QUESTIONS[i];
+        if(manques.indexOf(q.module) < 0) manques.push(q.module);
+        rates.push({ numero:i+1, module:q.module, mise:q.mise,
+                     choisie:q.choix[r], bonne:q.choix[q.bonne], expli:q.expli });
       });
 
-      var msg = note===QUESTIONS.length
+      var msg = note === QUESTIONS.length
         ? "Sans faute. Vous avez les bons réflexes sur le papier — reste le plus difficile : les avoir sous la main en réunion, au téléphone, face à un client qui ne vous laisse pas trois secondes pour réfléchir. C'est précisément ce que le programme entraîne, en situation."
-        : note>=6
+        : note >= 6
           ? "Les bases sont solides. Ce sont les nuances qui vous coûtent des points, et ce sont elles qui changent la portée d'un message en situation réelle."
-          : note>=4
+          : note >= 4
             ? "Un socle réel, mais plusieurs réflexes professionnels restent à installer — ceux qui reviennent tous les jours dans les échanges."
             : "Les fondamentaux méritent d'être repris : ces pièges reviennent en permanence dans les échanges professionnels, et ils se corrigent vite avec la bonne méthode.";
 
-      var html='<div class="quiz-score">'+
-        '<div class="quiz-note">'+note+'<span>/'+QUESTIONS.length+'</span></div>'+
-        '<p>'+msg+'</p>';
+      /* Le résumé d'une ligne qu'Aurélie lit avant de décrocher. */
+      var resume = "Test de niveau — " + note + "/" + QUESTIONS.length +
+                   (manques.length ? " · à travailler : " + manques.map(function(m){
+                      return m.split(" — ")[0]; }).join(", ") : " · sans faute");
+
+      var html = '<div class="quiz-score">' +
+        '<div class="quiz-note">' + note + '<span>/' + QUESTIONS.length + '</span></div>' +
+        '<p>' + msg + '</p>';
 
       if(manques.length){
-        html+='<div class="quiz-modules"><b>Vos points à travailler en priorité</b><ul>'+
-              manques.map(function(m){ return '<li>'+m+'</li>'; }).join("")+
-              '</ul></div>';
+        html += '<div class="quiz-modules"><b>Vos points à travailler en priorité</b><ul>' +
+                manques.map(function(m){ return '<li>' + m + '</li>'; }).join("") +
+                '</ul></div>';
       }
 
-      /* Le résumé qui accompagnera la demande : c'est ce qu'Aurélie lit
-         avant de décrocher son téléphone. */
-      var resume="Test de niveau — "+note+"/"+QUESTIONS.length+
-                 (manques.length ? " · à travailler : "+manques.map(function(m){
-                    return m.split(" — ")[0];
-                  }).join(", ") : " · sans faute");
-
       if(envoye){
-        /* Les coordonnées sont déjà parties : on ne redemande rien. */
-        html+='<div class="quiz-merci"><b>C\'est noté, merci '+echapper(envoye)+'.</b>'+
-              '<p>Aurélie vous recontacte pour reprendre ces points avec vous. '+
-              'Si vous préférez avancer tout de suite, le rendez-vous est juste en dessous.</p></div>';
+        /* Le document vient de partir. On laisse un second lien : un
+           téléchargement peut échouer sans que le visiteur s'en aperçoive. */
+        html += '<div class="quiz-merci"><b>C\'est à vous, ' + echapper(envoye) + '.</b>' +
+                '<p>Votre résultat est dans vos téléchargements. Aurélie vous recontacte ' +
+                'pour le reprendre avec vous.</p>' +
+                '<p style="margin-top:10px"><button type="button" class="mail-copier" data-relire>' +
+                'Télécharger à nouveau</button></p></div>';
       }else{
-        html+='<div class="quiz-suite">'+
-          '<b>Vous voulez qu\'on reprenne ces points ensemble&nbsp;?</b>'+
-          '<p class="quiz-pourquoi">Laissez vos coordonnées : Aurélie vous rappelle pour faire le point '+
-          'sur votre résultat et vous dire, franchement, si le programme vous correspond.</p>'+
-          '<form id="form-test" novalidate>'+
-            '<div class="quiz-champs">'+
-              '<div class="quiz-champ"><label for="t-prenom">Prénom</label>'+
-              '<input type="text" id="t-prenom" autocomplete="given-name"></div>'+
-              '<div class="quiz-champ"><label for="t-email">Adresse email</label>'+
-              '<input type="email" id="t-email" autocomplete="email"></div>'+
-              '<div class="quiz-champ large"><label for="t-tel">Téléphone <span style="font-weight:400">(facultatif)</span></label>'+
-              '<input type="tel" id="t-tel" autocomplete="tel" placeholder="+262 692 12 34 56"></div>'+
-            '</div>'+
-            '<div class="piege" aria-hidden="true"><label for="t-site">Site web</label>'+
-            '<input type="text" id="t-site" tabindex="-1" autocomplete="off"></div>'+
-            '<div id="zone-turnstile-test" style="margin:14px 0 2px"></div>'+
-            '<label class="rgpd-test"><input type="checkbox" id="t-rgpd"> '+
-            'J\'accepte d\'être recontacté(e) au sujet de mon résultat. '+
-            '<a href="politique-confidentialite.html" target="_blank" rel="noopener">En savoir plus</a></label>'+
-            '<button type="submit" class="bouton bouton-or">Être rappelé(e) sur mon résultat</button>'+
-            '<p class="quiz-retour" id="retour-test" role="status"></p>'+
-          '</form>'+
-        '</div>'+
+        html += '<div class="quiz-suite">' +
+          '<b>Repartez avec votre résultat par écrit</b>' +
+          '<p class="quiz-pourquoi">Vous recevez le détail de vos réponses, l\'explication de ' +
+          'chaque erreur et les modules à travailler — à garder sous la main. ' +
+          'Aurélie vous rappelle ensuite pour en parler avec vous.</p>' +
+          '<form id="form-test" novalidate>' +
+            '<div class="quiz-champs">' +
+              '<div class="quiz-champ"><label for="t-prenom">Prénom</label>' +
+              '<input type="text" id="t-prenom" autocomplete="given-name"></div>' +
+              '<div class="quiz-champ"><label for="t-email">Adresse email</label>' +
+              '<input type="email" id="t-email" autocomplete="email"></div>' +
+              '<div class="quiz-champ large"><label for="t-tel">Téléphone <span style="font-weight:400">(facultatif, pour être rappelé)</span></label>' +
+              '<input type="tel" id="t-tel" autocomplete="tel" placeholder="+262 692 12 34 56"></div>' +
+            '</div>' +
+            '<div class="piege" aria-hidden="true"><label for="t-site">Site web</label>' +
+            '<input type="text" id="t-site" tabindex="-1" autocomplete="off"></div>' +
+            '<div id="zone-turnstile-test" style="margin:14px 0 2px"></div>' +
+            '<label class="rgpd-test"><input type="checkbox" id="t-rgpd"> ' +
+            'J\'accepte de recevoir mon résultat et d\'être recontacté(e) à ce sujet. ' +
+            '<a href="politique-confidentialite.html" target="_blank" rel="noopener">En savoir plus</a></label>' +
+            '<button type="submit" class="bouton bouton-or">Télécharger mon résultat</button>' +
+            '<p class="quiz-retour" id="retour-test" role="status"></p>' +
+          '</form>' +
+        '</div>' +
         '<p class="quiz-ou">ou, si vous préférez réserver directement&nbsp;:</p>';
       }
 
-      html+='<a class="bouton bouton-vert" href="'+CALENDLY+'" target="_blank" rel="noopener">Vérifier si le programme vous correspond</a>'+
-            '<p class="note-test"><button type="button" class="mail-copier" data-refaire>Refaire le test</button></p>'+
-            '</div>';
+      html += '<a class="bouton bouton-vert" href="' + CALENDLY + '" target="_blank" rel="noopener">Vérifier si le programme vous correspond</a>' +
+              '<p class="note-test"><button type="button" class="mail-copier" data-refaire>Refaire le test</button></p>' +
+              '</div>';
 
-      corps.innerHTML=html;
-      corps.querySelector("[data-refaire]").addEventListener("click",function(){
+      corps.innerHTML = html;
+      corps.querySelector("[data-refaire]").addEventListener("click", function(){
         reinitialiser(); dessiner();
       });
 
-      var formTest=document.getElementById("form-test");
+      var relire = corps.querySelector("[data-relire]");
+      if(relire) relire.addEventListener("click", function(){
+        if(documentPret) telecharger(documentPret.contenu, documentPret.nom);
+      });
+
+      var formTest = document.getElementById("form-test");
       if(formTest){
-        brancherFormTest(formTest,resume);
+        brancherFormTest(formTest, { note:note, msg:msg, manques:manques,
+                                     rates:rates, resume:resume });
+
         /* Le collecteur vérifie le jeton avant d'écrire la ligne : sans
            vérification ici, la demande partirait pour être refusée en
            silence. On pose donc un widget propre à ce formulaire. */
@@ -1572,55 +1606,184 @@ strong{font-weight:700}
       majNav();
     }
 
-    /* Envoi des coordonnées vers le tableur d'Aurélie. Le score et les
-       modules manqués partent dans la colonne « Besoin » : elle sait donc
+    /* ==================================================================
+       Le document de résultat
+
+       Un compte rendu écrit, que le visiteur garde. C'est ce qui manquait :
+       si Aurélie rappelle le lendemain, la personne a oublié ses réponses.
+       Le document reprend chaque erreur, la bonne formulation et son
+       explication — il vaut par lui-même, avant même l'appel.
+
+       Il est fabriqué dans le navigateur et téléchargé directement :
+       aucun serveur n'intervient, donc rien à attendre.
+       ================================================================== */
+    function documentResultat(prenom, note, msg, manques, rates){
+      var date = new Date().toLocaleDateString("fr-FR",
+                   { day:"numeric", month:"long", year:"numeric" });
+
+      var erreurs = rates.map(function(r,i){
+        return '<article>'+
+          '<p class="num">Question '+r.numero+' — '+r.module+'</p>'+
+          '<p class="mise">'+r.mise+'</p>'+
+          '<p class="rep"><span class="eti">Votre réponse</span>'+
+            '<span class="faux">'+echapper(r.choisie)+'</span></p>'+
+          '<p class="rep"><span class="eti">La bonne formulation</span>'+
+            '<span class="juste">'+echapper(r.bonne)+'</span></p>'+
+          '<p class="expli">'+r.expli+'</p>'+
+        '</article>';
+      }).join("");
+
+      var bloc = rates.length
+        ? '<h2>Les points à revoir</h2>'+erreurs
+        : '<h2>Sans faute</h2><p>Vous n\'avez laissé passer aucun piège. '+
+          'Le sujet n\'est donc plus la connaissance, mais le réflexe : '+
+          'l\'avoir sous la main au moment où l\'on vous regarde.</p>';
+
+      var listeModules = manques.length
+        ? '<h2>Vos priorités dans le programme</h2><ul>'+
+          manques.map(function(m){ return '<li>'+m+'</li>'; }).join("")+'</ul>'
+        : '';
+
+      return '<!DOCTYPE html>\n<html lang="fr">\n<head>\n<meta charset="utf-8">\n'+
+        '<title>Mon résultat — Business English Accelerator</title>\n'+
+        '<style>\n'+
+        'body{font-family:Georgia,"Times New Roman",serif;max-width:720px;margin:0 auto;'+
+        'padding:48px 28px 64px;color:#2C1810;background:#FAF7F2;line-height:1.62}\n'+
+        'header{border-bottom:3px solid #C9A96E;padding-bottom:18px;margin-bottom:32px}\n'+
+        '.marque{font-size:.78rem;letter-spacing:.22em;text-transform:uppercase;color:#a9863f;'+
+        'font-family:Arial,Helvetica,sans-serif;font-weight:700}\n'+
+        'h1{font-size:1.8rem;margin:10px 0 4px;line-height:1.2}\n'+
+        '.date{color:#7a6a5c;font-size:.9rem;margin:0}\n'+
+        '.note{text-align:center;background:#fff;border:1px solid rgba(44,24,16,.12);'+
+        'border-radius:14px;padding:26px;margin:0 0 26px}\n'+
+        '.note b{display:block;font-size:3rem;color:#1B6B4A;line-height:1;'+
+        'font-family:Arial,Helvetica,sans-serif}\n'+
+        '.note span{color:#7a6a5c;font-size:1.2rem}\n'+
+        '.note p{margin:14px 0 0}\n'+
+        'h2{font-size:1.16rem;margin:32px 0 14px;padding-top:20px;'+
+        'border-top:1px solid rgba(44,24,16,.12);color:#1B6B4A}\n'+
+        'article{background:#fff;border-left:3px solid #C9A96E;border-radius:0 12px 12px 0;'+
+        'padding:18px 20px;margin-bottom:16px}\n'+
+        '.num{font-family:Arial,Helvetica,sans-serif;font-size:.74rem;letter-spacing:.1em;'+
+        'text-transform:uppercase;color:#a9863f;margin:0 0 8px;font-weight:700}\n'+
+        '.mise{margin:0 0 12px;font-style:italic;color:#5b4433}\n'+
+        '.rep{margin:0 0 6px}\n'+
+        '.eti{display:block;font-family:Arial,Helvetica,sans-serif;font-size:.72rem;'+
+        'letter-spacing:.08em;text-transform:uppercase;color:#7a6a5c}\n'+
+        '.faux{color:#A8452F;text-decoration:line-through}\n'+
+        '.juste{color:#1B6B4A;font-weight:700}\n'+
+        '.expli{margin:12px 0 0;font-size:.95rem;color:#463829}\n'+
+        '.expli em{font-style:normal;font-weight:700}\n'+
+        'ul{padding-left:22px}li{margin-bottom:7px}\n'+
+        '.suite{background:#10382A;color:#f5efe6;border-radius:14px;padding:26px 28px;margin-top:36px}\n'+
+        '.suite h2{color:#C9A96E;border:0;padding:0;margin:0 0 10px}\n'+
+        '.suite a{color:#C9A96E}\n'+
+        'footer{margin-top:34px;font-size:.82rem;color:#7a6a5c;text-align:center}\n'+
+        '@media print{body{background:#fff;padding:0}.suite{background:#fff;color:#2C1810;'+
+        'border:1px solid #C9A96E}.suite h2,.suite a{color:#1B6B4A}}\n'+
+        '</style>\n</head>\n<body>\n'+
+        '<header><p class="marque">Fluent &amp; Forward — Business English Accelerator</p>'+
+        '<h1>Votre résultat, '+echapper(prenom)+'</h1>'+
+        '<p class="date">Test d\'anglais professionnel — '+date+'</p></header>'+
+        '<div class="note"><b>'+note+'<span>/'+QUESTIONS.length+'</span></b><p>'+msg+'</p></div>'+
+        bloc + listeModules +
+        '<div class="suite"><h2>La suite</h2>'+
+        '<p>Aurélie vous recontacte pour reprendre ces points avec vous et vous dire, '+
+        'franchement, si le Business English Accelerator correspond à votre niveau et à '+
+        'vos objectifs.</p>'+
+        '<p>Vous pouvez aussi réserver directement&nbsp;: '+
+        '<a href="'+CALENDLY+'">'+CALENDLY+'</a></p></div>'+
+        '<footer>Document généré depuis fluentandforward.com — '+date+'</footer>'+
+        '\n</body>\n</html>';
+    }
+
+    /* Le téléchargement : le document est construit ici même, transformé
+       en fichier et remis au visiteur. Si le navigateur refuse la
+       manœuvre, on ouvre le document dans un onglet plutôt que de le
+       laisser sans rien. */
+    function telecharger(contenu, nomFichier){
+      try{
+        var bloc = new Blob([contenu], { type:"text/html;charset=utf-8" });
+        var url = URL.createObjectURL(bloc);
+        var lien = document.createElement("a");
+        lien.href = url;
+        lien.download = nomFichier;
+        document.body.appendChild(lien);
+        lien.click();
+        document.body.removeChild(lien);
+        setTimeout(function(){ URL.revokeObjectURL(url); }, 30000);
+        return true;
+      }catch(e){
+        try{
+          var f = window.open("", "_blank");
+          if(f){ f.document.write(contenu); f.document.close(); return true; }
+        }catch(e2){}
+        return false;
+      }
+    }
+
+    /* Envoi des coordonnées vers le tableur d'Aurélie, puis remise du
+       document. Le score et les modules manqués partent avec : elle sait
        de quoi parler avant même d'appeler. */
-    function brancherFormTest(formulaire,resume){
-      var ouverture=Date.now(),
-          retour=document.getElementById("retour-test");
+    function brancherFormTest(formulaire, donnees){
+      var ouverture = Date.now(),
+          retour = document.getElementById("retour-test");
 
-      function echec(texte){ retour.textContent=texte; retour.classList.add("raté"); }
+      function echec(texte){ retour.textContent = texte; retour.classList.add("raté"); }
 
-      formulaire.addEventListener("submit",function(e){
+      formulaire.addEventListener("submit", function(e){
         e.preventDefault();
-        var prenom=document.getElementById("t-prenom"),
-            email=document.getElementById("t-email"),
-            tel=document.getElementById("t-tel").value.trim(),
-            rgpd=document.getElementById("t-rgpd").checked,
-            piege=document.getElementById("t-site").value;
+        var prenom = document.getElementById("t-prenom"),
+            email  = document.getElementById("t-email"),
+            tel    = document.getElementById("t-tel").value.trim(),
+            rgpd   = document.getElementById("t-rgpd").checked,
+            piege  = document.getElementById("t-site").value;
 
         /* Champ invisible rempli : c'est un automate. On ne le détrompe pas. */
-        if(piege){ envoye=prenom.value.trim()||"à vous"; dessiner(); return; }
+        if(piege){ envoye = prenom.value.trim() || "à vous"; dessiner(); return; }
 
         /* Un formulaire rempli en moins de deux secondes après huit
            questions n'a pas été rempli par une personne. */
-        if(Date.now()-ouverture<2000){
+        if(Date.now() - ouverture < 2000){
           echec("Merci de prendre un instant avant l'envoi."); return;
         }
 
-        var p=prenom.value.trim(), a=email.value.trim();
-        prenom.classList.toggle("manque",!p);
-        email.classList.toggle("manque",!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(a));
-        if(!p||!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(a)){
+        var p = prenom.value.trim(), a = email.value.trim(),
+            adresseOk = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(a);
+        prenom.classList.toggle("manque", !p);
+        email.classList.toggle("manque", !adresseOk);
+        if(!p || !adresseOk){
           echec("Merci d'indiquer votre prénom et une adresse email valide."); return;
         }
         if(!rgpd){ echec("Merci de cocher la case d'accord avant l'envoi."); return; }
         /* Si la vérification n'a pas pu s'afficher (service injoignable,
            extension de blocage), on n'enferme pas le visiteur : on envoie
            sans jeton plutôt que de lui refuser le passage. */
-        if(widgetTest!==null && !jetonTest){
+        if(widgetTest !== null && !jetonTest){
           echec("Merci de valider la vérification anti-robots juste au-dessus."); return;
         }
 
         retour.classList.remove("raté");
-        retour.textContent="Envoi…";
+        retour.textContent = "Préparation de votre résultat…";
 
         if(ADRESSE_COLLECTEUR){
-          fetch(ADRESSE_COLLECTEUR,{method:"POST",mode:"no-cors",
-            headers:{"Content-Type":"text/plain;charset=utf-8"},
-            body:JSON.stringify({prenom:p,nom:"",email:a,telephone:tel,besoin:resume,jeton:jetonTest})});
+          fetch(ADRESSE_COLLECTEUR, { method:"POST", mode:"no-cors",
+            headers:{ "Content-Type":"text/plain;charset=utf-8" },
+            body: JSON.stringify({
+              type:"test",                    /* aiguille vers l'onglet des tests */
+              prenom:p, nom:"", email:a, telephone:tel,
+              score:donnees.note, total:QUESTIONS.length,
+              modules:enClair(donnees.manques.join(" | ")),
+              besoin:enClair(donnees.resume), /* repli si le script n'est pas à jour */
+              jeton:jetonTest })});
         }
-        envoye=p;
+
+        documentPret = {
+          nom: "Mon-resultat-anglais-professionnel.html",
+          contenu: documentResultat(p, donnees.note, donnees.msg, donnees.manques, donnees.rates)
+        };
+        telecharger(documentPret.contenu, documentPret.nom);
+        envoye = p;
         dessiner();
       });
     }

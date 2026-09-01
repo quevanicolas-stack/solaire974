@@ -21,14 +21,21 @@ CALENDLY = 'https://calendly.com/aurelieameerpro/30min'
 # prospect. Un lien direct vers le PDF ferait perdre le contact.
 GUIDE = '/guide/'
 
-images = json.loads((BASE / 'data-uris.json').read_text(encoding='utf-8'))
-
+# Les visuels sont des fichiers à part, et non plus des data:URI noyés
+# dans la page. Trois raisons :
+#   — un robot qui lit la page (moteur, aperçu de partage, assistant)
+#     tronque les gros fichiers : la photo d'Aurélie, à 544 Ko dans le
+#     document, n'était jamais atteinte et passait pour absente ;
+#   — une image en data:URI ne se met pas en cache séparément : elle est
+#     retéléchargée à chaque visite, avec toute la page ;
+#   — le document tombe de 734 Ko à une quarantaine, donc le texte
+#     s'affiche presque aussitôt, les images se posant ensuite.
 REMPLACEMENTS = {
     '__CALENDLY__': CALENDLY,
     '__GUIDE__':    GUIDE,
-    '__PORTES__':   images['portes'],
-    '__NEXTSTEP__': images['nextstep'],
-    '__AURELIE__':  images['aurelie'],
+    '__PORTES__':   'assets/visuels/portes.jpg',
+    '__NEXTSTEP__': 'assets/visuels/next-step.jpg',
+    '__AURELIE__':  'assets/visuels/aurelie.jpg',
 }
 
 page = (BASE / 'maquette.tpl.html').read_text(encoding='utf-8')
