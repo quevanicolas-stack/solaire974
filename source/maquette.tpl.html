@@ -551,8 +551,12 @@ strong{font-weight:700}
 
 <!-- ===================== BANDE + ENTÊTE ===================== -->
 <!-- La bande annonce l'offre fondatrice et son compte à rebours. Le
-     texte long disparaît sur petit écran, le décompte reste. -->
-<div class="bande" id="bande"><a href="#tarif">Inscris-toi maintenant<span class="bande-long"> — offre fondatrice <span id="bande-remise"></span></span><span class="bande-sep">·</span><span class="bande-compte" id="bande-compte"></span></a></div>
+     texte long disparaît sur petit écran, le décompte reste.
+
+     « Je m'inscris » plutôt qu'« Inscris-toi » : la phrase est celle du
+     visiteur, pas un ordre qu'on lui adresse. C'est aussi le seul
+     endroit du site qui tutoyait. -->
+<div class="bande" id="bande"><a href="#tarif">Je m'inscris<span class="bande-long"> — offre fondatrice <span id="bande-remise"></span></span><span class="bande-sep">·</span><span class="bande-compte" id="bande-compte"></span></a></div>
 <header class="entete">
   <div class="barre">
     <span class="marque">Fluent &amp; Forward</span>
@@ -1112,7 +1116,7 @@ strong{font-weight:700}
     var pastille=document.getElementById("prix-remise"); if(pastille) pastille.hidden=true;
     if(zoneCompte) zoneCompte.hidden=true;
     var bande=document.getElementById("bande");
-    if(bande) bande.innerHTML='<a href="#tarif">Inscris-toi maintenant</a>';
+    if(bande) bande.innerHTML='<a href="#tarif">Je m\'inscris</a>';
   }
 
   function majCompte(){
