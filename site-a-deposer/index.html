@@ -1721,7 +1721,11 @@ strong{font-weight:700}
           manques.map(function(m){ return '<li>'+m+'</li>'; }).join("")+'</ul>'
         : '';
 
+      /* Le document emporté est lu en très grande majorité sur téléphone :
+         sans cette ligne, le navigateur le compose sur 980 px puis le
+         réduit, et le texte devient illisible. */
       return '<!DOCTYPE html>\n<html lang="fr">\n<head>\n<meta charset="utf-8">\n'+
+        '<meta name="viewport" content="width=device-width, initial-scale=1">\n'+
         '<title>Mon résultat — Business English Accelerator</title>\n'+
         '<style>\n'+
         'body{font-family:Georgia,"Times New Roman",serif;max-width:720px;margin:0 auto;'+
@@ -1755,9 +1759,24 @@ strong{font-weight:700}
         '.suite{background:#10382A;color:#f5efe6;border-radius:14px;padding:26px 28px;margin-top:36px}\n'+
         '.suite h2{color:#C9A96E;border:0;padding:0;margin:0 0 10px}\n'+
         '.suite a{color:#C9A96E}\n'+
+        /* Le rendez-vous est la seule action proposée par ce document :
+           elle mérite un bouton, pas une adresse écrite en toutes lettres.
+           Sélecteur doublé : « .suite a » impose le doré aux liens du bloc
+           et l\'emporterait sur « .rdv » seul — texte doré sur fond doré. */
+        '.suite a.rdv{display:inline-block;background:#C9A96E;color:#10382A;'+
+        'font-family:Arial,Helvetica,sans-serif;font-weight:700;font-size:1rem;'+
+        'text-decoration:none;padding:15px 26px;border-radius:12px;margin-top:4px}\n'+
         'footer{margin-top:34px;font-size:.82rem;color:#7a6a5c;text-align:center}\n'+
+        /* Téléphone : marges resserrées, titres ramenés à l\'échelle, et le
+           bouton occupe toute la largeur pour rester atteignable au pouce. */
+        '@media(max-width:520px){body{padding:26px 18px 44px;line-height:1.55}\n'+
+        'h1{font-size:1.42rem}h2{font-size:1.06rem}.note{padding:20px}\n'+
+        '.note b{font-size:2.4rem}.suite{padding:22px 20px}\n'+
+        'article{padding:15px 16px}\n'+
+        '.suite a.rdv{display:block;text-align:center;padding:16px 14px}}\n'+
         '@media print{body{background:#fff;padding:0}.suite{background:#fff;color:#2C1810;'+
-        'border:1px solid #C9A96E}.suite h2,.suite a{color:#1B6B4A}}\n'+
+        'border:1px solid #C9A96E}.suite h2,.suite a{color:#1B6B4A}\n'+
+        '.suite a.rdv{background:#fff;color:#1B6B4A;border:2px solid #1B6B4A}}\n'+
         '</style>\n</head>\n<body>\n'+
         '<header><p class="marque">Fluent &amp; Forward — Business English Accelerator</p>'+
         '<h1>Votre résultat, '+echapper(prenom)+'</h1>'+
@@ -1768,8 +1787,9 @@ strong{font-weight:700}
         '<p>Aurélie vous recontacte pour reprendre ces points avec vous et vous dire, '+
         'franchement, si le Business English Accelerator correspond à votre niveau et à '+
         'vos objectifs.</p>'+
-        '<p>Vous pouvez aussi réserver directement&nbsp;: '+
-        '<a href="'+CALENDLY+'">'+CALENDLY+'</a></p></div>'+
+        '<p>Vous pouvez aussi prendre rendez-vous vous-même&nbsp;:</p>'+
+        '<p><a class="rdv" href="'+CALENDLY+'">'+
+        'Vérifier si le programme vous correspond</a></p></div>'+
         '<footer>Document généré depuis fluentandforward.com — '+date+'</footer>'+
         '\n</body>\n</html>';
     }
@@ -1833,7 +1853,10 @@ strong{font-weight:700}
         }
 
         var p = a.split("@")[0].replace(/[._-]+/g, " ").trim();
-        p = p ? p.charAt(0).toUpperCase() + p.slice(1) : "vous";
+        /* Chaque mot prend sa majuscule : « camille.durand » donnait
+           « Camille durand », y compris dans le tableur d'Aurélie. */
+        p = p ? p.replace(/(^|\s)(\S)/g, function(_, e, l){
+              return e + l.toUpperCase(); }) : "vous";
         var tel = "";
         /* Si la vérification n'a pas pu s'afficher (service injoignable,
            extension de blocage), on n'enferme pas le visiteur : on envoie
