@@ -579,7 +579,10 @@ strong{font-weight:700}
     <a href="#entreprises">Pour les entreprises</a>
     <a href="#membres">Mon Accélérateur</a>
   </nav>
-  <a class="bouton bouton-or" href="__CALENDLY__" target="_blank" rel="noopener">Réserver un appel</a>
+  <!-- Même libellé partout : les six boutons qui mènent au rendez-vous
+       portent désormais la même phrase. Deux formulations pour une seule
+       action se lisaient comme deux propositions différentes. -->
+  <a class="bouton bouton-or" href="__CALENDLY__" target="_blank" rel="noopener">Vérifier si le programme vous correspond</a>
 </aside>
 
 <!-- ===================== HERO ===================== -->
@@ -701,7 +704,7 @@ strong{font-weight:700}
     <div class="sessions-appel" data-reveal>
       <a class="bouton bouton-vert" href="__CALENDLY__" target="_blank" rel="noopener">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-        Réserver un appel
+        Vérifier si le programme vous correspond
       </a>
       <a class="bouton bouton-or" href="#" data-whatsapp>Je veux plus d'informations</a>
     </div>
@@ -1304,7 +1307,7 @@ strong{font-weight:700}
       var html='<div class="mois-titre">'+(col.mois||"")+'<small>'+soustitre+'</small></div>';
 
       if(ouvertes.length===0){
-        html+='<p class="mois-vide">Les prochaines dates seront annoncées ici. Réserver un appel pour être prévenu en priorité.</p>';
+        html+='<p class="mois-vide">Les prochaines dates seront annoncées ici. Réservez un appel pour être prévenu en priorité.</p>';
       }else{
         ouvertes.forEach(function(s,k){
           /* Le nombre affiché est borné ici aussi, et pas seulement dans
