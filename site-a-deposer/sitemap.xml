@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Les pages à indexer. La page de remerciement du guide, l'écran de
-     suivi des prospects et le PDF en sont volontairement absents. -->
+     PDF du guide en est volontairement absent. -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://fluentandforward.com/</loc>

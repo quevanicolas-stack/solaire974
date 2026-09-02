@@ -101,15 +101,6 @@ img { max-width: 100%; height: auto; display: block; }
   color: var(--ink);
 }
 
-/* Marqueur des éléments restant à confirmer côté client */
-.a-confirmer {
-  background: rgba(201, 169, 110, .30);
-  border-bottom: 2px dotted var(--gold);
-  padding: 0 3px;
-  border-radius: 3px;
-  color: inherit;
-}
-
 /* ---------- Boutons ---------- */
 .bouton {
   display: inline-block;
@@ -181,7 +172,6 @@ img { max-width: 100%; height: auto; display: block; }
 }
 .heros .contenu { position: relative; }
 .heros h1 { color: #fff; max-width: 20ch; margin-bottom: 24px; }
-.heros h1 .chiffre { color: var(--gold); }
 .heros .chapeau { color: var(--muted-clair); font-size: 1.18rem; max-width: 54ch; }
 
 /* ---------- Bloc de capture ---------- */

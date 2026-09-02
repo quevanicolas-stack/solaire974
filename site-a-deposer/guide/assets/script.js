@@ -15,18 +15,12 @@
 
      fichier   : le PDF remis au prospect.
      collecteur: l'adresse qui reçoit et archive les contacts.
-                 Tant qu'elle est vide, rien n'est envoyé : les contacts
-                 sont conservés dans le navigateur et exportables en CSV
-                 depuis prospects.html. Voir collecte/LISEZMOI.md pour
-                 mettre en place le fichier de sauvegarde.
      ------------------------------------------------------------------ */
   var REGLAGES = {
     fichier: "assets/stop-avoiding-english-essentials.pdf",
     nomFichier: "Stop-Avoiding-English-Essentials.pdf",
     collecteur: "https://script.google.com/macros/s/AKfycbwg_-N5wG5108h1O2mqxfWmsFOeUDO_cp8XDzdzyCTCBQ3PZn7zTqqC6006yeAm1rh7/exec"
   };
-
-  var CLE_LOCALE = "ff_prospects";
 
   /* ---------- Outils ---------- */
 
@@ -45,20 +39,6 @@
     if (!zone) return;
     zone.textContent = texte;
     zone.classList.add("visible");
-  }
-
-  /* ---------- Copie locale de secours ----------
-     Garantit qu'aucun contact n'est perdu si le collecteur distant
-     est injoignable ou pas encore configuré. Exportable en CSV. */
-
-  function enregistrerEnLocal(contact) {
-    try {
-      var liste = JSON.parse(localStorage.getItem(CLE_LOCALE) || "[]");
-      liste.push(contact);
-      localStorage.setItem(CLE_LOCALE, JSON.stringify(liste));
-    } catch (e) {
-      // Navigation privée ou stockage plein : on n'interrompt pas le parcours.
-    }
   }
 
   /* ---------- Envoi au collecteur ---------- */
@@ -137,8 +117,6 @@
         provenance: document.referrer || "direct",
         page: location.href
       };
-
-      enregistrerEnLocal(contact);
 
       bouton.disabled = true;
       bouton.textContent = "Préparation du guide…";
