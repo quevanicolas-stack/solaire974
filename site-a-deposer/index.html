@@ -132,30 +132,7 @@ strong{font-weight:700}
 .module .num{font-family:var(--titre);font-weight:800;font-size:.7rem;color:var(--gold-fonce);letter-spacing:.07em;text-transform:uppercase}
 .module h3{margin:7px 0 0;font-size:.94rem;color:var(--green);line-height:1.25}
 
-/* ---------- Sessions par mois ---------- */
-.mois-grille{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:34px}
-.mois{background:#fff;border:1px solid var(--line);border-radius:16px;padding:24px 22px;box-shadow:0 10px 26px rgba(16,56,42,.06);display:flex;flex-direction:column;gap:14px}
-.mois-titre{font-family:var(--titre);font-weight:800;font-size:1.16rem;color:var(--ink)}
-.mois-titre small{display:block;font-weight:600;font-size:.82rem;color:var(--muted);letter-spacing:.02em;margin-top:2px}
-.session{border-top:0;padding-top:0;margin-top:0}
-.session .nom{font-weight:700;color:#3a2c1f;font-size:.98rem;margin-bottom:8px}
-.session-cta{display:block;text-decoration:none;color:inherit;border-radius:12px;transition:background .18s ease,transform .18s ease}
-.session-cta{padding:14px;margin-left:-14px;margin-right:-14px}
-.session-cta:hover{background:rgba(27,107,74,.06);transform:translateY(-1px);color:inherit}
-/* Le trait ne sépare que deux sessions voisines.
-   L'ancienne règle s'appuyait sur :first-of-type, qui compte par type
-   de balise : une session complète est un <div>, une session ouverte un
-   <a>. Un mois n'en publiant qu'une seule héritait donc du trait selon
-   la balise tirée, et les trois mois ne se ressemblaient pas. Le
-   sélecteur de voisinage ne dépend d'aucune balise : une session, pas
-   de trait ; deux sessions, un trait. */
-.session + .session{margin-top:14px;padding-top:14px;border-top:1px dashed var(--line)}
-.session-complet{opacity:.72}
-.badge{display:inline-flex;align-items:center;gap:7px;font-family:var(--titre);font-weight:700;font-size:.82rem;padding:5px 12px;border-radius:999px}
-.badge::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor}
-.dispo{background:rgba(27,107,74,.12);color:var(--green)}
-.urgent{background:rgba(183,122,43,.15);color:#8f5f18}
-.complet{background:rgba(168,69,47,.12);color:var(--rouge)}
+/* ---------- Sessions : le texte affiché quand aucune n'est ouverte ---------- */
 .mois-vide{margin:4px 0 0;font-size:.94rem;color:var(--muted)}
 
 /* ---------- Format : liste éditoriale (ni tiret, ni bulle) ---------- */
@@ -294,6 +271,8 @@ strong{font-weight:700}
 #bulle-accelerator .bouton-fmt:hover{background:#1c4249}
 #bulle-entreprise .bouton-fmt{background:var(--fmt-entreprise)}
 #bulle-entreprise .bouton-fmt:hover{background:#4a2c19}
+#bulle-coaching .bulle-chip.choisi{background:var(--fmt-coaching);border-color:var(--fmt-coaching);color:#fff}
+#bulle-accelerator .bulle-chip.choisi{background:var(--fmt-accelerator);border-color:var(--fmt-accelerator);color:#fff}
 .bulle-descriptif{color:#463829;font-size:1.02rem;line-height:1.55;margin:0}
 .bulle-souligne{margin:30px 0 12px;font-size:1.02rem;color:var(--ink);padding-top:18px;border-top:1px solid var(--line)}
 .bulle-liste{margin:0;padding-left:20px;display:grid;gap:9px;color:#463829;font-size:.98rem;line-height:1.5}
@@ -304,10 +283,19 @@ strong{font-weight:700}
   font-family:var(--titre);font-weight:800;font-size:.72rem;display:flex;align-items:center;justify-content:center}
 .bulle-prix{text-align:center;margin:4px 0 2px}
 .bulle-prix-valeur{font-family:var(--titre);font-weight:800;font-size:2.3rem;color:var(--green)}
-.bulle-carte .mois-grille{grid-template-columns:1fr;gap:12px;margin-top:16px}
-.bulle-carte .mois{padding:18px 20px;cursor:default}
-.bulle-carte .session-cta{cursor:pointer}
-.bulle-demarrage{margin:0;font-size:.86rem;color:var(--gold-fonce);font-family:var(--titre);font-weight:700}
+/* Les sessions, en petites bulles alignées au-dessus du prix plutôt
+   qu'une page à part : un choix léger, pas une étape de plus. Chaque
+   propriété est posée ici même plutôt que partagée avec d'autres
+   composants, pour ne dépendre d'aucune règle définie ailleurs. */
+.bulle-chips{display:flex;flex-wrap:wrap;gap:9px;margin:14px 0 28px}
+.bulle-chip{display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border-radius:999px;
+  border:1px solid var(--line);background:#fff;font-family:var(--titre);font-weight:700;font-size:.86rem;
+  color:var(--ink);cursor:pointer;transition:border-color .15s ease,background .15s ease,color .15s ease}
+.bulle-chip::before{content:"";flex:0 0 auto;width:7px;height:7px;border-radius:50%;background:currentColor}
+.bulle-chip.dispo{border-color:rgba(27,107,74,.35);color:var(--green)}
+.bulle-chip.urgent{border-color:rgba(183,122,43,.4);color:#8f5f18}
+.bulle-chip.complet{border-color:rgba(168,69,47,.3);color:var(--rouge);opacity:.55;text-decoration:line-through;cursor:default}
+.bulle-chip:disabled{pointer-events:none}
 .bulle-form{margin-top:28px;padding-top:26px;border-top:1px solid var(--line)}
 .bulle-form .bouton{width:100%;margin-top:4px}
 .bulle-carte .champ label{color:var(--ink)}
@@ -532,7 +520,6 @@ strong{font-weight:700}
 .prix-valeur{font-family:var(--titre);font-weight:800;font-size:2rem;line-height:1.05;color:var(--muted);text-decoration:line-through;text-decoration-thickness:2px}
 .prix-lancement .prix-valeur{font-size:2.7rem;color:var(--green);text-decoration:none}
 .prix-remise{position:absolute;top:-14px;right:-10px;background:var(--gold);color:#231a0e;font-family:var(--titre);font-weight:800;font-size:.82rem;padding:6px 12px;border-radius:999px;box-shadow:0 6px 16px rgba(201,169,110,.42)}
-.prix-note{color:#463829;max-width:520px;margin:0 auto 24px!important}
 
 /* ---------- Apparition ---------- */
 [data-reveal]{opacity:0;transform:translateY(26px);transition:opacity .7s ease,transform .7s ease}
@@ -542,7 +529,7 @@ strong{font-weight:700}
 /* ---------- Mobile ---------- */
 @media (max-width:860px){
   .section{padding:64px 0}
-  .mois-grille,.membres-grille,.apropos-haut,.pied-haut,.formats-grille{grid-template-columns:1fr}
+  .membres-grille,.apropos-haut,.pied-haut,.formats-grille{grid-template-columns:1fr}
   .apropos-photo{max-width:280px;margin:0 auto}
   .hero-carte{padding:30px 26px 32px}
   .pied-bas{flex-direction:column}
@@ -624,7 +611,7 @@ strong{font-weight:700}
     <div class="etroit" data-reveal>
       <span class="oeil">Business English Accelerator</span>
       <h2>L'anglais professionnel, quand ça compte vraiment.</h2>
-      <p class="sous" style="margin-top:16px">Un programme intensif de 8 semaines pour les professionnels de la vente francophones qui maîtrisent leur métier, mais veulent retrouver en anglais le même impact, la même aisance et la même autorité qu'en français, face à leurs clients, prospects et partenaires.</p>
+      <p class="sous" style="margin-top:16px">Un programme intensif de 8 semaines pour les professionnels francophones qui ont déjà des notions d'anglais et veulent gagner en aisance : enrichir leur vocabulaire, pratiquer régulièrement et prendre la parole avec assurance dans leurs situations professionnelles.</p>
     </div>
 
     <!-- Effet miroir avant / après : la colonne de gauche décrit la
@@ -899,7 +886,7 @@ strong{font-weight:700}
       <h3 id="titre-coaching">Coaching 1:1</h3>
     </div>
     <div class="bulle-etape actif" data-etape="1">
-      <p class="bulle-etape-num">Étape 1 sur 3</p>
+      <p class="bulle-etape-num">Étape 1 sur 2</p>
       <p class="bulle-descriptif">Le programme en tête-à-tête, entièrement calé sur vos situations réelles, vos objectifs et vos échéances. En 8 semaines, vous gagnez l'assurance, le vocabulaire et les automatismes dont vous avez besoin — à votre rythme, avec un suivi personnalisé au quotidien.</p>
 
       <h4 class="bulle-souligne">Le format</h4>
@@ -910,6 +897,9 @@ strong{font-weight:700}
         <li>Disponibilité par messages pour vous accompagner pendant le e-learning et dans les exercices</li>
       </ul>
 
+      <h4 class="bulle-souligne">Prochaines sessions</h4>
+      <div class="bulle-chips" id="chips-coaching"></div>
+
       <h4 class="bulle-souligne">Tarif</h4>
       <div class="bulle-prix"><span class="bulle-prix-valeur">790&nbsp;€</span></div>
 
@@ -918,15 +908,7 @@ strong{font-weight:700}
 
     <div class="bulle-etape" data-etape="2">
       <button type="button" class="bulle-retour" data-precedent="1">&larr; Retour</button>
-      <p class="bulle-etape-num">Étape 2 sur 3</p>
-      <h4 class="bulle-souligne" style="margin-top:0;padding-top:0;border-top:0">Prochaines sessions</h4>
-      <div class="mois-grille" id="mois-coaching"></div>
-      <button type="button" class="bouton bouton-fmt" data-suivant="3">Continuer</button>
-    </div>
-
-    <div class="bulle-etape" data-etape="3">
-      <button type="button" class="bulle-retour" data-precedent="2">&larr; Retour</button>
-      <p class="bulle-etape-num">Étape 3 sur 3</p>
+      <p class="bulle-etape-num">Étape 2 sur 2</p>
       <h4 class="bulle-souligne" style="margin-top:0;padding-top:0;border-top:0">Vos coordonnées</h4>
       <form class="bulle-form formulaire-inscription" data-programme="Coaching 1:1" novalidate>
         <div class="champ"><label for="coaching-prenom">Prénom</label><input type="text" id="coaching-prenom" name="prenom" autocomplete="given-name"></div>
@@ -968,7 +950,7 @@ strong{font-weight:700}
       <h3 id="titre-accelerator">Business Accelerator Program</h3>
     </div>
     <div class="bulle-etape actif" data-etape="1">
-      <p class="bulle-etape-num">Étape 1 sur 3</p>
+      <p class="bulle-etape-num">Étape 1 sur 2</p>
       <p class="bulle-descriptif">Le programme en cohorte, où vous avancez avec d'autres professionnels francophones. En 8 semaines, vous gagnez le vocabulaire, la pratique et l'assurance nécessaires pour prendre la parole en anglais dans vos situations professionnelles.</p>
 
       <h4 class="bulle-souligne">Le format</h4>
@@ -992,6 +974,9 @@ strong{font-weight:700}
         <li>Industry-Specific English</li>
       </ol>
 
+      <h4 class="bulle-souligne">Prochaines sessions</h4>
+      <div class="bulle-chips" id="chips-accelerator"></div>
+
       <h4 class="bulle-souligne">Tarif — Cohorte Fondatrice</h4>
       <div class="prix-duo">
         <div class="prix-bloc prix-standard">
@@ -1004,7 +989,6 @@ strong{font-weight:700}
           <span class="prix-valeur" id="prix-lancement">—</span>
         </div>
       </div>
-      <p class="prix-note">Avant de vous engager, on vérifie ensemble que le programme correspond à votre niveau et vos objectifs, pas d'inscription à l'aveugle.</p>
       <div id="zone-compte">
         <p class="compte-titre">L'offre fondatrice se termine dans</p>
         <div class="compte" id="compte-tarif" role="timer" aria-live="off"></div>
@@ -1015,15 +999,7 @@ strong{font-weight:700}
 
     <div class="bulle-etape" data-etape="2">
       <button type="button" class="bulle-retour" data-precedent="1">&larr; Retour</button>
-      <p class="bulle-etape-num">Étape 2 sur 3</p>
-      <h4 class="bulle-souligne" style="margin-top:0;padding-top:0;border-top:0">Prochaines sessions</h4>
-      <div class="mois-grille" id="mois-accelerator"></div>
-      <button type="button" class="bouton bouton-fmt" data-suivant="3">Continuer</button>
-    </div>
-
-    <div class="bulle-etape" data-etape="3">
-      <button type="button" class="bulle-retour" data-precedent="2">&larr; Retour</button>
-      <p class="bulle-etape-num">Étape 3 sur 3</p>
+      <p class="bulle-etape-num">Étape 2 sur 2</p>
       <h4 class="bulle-souligne" style="margin-top:0;padding-top:0;border-top:0">Vos coordonnées</h4>
       <form class="bulle-form formulaire-inscription" data-programme="Business Accelerator" novalidate>
         <div class="champ"><label for="accelerator-prenom">Prénom</label><input type="text" id="accelerator-prenom" name="prenom" autocomplete="given-name"></div>
@@ -1493,8 +1469,8 @@ strong{font-weight:700}
     ]}
   };
 
-  var grilleCoaching=document.getElementById("mois-coaching"),
-      grilleAccelerator=document.getElementById("mois-accelerator");
+  var grilleCoaching=document.getElementById("chips-coaching"),
+      grilleAccelerator=document.getElementById("chips-accelerator");
 
   function badgeDe(places){
     if(places<=0)  return {classe:"complet",texte:"Complet"};
@@ -1502,90 +1478,76 @@ strong{font-weight:700}
     return {classe:"dispo", texte:places+" places disponibles"};
   }
 
-  /* Un clic sur une session ouverte ne réserve rien en soi : il note le
-     mois choisi pour que ce renseignement parte avec la demande, puis
-     avance directement à l'étape des coordonnées. */
-  function choisirSession(bulle, libelle){
-    bulle.dataset.moisChoisi=libelle;
-    afficherEtape(bulle, 3);
-  }
+  var MOIS_ABREGE={ "Janvier":"janv.","Février":"févr.","Mars":"mars","Avril":"avr.","Mai":"mai","Juin":"juin",
+    "Juillet":"juil.","Août":"août","Septembre":"sept.","Octobre":"oct.","Novembre":"nov.","Décembre":"déc." };
 
-  function dessinerSessions(grille, donnees, bulle){
-    if(!grille||!donnees||!donnees.colonnes) return;
-    grille.innerHTML="";
+  /* Les sessions se choisissent en petites bulles au-dessus du prix,
+     sur la même page que le descriptif — pas sur un écran à part.
+     Cliquer sur l'une d'elles note le mois choisi pour que ce
+     renseignement parte avec la demande ; ça ne fait pas avancer
+     d'étape, la personne reste libre de lire le prix avant de
+     s'engager. */
+  function dessinerChips(conteneur, donnees, bulle){
+    if(!conteneur||!donnees||!donnees.colonnes) return;
+    conteneur.innerHTML="";
 
-    donnees.colonnes.forEach(function(col,i){
+    var puces=[];
+    donnees.colonnes.forEach(function(col){
       var ouvertes=(col.sessions||[]).filter(function(s){ return s.publier; });
-
-      var bloc=document.createElement("div");
-      bloc.className="mois";
-      bloc.setAttribute("data-reveal","");
-      if(i>0) bloc.setAttribute("data-d",String(i));
-
-      var soustitre = ouvertes.length===0 ? "Aucune session ouverte pour l'instant"
-                    : ouvertes.length===1 ? "Une session programmée"
-                    : "Deux sessions programmées";
-
-      var html='<div class="mois-titre">'+(col.mois||"")+'<small>'+soustitre+'</small></div>';
-
-      if(ouvertes.length===0){
-        html+='<p class="mois-vide">Les prochaines dates seront annoncées ici. Inscrivez-vous ci-dessous pour être prévenu en priorité.</p>';
-      }else{
-        /* « Octobre 2026 » → « octobre » : le jour de démarrage de
-           chaque session se lit « Démarrage : 14 octobre ». */
-        var moisSeul=String(col.mois||"").replace(/\s*\d{4}\s*$/,"").toLowerCase();
-        ouvertes.forEach(function(s,k){
-          /* Le nombre affiché est borné ici aussi, et pas seulement dans
-             le script Google : une faute de frappe dans le tableau ne
-             doit jamais annoncer plus de places qu'il n'en existe. */
-          var places=Math.min(PLACES_PAR_SESSION,Math.max(0,parseInt(s.places,10)||0)),
-              b=badgeDe(places), nom="Session "+(k+1);
-          /* Le jour de démarrage est facultatif et propre à chaque
-             session : deux sessions du même mois peuvent démarrer à
-             des dates différentes, une case vide n'affiche rien. */
-          var jourHtml = (s.jour && String(s.jour).trim()!=="")
-            ? '<p class="bulle-demarrage">Démarrage : '+String(s.jour).trim()+' '+moisSeul+'</p>' : '';
-          if(places<=0){
-            html+='<div class="session session-complet"><div class="nom">'+nom+'</div>'+jourHtml+
-                  '<span class="badge complet">Complet</span></div>';
-          }else{
-            html+='<a class="session session-cta" href="#" data-mois="'+(col.mois||"")+' — '+nom+'">'+
-                  '<div class="nom">'+nom+'</div>'+jourHtml+'<span class="badge '+b.classe+'">'+b.texte+'</span></a>';
-          }
-        });
-      }
-      bloc.innerHTML=html;
-      grille.appendChild(bloc);
-    });
-
-    /* Les blocs viennent d'être créés : ils doivent entrer dans la
-       ronde des apparitions au défilement comme le reste de la page. */
-    if(typeof observerReveal==="function") observerReveal(grille);
-
-    if(bulle){
-      [].forEach.call(grille.querySelectorAll(".session-cta"),function(a){
-        a.addEventListener("click",function(e){
-          e.preventDefault();
-          choisirSession(bulle, a.getAttribute("data-mois"));
+      var moisSeul=String(col.mois||"").replace(/\s*\d{4}\s*$/,"");
+      var abrege=MOIS_ABREGE[moisSeul]||moisSeul.toLowerCase();
+      ouvertes.forEach(function(s,k){
+        var places=Math.min(PLACES_PAR_SESSION,Math.max(0,parseInt(s.places,10)||0));
+        var jour=(s.jour&&String(s.jour).trim()!=="")?String(s.jour).trim()+" ":"";
+        var suffixe=ouvertes.length>1?" · "+(k+1):"";
+        puces.push({
+          libelle: jour+abrege+suffixe,
+          places: places,
+          mois: col.mois,
+          nom: "Session "+(k+1)
         });
       });
+    });
+
+    if(puces.length===0){
+      conteneur.innerHTML='<p class="mois-vide">Les prochaines dates seront annoncées ici. Inscrivez-vous ci-dessous pour être prévenu en priorité.</p>';
+      return;
     }
+
+    puces.forEach(function(p){
+      var b=badgeDe(p.places);
+      var chip=document.createElement("button");
+      chip.type="button";
+      chip.className="bulle-chip "+b.classe;
+      chip.textContent=p.libelle;
+      if(p.places<=0){
+        chip.disabled=true;
+        chip.setAttribute("aria-label",p.libelle+" — complet");
+      }else{
+        chip.addEventListener("click",function(){
+          [].forEach.call(conteneur.querySelectorAll(".bulle-chip"),function(c){ c.classList.remove("choisi"); });
+          chip.classList.add("choisi");
+          if(bulle) bulle.dataset.moisChoisi=p.mois+" — "+p.nom;
+        });
+      }
+      conteneur.appendChild(chip);
+    });
   }
 
   var bulleCoaching=document.getElementById("bulle-coaching"),
       bulleAccelerator=document.getElementById("bulle-accelerator");
 
-  dessinerSessions(grilleCoaching, SESSIONS_SECOURS.coaching, bulleCoaching);
-  dessinerSessions(grilleAccelerator, SESSIONS_SECOURS.accelerator, bulleAccelerator);
+  dessinerChips(grilleCoaching, SESSIONS_SECOURS.coaching, bulleCoaching);
+  dessinerChips(grilleAccelerator, SESSIONS_SECOURS.accelerator, bulleAccelerator);
 
   if(ADRESSE_SESSIONS){
     fetch(ADRESSE_SESSIONS,{cache:"no-store"})
       .then(function(r){ return r.json(); })
       .then(function(d){
         if(d&&d.coaching&&d.coaching.colonnes&&d.coaching.colonnes.length)
-          dessinerSessions(grilleCoaching, d.coaching, bulleCoaching);
+          dessinerChips(grilleCoaching, d.coaching, bulleCoaching);
         if(d&&d.accelerator&&d.accelerator.colonnes&&d.accelerator.colonnes.length)
-          dessinerSessions(grilleAccelerator, d.accelerator, bulleAccelerator);
+          dessinerChips(grilleAccelerator, d.accelerator, bulleAccelerator);
       })
       .catch(function(){ /* tableau injoignable : on garde les valeurs de secours */ });
   }
