@@ -2326,16 +2326,15 @@ strong{font-weight:700}
     [].forEach.call(document.querySelectorAll(".bulle-fond.ouvert"),fermerBulle);
   });
 
-  /* Les liens ci-dessous sont à remplacer par les vrais liens de
-     paiement Stripe, une fois les deux produits créés dans le tableau
-     de bord Stripe d'Aurélie (Payment Links, personnalisés à ses
-     couleurs). Tant qu'un lien reste sur ce texte, l'inscription est
-     bien enregistrée mais la redirection ne peut pas aboutir — le
-     message le dit à la personne plutôt que de la laisser sur un lien
-     mort. */
+  /* ATTENTION : liens de TEST Stripe (préfixe buy.stripe.com/test_).
+     Ils servent à vérifier tout le circuit sans encaisser de vrai
+     paiement (carte de test 4242 4242 4242 4242). À remplacer par les
+     liens en mode LIVE du tableau de bord Stripe d'Aurélie avant
+     toute mise en ligne réelle — sans quoi aucun client ne peut payer
+     pour de vrai. */
   var LIENS_STRIPE={
-    "Coaching 1:1":         "REMPLACER_PAR_LE_LIEN_STRIPE_COACHING",
-    "Business Accelerator": "REMPLACER_PAR_LE_LIEN_STRIPE_ACCELERATOR"
+    "Coaching 1:1":         "https://buy.stripe.com/test_14A7sM5KQdOmeDF0ql7ok01",
+    "Business Accelerator": "https://buy.stripe.com/test_4gM7sM2yEbGeeDFa0V7ok00"
   };
 
   [].forEach.call(document.querySelectorAll(".formulaire-inscription"),function(formInscription){
