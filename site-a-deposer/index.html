@@ -1528,6 +1528,7 @@ strong{font-weight:700}
           [].forEach.call(conteneur.querySelectorAll(".bulle-chip"),function(c){ c.classList.remove("choisi"); });
           chip.classList.add("choisi");
           if(bulle) bulle.dataset.moisChoisi=p.mois+" — "+p.nom;
+          noterEtape("session choisie ("+(bulle&&(bulle.dataset.nom||bulle.id)||"?")+")");
         });
       }
       conteneur.appendChild(chip);
@@ -2345,6 +2346,10 @@ strong{font-weight:700}
         zoneTurnstileInscription=formInscription.querySelector("[data-turnstile]"),
         programmeInscription=formInscription.getAttribute("data-programme"),
         ouvertureInscription=Date.now();
+
+    formInscription.addEventListener("input",function(){
+      noterEtape("formulaire commencé ("+programmeInscription+")");
+    },{once:true});
 
     formInscription.addEventListener("submit",function(e){
       e.preventDefault();
