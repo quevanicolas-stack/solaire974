@@ -35,6 +35,11 @@
   --cream:#FAF7F2; --ink:#2C1810; --green:#1B6B4A; --deep:#10382A;
   --gold:#C9A96E; --gold-fonce:#a9863f; --sable:#E8DDD0;
   --rouge:#A8452F;
+  /* Une teinte par format : de quoi les distinguer au premier coup
+     d'œil sans sortir de la charte — même famille chaude que le
+     cuivre et le doré déjà en place, jamais le vert/doré du reste
+     du site (qui reste l'action générique). */
+  --fmt-coaching:#A8452F; --fmt-accelerator:#2C5F6B; --fmt-entreprise:#6B4226;
   --muted:rgba(44,24,16,.62); --line:rgba(44,24,16,.12);
   --titre:'Plus Jakarta Sans',system-ui,sans-serif; --texte:'DM Sans',system-ui,sans-serif;
   --largeur:1080px; --rayon:16px;
@@ -241,6 +246,16 @@ strong{font-weight:700}
 .carte-format-voir svg{width:15px;height:15px;transition:transform .18s ease}
 .carte-format:hover .carte-format-voir svg{transform:translateX(3px)}
 
+/* Une teinte par carte, reprise dans sa bulle : c'est ce qui permet de
+   repérer en un clin d'œil dans quel parcours on se trouve, sans
+   toucher au vert/doré qui reste l'action générique du reste du site. */
+.carte-format[data-format="coaching"] .carte-format-barre{background:linear-gradient(135deg,var(--fmt-coaching),#7c341f)}
+.carte-format[data-format="coaching"] .carte-format-icone{color:var(--fmt-coaching)}
+.carte-format[data-format="accelerator"] .carte-format-barre{background:linear-gradient(135deg,var(--fmt-accelerator),#1c4249)}
+.carte-format[data-format="accelerator"] .carte-format-icone{color:var(--fmt-accelerator)}
+.carte-format[data-format="entreprise"] .carte-format-barre{background:linear-gradient(135deg,var(--fmt-entreprise),#4a2c19)}
+.carte-format[data-format="entreprise"] .carte-format-icone{color:var(--fmt-entreprise)}
+
 /* ==================================================================
    Les bulles de format — même mécanique visuelle que le test de
    niveau (fond flou, carte qui grandit depuis la carte cliquée).
@@ -259,6 +274,26 @@ strong{font-weight:700}
 .bulle-carte .fermer-popup:hover{background:var(--sable);color:var(--ink)}
 .bulle-tete{margin-bottom:16px}
 .bulle-tete h3{font-size:clamp(1.4rem,3.2vw,1.85rem);color:var(--ink);margin-top:6px}
+
+/* La bordure et l'œil reprennent la couleur du format, l'entête de
+   chaque bulle annonce donc de laquelle il s'agit avant même de lire
+   le titre. */
+#bulle-coaching .bulle-carte{border-top-color:var(--fmt-coaching)}
+#bulle-coaching .bulle-tete .oeil{color:var(--fmt-coaching)}
+#bulle-accelerator .bulle-carte{border-top-color:var(--fmt-accelerator)}
+#bulle-accelerator .bulle-tete .oeil{color:var(--fmt-accelerator)}
+#bulle-entreprise .bulle-carte{border-top-color:var(--fmt-entreprise)}
+#bulle-entreprise .bulle-tete .oeil{color:var(--fmt-entreprise)}
+
+/* Le bouton principal de chaque étape porte lui aussi la couleur du
+   format, plutôt que le vert générique des autres boutons du site. */
+.bouton-fmt{color:#fff;border-color:transparent}
+#bulle-coaching .bouton-fmt{background:var(--fmt-coaching)}
+#bulle-coaching .bouton-fmt:hover{background:#7c341f}
+#bulle-accelerator .bouton-fmt{background:var(--fmt-accelerator)}
+#bulle-accelerator .bouton-fmt:hover{background:#1c4249}
+#bulle-entreprise .bouton-fmt{background:var(--fmt-entreprise)}
+#bulle-entreprise .bouton-fmt:hover{background:#4a2c19}
 .bulle-descriptif{color:#463829;font-size:1.02rem;line-height:1.55;margin:0}
 .bulle-souligne{margin:30px 0 12px;font-size:1.02rem;color:var(--ink);padding-top:18px;border-top:1px solid var(--line)}
 .bulle-liste{margin:0;padding-left:20px;display:grid;gap:9px;color:#463829;font-size:.98rem;line-height:1.5}
@@ -282,6 +317,16 @@ strong{font-weight:700}
 .bulle-whatsapp{display:block;text-align:center;margin-top:14px;font-family:var(--titre);font-weight:700;font-size:.88rem;color:var(--muted);text-decoration:underline;text-underline-offset:3px}
 .bulle-whatsapp:hover{color:var(--green)}
 .bulle-phrase{margin-top:24px;font-size:.92rem;font-style:italic;color:#5b4433;line-height:1.55;text-align:center}
+/* Les trois étapes d'une bulle : le descriptif et le prix d'abord, les
+   sessions ensuite, les coordonnées en dernier — une seule visible à
+   la fois, pour ne jamais montrer un mur de champs avant que la
+   personne ait eu le temps de se décider. */
+.bulle-etape{display:none}
+.bulle-etape.actif{display:block}
+.bulle-etape-num{margin:0 0 6px;font-family:var(--titre);font-weight:700;font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.bulle-retour{display:inline-block;background:none;border:0;padding:0;margin-bottom:16px;font-family:var(--titre);font-weight:700;font-size:.86rem;color:var(--muted);cursor:pointer}
+.bulle-retour:hover{color:var(--ink)}
+.bulle-etape .bouton{width:100%;margin-top:22px}
 .bulle-transition{display:none;text-align:center;padding:34px 6px 6px}
 .bulle-transition.actif{display:block}
 .bulle-transition p{margin-top:14px;color:#463829}
@@ -853,49 +898,64 @@ strong{font-weight:700}
       <span class="oeil">Sur-mesure</span>
       <h3 id="titre-coaching">Coaching 1:1</h3>
     </div>
-    <p class="bulle-descriptif">Le programme en tête-à-tête, entièrement calé sur vos situations réelles, vos objectifs et vos échéances. En 8 semaines, vous gagnez l'assurance, le vocabulaire et les automatismes dont vous avez besoin — à votre rythme, avec un suivi personnalisé au quotidien.</p>
+    <div class="bulle-etape actif" data-etape="1">
+      <p class="bulle-etape-num">Étape 1 sur 3</p>
+      <p class="bulle-descriptif">Le programme en tête-à-tête, entièrement calé sur vos situations réelles, vos objectifs et vos échéances. En 8 semaines, vous gagnez l'assurance, le vocabulaire et les automatismes dont vous avez besoin — à votre rythme, avec un suivi personnalisé au quotidien.</p>
 
-    <h4 class="bulle-souligne">Le format</h4>
-    <ul class="bulle-liste">
-      <li>8h de coaching individuel</li>
-      <li>8 modules e-learning textes et vidéo</li>
-      <li>8 ressources vocabulaire et grammaire</li>
-      <li>Disponibilité par messages pour vous accompagner pendant le e-learning et dans les exercices</li>
-    </ul>
+      <h4 class="bulle-souligne">Le format</h4>
+      <ul class="bulle-liste">
+        <li>8h de coaching individuel</li>
+        <li>8 modules e-learning textes et vidéo</li>
+        <li>8 ressources vocabulaire et grammaire</li>
+        <li>Disponibilité par messages pour vous accompagner pendant le e-learning et dans les exercices</li>
+      </ul>
 
-    <h4 class="bulle-souligne">Tarif</h4>
-    <div class="bulle-prix"><span class="bulle-prix-valeur">790&nbsp;€</span></div>
+      <h4 class="bulle-souligne">Tarif</h4>
+      <div class="bulle-prix"><span class="bulle-prix-valeur">790&nbsp;€</span></div>
 
-    <h4 class="bulle-souligne">Prochaines sessions</h4>
-    <div class="mois-grille" id="mois-coaching"></div>
+      <button type="button" class="bouton bouton-fmt" data-suivant="2">Je choisis ce format</button>
+    </div>
 
-        <form class="bulle-form formulaire-inscription" data-programme="Coaching 1:1" novalidate>
-          <div class="champ"><label for="coaching-prenom">Prénom</label><input type="text" id="coaching-prenom" name="prenom" autocomplete="given-name"></div>
-          <div class="champ"><label for="coaching-nom">Nom</label><input type="text" id="coaching-nom" name="nom" autocomplete="family-name"></div>
-          <div class="champ"><label for="coaching-email">Adresse email</label><input type="email" id="coaching-email" name="email" autocomplete="email"></div>
-          <div class="champ">
-            <label for="coaching-tel">Numéro de téléphone</label>
-            <div class="champ-tel">
-              <select id="coaching-indicatif" name="indicatif" aria-label="Indicatif international">
-                <option value="+33">France (+33)</option>
-                <option value="+262" selected>La Réunion (+262)</option>
-              </select>
-              <input type="tel" id="coaching-tel" name="telephone" autocomplete="tel-national" placeholder="692 12 34 56">
-            </div>
+    <div class="bulle-etape" data-etape="2">
+      <button type="button" class="bulle-retour" data-precedent="1">&larr; Retour</button>
+      <p class="bulle-etape-num">Étape 2 sur 3</p>
+      <h4 class="bulle-souligne" style="margin-top:0;padding-top:0;border-top:0">Prochaines sessions</h4>
+      <div class="mois-grille" id="mois-coaching"></div>
+      <button type="button" class="bouton bouton-fmt" data-suivant="3">Continuer</button>
+    </div>
+
+    <div class="bulle-etape" data-etape="3">
+      <button type="button" class="bulle-retour" data-precedent="2">&larr; Retour</button>
+      <p class="bulle-etape-num">Étape 3 sur 3</p>
+      <h4 class="bulle-souligne" style="margin-top:0;padding-top:0;border-top:0">Vos coordonnées</h4>
+      <form class="bulle-form formulaire-inscription" data-programme="Coaching 1:1" novalidate>
+        <div class="champ"><label for="coaching-prenom">Prénom</label><input type="text" id="coaching-prenom" name="prenom" autocomplete="given-name"></div>
+        <div class="champ"><label for="coaching-nom">Nom</label><input type="text" id="coaching-nom" name="nom" autocomplete="family-name"></div>
+        <div class="champ"><label for="coaching-email">Adresse email</label><input type="email" id="coaching-email" name="email" autocomplete="email"></div>
+        <div class="champ">
+          <label for="coaching-tel">Numéro de téléphone</label>
+          <div class="champ-tel">
+            <select id="coaching-indicatif" name="indicatif" aria-label="Indicatif international">
+              <option value="+33">France (+33)</option>
+              <option value="+262" selected>La Réunion (+262)</option>
+            </select>
+            <input type="tel" id="coaching-tel" name="telephone" autocomplete="tel-national" placeholder="692 12 34 56">
           </div>
-          <div class="piege" aria-hidden="true"><label for="coaching-site">Site web</label><input type="text" id="coaching-site" name="site" tabindex="-1" autocomplete="off"></div>
-          <div class="zone-turnstile" data-turnstile></div>
-          <button type="submit" class="bouton bouton-vert">Je réserve ma place</button>
-          <a class="bulle-whatsapp" href="#" data-whatsapp="Bonjour Aurélie, j'ai une question avant de m'inscrire au Coaching 1:1.">Poser ma question sur WhatsApp</a>
-          <p class="mention-acces">Vos informations servent à traiter votre inscription et à vous recontacter. <a href="politique-confidentialite.html" target="_blank" rel="noopener">Vos données</a></p>
-          <p class="retour retour-formulaire" role="status"></p>
-        </form>
-        <div class="bulle-transition" data-transition>
-          <div class="bulle-spin" aria-hidden="true"></div>
-          <p data-transition-texte></p>
         </div>
+        <div class="piege" aria-hidden="true"><label for="coaching-site">Site web</label><input type="text" id="coaching-site" name="site" tabindex="-1" autocomplete="off"></div>
+        <div class="zone-turnstile" data-turnstile></div>
+        <button type="submit" class="bouton bouton-fmt">Je réserve ma place</button>
+        <a class="bulle-whatsapp" href="#" data-whatsapp="Bonjour Aurélie, j'ai une question avant de m'inscrire au Coaching 1:1.">Poser ma question sur WhatsApp</a>
+        <p class="mention-acces">Vos informations servent à traiter votre inscription et à vous recontacter. <a href="politique-confidentialite.html" target="_blank" rel="noopener">Vos données</a></p>
+        <p class="retour retour-formulaire" role="status"></p>
+      </form>
+      <div class="bulle-transition" data-transition>
+        <div class="bulle-spin" aria-hidden="true"></div>
+        <p data-transition-texte></p>
+      </div>
 
-    <p class="bulle-phrase">Une fois votre inscription reçue, je prends personnellement contact avec vous afin de faire le point sur vos objectifs, vos besoins et vos disponibilités, et de préparer ensemble les modalités de votre accompagnement avant son démarrage à la date choisie.</p>
+      <p class="bulle-phrase">Une fois votre inscription reçue, je prends personnellement contact avec vous afin de faire le point sur vos objectifs, vos besoins et vos disponibilités, et de préparer ensemble les modalités de votre accompagnement avant son démarrage à la date choisie.</p>
+    </div>
   </div>
 </div>
 
@@ -907,75 +967,90 @@ strong{font-weight:700}
       <span class="oeil">Cohorte</span>
       <h3 id="titre-accelerator">Business Accelerator Program</h3>
     </div>
-    <p class="bulle-descriptif">Le programme en cohorte, où vous avancez avec d'autres professionnels francophones. En 8 semaines, vous gagnez le vocabulaire, la pratique et l'assurance nécessaires pour prendre la parole en anglais dans vos situations professionnelles.</p>
+    <div class="bulle-etape actif" data-etape="1">
+      <p class="bulle-etape-num">Étape 1 sur 3</p>
+      <p class="bulle-descriptif">Le programme en cohorte, où vous avancez avec d'autres professionnels francophones. En 8 semaines, vous gagnez le vocabulaire, la pratique et l'assurance nécessaires pour prendre la parole en anglais dans vos situations professionnelles.</p>
 
-    <h4 class="bulle-souligne">Le format</h4>
-    <ul class="bulle-liste">
-      <li>8 semaines</li>
-      <li>8 modules</li>
-      <li>1h de live par semaine</li>
-      <li>2 coachings 1:1</li>
-      <li>10 places maximum</li>
-    </ul>
+      <h4 class="bulle-souligne">Le format</h4>
+      <ul class="bulle-liste">
+        <li>8 semaines</li>
+        <li>8 modules</li>
+        <li>1h de live par semaine</li>
+        <li>2 coachings 1:1</li>
+        <li>10 places maximum</li>
+      </ul>
 
-    <h4 class="bulle-souligne">Le contenu — 8 modules</h4>
-    <ol class="bulle-liste bulle-liste-numerotee">
-      <li>Think &amp; Speak Like a Business Person</li>
-      <li>Professional Communication Essentials</li>
-      <li>Meetings &amp; Calls Mastery</li>
-      <li>Presenting your business with Confidence</li>
-      <li>Networking Like a Pro</li>
-      <li>Sales &amp; Negotiation English</li>
-      <li>Confidence &amp; Fluency</li>
-      <li>Industry-Specific English</li>
-    </ol>
+      <h4 class="bulle-souligne">Le contenu — 8 modules</h4>
+      <ol class="bulle-liste bulle-liste-numerotee">
+        <li>Think &amp; Speak Like a Business Person</li>
+        <li>Professional Communication Essentials</li>
+        <li>Meetings &amp; Calls Mastery</li>
+        <li>Presenting your business with Confidence</li>
+        <li>Networking Like a Pro</li>
+        <li>Sales &amp; Negotiation English</li>
+        <li>Confidence &amp; Fluency</li>
+        <li>Industry-Specific English</li>
+      </ol>
 
-    <h4 class="bulle-souligne">Tarif — Cohorte Fondatrice</h4>
-    <div class="prix-duo">
-      <div class="prix-bloc prix-standard">
-        <span class="prix-oeil">Tarif standard</span>
-        <span class="prix-valeur" id="prix-standard">—</span>
-      </div>
-      <div class="prix-bloc prix-lancement">
-        <span class="prix-remise" id="prix-remise"></span>
-        <span class="prix-oeil">Prix de lancement</span>
-        <span class="prix-valeur" id="prix-lancement">—</span>
-      </div>
-    </div>
-    <p class="prix-note">Avant de vous engager, on vérifie ensemble que le programme correspond à votre niveau et vos objectifs, pas d'inscription à l'aveugle.</p>
-    <div id="zone-compte">
-      <p class="compte-titre">L'offre fondatrice se termine dans</p>
-      <div class="compte" id="compte-tarif" role="timer" aria-live="off"></div>
-    </div>
-
-    <h4 class="bulle-souligne">Prochaines sessions</h4>
-    <div class="mois-grille" id="mois-accelerator"></div>
-
-        <form class="bulle-form formulaire-inscription" data-programme="Business Accelerator" novalidate>
-          <div class="champ"><label for="accelerator-prenom">Prénom</label><input type="text" id="accelerator-prenom" name="prenom" autocomplete="given-name"></div>
-          <div class="champ"><label for="accelerator-nom">Nom</label><input type="text" id="accelerator-nom" name="nom" autocomplete="family-name"></div>
-          <div class="champ"><label for="accelerator-email">Adresse email</label><input type="email" id="accelerator-email" name="email" autocomplete="email"></div>
-          <div class="champ">
-            <label for="accelerator-tel">Numéro de téléphone</label>
-            <div class="champ-tel">
-              <select id="accelerator-indicatif" name="indicatif" aria-label="Indicatif international">
-                <option value="+33">France (+33)</option>
-                <option value="+262" selected>La Réunion (+262)</option>
-              </select>
-              <input type="tel" id="accelerator-tel" name="telephone" autocomplete="tel-national" placeholder="692 12 34 56">
-            </div>
-          </div>
-          <div class="piege" aria-hidden="true"><label for="accelerator-site">Site web</label><input type="text" id="accelerator-site" name="site" tabindex="-1" autocomplete="off"></div>
-          <div class="zone-turnstile" data-turnstile></div>
-          <button type="submit" class="bouton bouton-vert">Je réserve ma place</button>
-          <a class="bulle-whatsapp" href="#" data-whatsapp="Bonjour Aurélie, j'ai une question avant de m'inscrire au Business Accelerator.">Poser ma question sur WhatsApp</a>
-          <p class="mention-acces">Vos informations servent à traiter votre inscription et à vous recontacter. <a href="politique-confidentialite.html" target="_blank" rel="noopener">Vos données</a></p>
-          <p class="retour retour-formulaire" role="status"></p>
-        </form>
-        <div class="bulle-transition" data-transition>
-          <div class="bulle-spin" aria-hidden="true"></div>
-          <p data-transition-texte></p>
+      <h4 class="bulle-souligne">Tarif — Cohorte Fondatrice</h4>
+      <div class="prix-duo">
+        <div class="prix-bloc prix-standard">
+          <span class="prix-oeil">Tarif standard</span>
+          <span class="prix-valeur" id="prix-standard">—</span>
         </div>
+        <div class="prix-bloc prix-lancement">
+          <span class="prix-remise" id="prix-remise"></span>
+          <span class="prix-oeil">Prix de lancement</span>
+          <span class="prix-valeur" id="prix-lancement">—</span>
+        </div>
+      </div>
+      <p class="prix-note">Avant de vous engager, on vérifie ensemble que le programme correspond à votre niveau et vos objectifs, pas d'inscription à l'aveugle.</p>
+      <div id="zone-compte">
+        <p class="compte-titre">L'offre fondatrice se termine dans</p>
+        <div class="compte" id="compte-tarif" role="timer" aria-live="off"></div>
+      </div>
+
+      <button type="button" class="bouton bouton-fmt" data-suivant="2">Je choisis ce format</button>
+    </div>
+
+    <div class="bulle-etape" data-etape="2">
+      <button type="button" class="bulle-retour" data-precedent="1">&larr; Retour</button>
+      <p class="bulle-etape-num">Étape 2 sur 3</p>
+      <h4 class="bulle-souligne" style="margin-top:0;padding-top:0;border-top:0">Prochaines sessions</h4>
+      <div class="mois-grille" id="mois-accelerator"></div>
+      <button type="button" class="bouton bouton-fmt" data-suivant="3">Continuer</button>
+    </div>
+
+    <div class="bulle-etape" data-etape="3">
+      <button type="button" class="bulle-retour" data-precedent="2">&larr; Retour</button>
+      <p class="bulle-etape-num">Étape 3 sur 3</p>
+      <h4 class="bulle-souligne" style="margin-top:0;padding-top:0;border-top:0">Vos coordonnées</h4>
+      <form class="bulle-form formulaire-inscription" data-programme="Business Accelerator" novalidate>
+        <div class="champ"><label for="accelerator-prenom">Prénom</label><input type="text" id="accelerator-prenom" name="prenom" autocomplete="given-name"></div>
+        <div class="champ"><label for="accelerator-nom">Nom</label><input type="text" id="accelerator-nom" name="nom" autocomplete="family-name"></div>
+        <div class="champ"><label for="accelerator-email">Adresse email</label><input type="email" id="accelerator-email" name="email" autocomplete="email"></div>
+        <div class="champ">
+          <label for="accelerator-tel">Numéro de téléphone</label>
+          <div class="champ-tel">
+            <select id="accelerator-indicatif" name="indicatif" aria-label="Indicatif international">
+              <option value="+33">France (+33)</option>
+              <option value="+262" selected>La Réunion (+262)</option>
+            </select>
+            <input type="tel" id="accelerator-tel" name="telephone" autocomplete="tel-national" placeholder="692 12 34 56">
+          </div>
+        </div>
+        <div class="piege" aria-hidden="true"><label for="accelerator-site">Site web</label><input type="text" id="accelerator-site" name="site" tabindex="-1" autocomplete="off"></div>
+        <div class="zone-turnstile" data-turnstile></div>
+        <button type="submit" class="bouton bouton-fmt">Je réserve ma place</button>
+        <a class="bulle-whatsapp" href="#" data-whatsapp="Bonjour Aurélie, j'ai une question avant de m'inscrire au Business Accelerator.">Poser ma question sur WhatsApp</a>
+        <p class="mention-acces">Vos informations servent à traiter votre inscription et à vous recontacter. <a href="politique-confidentialite.html" target="_blank" rel="noopener">Vos données</a></p>
+        <p class="retour retour-formulaire" role="status"></p>
+      </form>
+      <div class="bulle-transition" data-transition>
+        <div class="bulle-spin" aria-hidden="true"></div>
+        <p data-transition-texte></p>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1269,9 +1344,10 @@ strong{font-weight:700}
   else offreTerminee();
 
   /* ---- La fenêtre d'accueil ----
-     Trois secondes après l'arrivée : le temps que la page s'affiche et
-     que le visiteur ait vu de quoi il retourne. Elle ne parle ni de prix
-     ni d'offre — elle propose une chose à faire.
+     Quasi immédiate : juste le temps que la page finisse de se peindre,
+     pour ne pas la voir apparaître en surimpression pendant que la mise
+     en page bouge encore. Elle ne parle ni de prix ni d'offre — elle
+     propose une chose à faire.
 
      Elle ne revient pas si le test a déjà été ouvert, et elle ne
      s'ouvre plus une fois fermée. */
@@ -1285,7 +1361,7 @@ strong{font-weight:700}
         accueil.classList.add("ouvert");
         noterEtape("fenêtre affichée");
       }
-    },3000);
+    },300);
     document.getElementById("fermer-accueil").addEventListener("click",fermerAccueil);
     accueil.addEventListener("click",function(e){ if(e.target===accueil) fermerAccueil(); });
     addEventListener("keydown",function(e){
@@ -1426,13 +1502,12 @@ strong{font-weight:700}
     return {classe:"dispo", texte:places+" places disponibles"};
   }
 
-  /* Un clic sur une session ouverte ne réserve rien en soi : il amène
-     au formulaire d'inscription de la même bulle, et note le mois
-     choisi pour que ce renseignement parte avec la demande. */
+  /* Un clic sur une session ouverte ne réserve rien en soi : il note le
+     mois choisi pour que ce renseignement parte avec la demande, puis
+     avance directement à l'étape des coordonnées. */
   function choisirSession(bulle, libelle){
     bulle.dataset.moisChoisi=libelle;
-    var form=bulle.querySelector(".formulaire-inscription");
-    if(form) form.scrollIntoView({behavior:reduit?"auto":"smooth",block:"center"});
+    afficherEtape(bulle, 3);
   }
 
   function dessinerSessions(grille, donnees, bulle){
@@ -2237,6 +2312,16 @@ strong{font-weight:700}
      d'Aurélie dès l'envoi, puis la personne est amenée vers le
      paiement — capturer la demande ne dépend donc jamais du paiement.
      ================================================================== */
+  /* Bascule entre les trois étapes d'une bulle. Sans effet sur la bulle
+     Entreprise, qui n'en compte aucune. */
+  function afficherEtape(bulle, n){
+    var etapes=[].slice.call(bulle.querySelectorAll(".bulle-etape"));
+    if(!etapes.length) return;
+    etapes.forEach(function(e){ e.classList.toggle("actif", e.getAttribute("data-etape")===String(n)); });
+    var carte=bulle.querySelector(".bulle-carte");
+    if(carte) carte.scrollTop=0;
+  }
+
   function ouvrirBulle(bulle,depuis){
     var carte=bulle.querySelector(".bulle-carte");
     if(depuis){
@@ -2244,6 +2329,7 @@ strong{font-weight:700}
       carte.style.transformOrigin=(m.left+m.width/2-c.left)+"px "+(m.top+m.height/2-c.top)+"px";
     }
     void carte.offsetWidth;
+    afficherEtape(bulle, 1);
     carte.scrollTop=0;
     bulle.classList.add("ouvert");
     document.body.style.overflow="hidden";
@@ -2261,6 +2347,15 @@ strong{font-weight:700}
     var boutonFermer=bulle.querySelector("[data-fermer-bulle]");
     if(boutonFermer) boutonFermer.addEventListener("click",function(){ fermerBulle(bulle); });
     bulle.addEventListener("click",function(e){ if(e.target===bulle) fermerBulle(bulle); });
+    [].forEach.call(bulle.querySelectorAll("[data-suivant]"),function(b){
+      b.addEventListener("click",function(){
+        afficherEtape(bulle, b.getAttribute("data-suivant"));
+        noterEtape("format "+(bulle.dataset.nom||bulle.id)+" — étape "+b.getAttribute("data-suivant"));
+      });
+    });
+    [].forEach.call(bulle.querySelectorAll("[data-precedent]"),function(b){
+      b.addEventListener("click",function(){ afficherEtape(bulle, b.getAttribute("data-precedent")); });
+    });
   });
   addEventListener("keydown",function(e){
     if(e.key!=="Escape") return;
