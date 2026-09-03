@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Parcours des visiteurs — Fluent &amp; Forward</title>
+<meta name="robots" content="noindex,nofollow">
+
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/polices/polices.css">
+
+<style>
+  :root{
+    --cream:#FAF7F2; --carte:#FFFFFF; --ligne:#E8DDD0;
+    --ink:#2C1810; --muet:#7A6A5C;
+    --green:#1B6B4A; --deep:#10382A; --gold:#C9A96E; --gold-fonce:#A9863F;
+    --rouge:#A8452F;
+    --fmt-coaching:#A8452F; --fmt-accelerator:#2C5F6B; --fmt-entreprise:#6B4226;
+    --bon:#3F7D5C; --moyen:#A9863F; --critique:#A8452F;
+    --ombre:0 1px 2px rgba(44,24,16,.05), 0 8px 24px -12px rgba(44,24,16,.12);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --cream:#18120D; --carte:#231A13; --ligne:#3A2C20;
+      --ink:#F3EBE2; --muet:#B9A996;
+      --green:#4E9975; --deep:#0C2E22; --gold:#D8BC8A; --gold-fonce:#C6A265;
+      --rouge:#C9694E;
+      --fmt-coaching:#C9694E; --fmt-accelerator:#5E93A3; --fmt-entreprise:#9C6A45;
+      --bon:#5FAE84; --moyen:#C6A265; --critique:#C9694E;
+      --ombre:0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.5);
+    }
+  }
+  :root[data-theme="dark"]{
+    --cream:#18120D; --carte:#231A13; --ligne:#3A2C20;
+    --ink:#F3EBE2; --muet:#B9A996;
+    --green:#4E9975; --deep:#0C2E22; --gold:#D8BC8A; --gold-fonce:#C6A265;
+    --rouge:#C9694E;
+    --fmt-coaching:#C9694E; --fmt-accelerator:#5E93A3; --fmt-entreprise:#9C6A45;
+    --bon:#5FAE84; --moyen:#C6A265; --critique:#C9694E;
+    --ombre:0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.5);
+  }
+
+  *{box-sizing:border-box}
+  html{color-scheme:light dark}
+  body{margin:0;background:var(--cream);color:var(--ink);font-family:'DM Sans',system-ui,sans-serif;
+    font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+  h1,h2,h3,.chiffre,.oeil,button{font-family:'Plus Jakarta Sans',system-ui,sans-serif}
+  img{max-width:100%}
+  .page{max-width:960px;margin:0 auto;padding:0 20px 64px}
+
+  /* ---------- en-tête ---------- */
+  .entete{background:var(--deep);color:#F3EBE2;padding:28px 20px 26px}
+  .entete-int{max-width:920px;margin:0 auto;display:flex;justify-content:space-between;
+    align-items:flex-end;gap:20px;flex-wrap:wrap}
+  .oeil{font-weight:700;font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--gold);margin:0 0 8px}
+  .entete h1{margin:0;font-size:1.7rem;font-weight:800;letter-spacing:-.01em;color:#fff;text-wrap:balance}
+  .entete-droite{display:flex;align-items:center;gap:12px;font-size:.84rem;color:rgba(243,235,226,.72)}
+
+  /* ---------- carte générique ---------- */
+  .carte{background:var(--carte);border:1px solid var(--ligne);border-radius:16px;
+    box-shadow:var(--ombre);padding:24px}
+  section{margin-top:28px}
+  section > h2{font-size:1rem;font-weight:800;margin:0 0 4px;letter-spacing:-.01em}
+  section > .souligne{font-size:.86rem;color:var(--muet);margin:0 0 16px}
+
+  [hidden]{display:none!important}
+
+  /* ---------- tuiles de synthèse ---------- */
+  .tuiles{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+  .tuile{background:var(--carte);border:1px solid var(--ligne);border-radius:14px;
+    padding:16px 18px;box-shadow:var(--ombre)}
+  .tuile .repere{font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+    color:var(--muet);margin:0 0 8px}
+  .chiffre{font-size:1.9rem;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+  .tuile .detail{font-size:.8rem;color:var(--muet);margin-top:4px}
+  .pastille{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;font-weight:700;
+    padding:3px 10px;border-radius:999px;margin-top:8px}
+  .pastille.bon{color:var(--bon);background:color-mix(in srgb, var(--bon) 14%, transparent)}
+  .pastille.moyen{color:var(--moyen);background:color-mix(in srgb, var(--moyen) 14%, transparent)}
+  .pastille.critique{color:var(--critique);background:color-mix(in srgb, var(--critique) 14%, transparent)}
+  #origine-note input[type="checkbox"]{accent-color:var(--green)}
+
+  /* ---------- entonnoir ---------- */
+  .entonnoir{display:flex;flex-direction:column;gap:2px}
+  .barre-ligne{display:grid;grid-template-columns:200px 1fr 108px;align-items:center;gap:14px;
+    padding:9px 0}
+  .barre-nom{font-size:.88rem;font-weight:700}
+  .barre-piste{position:relative;height:26px;background:var(--ligne);border-radius:7px;overflow:hidden}
+  .barre-remplie{position:absolute;inset:0 auto 0 0;background:var(--green);border-radius:7px;
+    transition:width .5s cubic-bezier(.22,1,.36,1)}
+  .barre-valeur{text-align:right;font-variant-numeric:tabular-nums;font-weight:700;font-size:.86rem;
+    display:flex;justify-content:flex-end;align-items:center;gap:8px}
+  .connecteur{display:grid;grid-template-columns:200px 1fr 108px;padding:1px 0 1px 0}
+  .connecteur .taux{grid-column:2;justify-self:start;margin-left:2px;font-size:.74rem;font-weight:700;
+    display:inline-flex;align-items:center;gap:5px;padding:1px 9px 1px 5px;border-radius:999px}
+  .connecteur .taux::before{content:"↓";font-size:.72rem}
+  .taux.bon{color:var(--bon);background:color-mix(in srgb, var(--bon) 12%, transparent)}
+  .taux.moyen{color:var(--moyen);background:color-mix(in srgb, var(--moyen) 12%, transparent)}
+  .taux.critique{color:var(--critique);background:color-mix(in srgb, var(--critique) 12%, transparent)}
+
+  /* ---------- formats (3 cartes) ---------- */
+  .formats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .carte-format{background:var(--carte);border:1px solid var(--ligne);border-radius:14px;
+    padding:16px 18px;box-shadow:var(--ombre);border-top:4px solid var(--f)}
+  .carte-format .nom{font-size:.86rem;font-weight:700;color:var(--muet)}
+  .carte-format .valeur{font-size:1.6rem;font-weight:800;margin-top:4px;font-variant-numeric:tabular-nums}
+  .carte-format .valeur small{font-size:.72rem;font-weight:700;color:var(--muet)}
+
+  /* ---------- appareils ---------- */
+  .appareils{display:flex;gap:24px;align-items:center;flex-wrap:wrap}
+  .appareil-barre{flex:1;min-width:220px}
+  .appareil-legende{display:flex;justify-content:space-between;font-size:.84rem;font-weight:700;margin-bottom:6px}
+  .appareil-piste{height:14px;border-radius:999px;background:var(--ligne);overflow:hidden;display:flex}
+  .appareil-piste span:first-child{background:var(--green)}
+  .appareil-piste span:last-child{background:var(--gold)}
+
+  /* ---------- actions secondaires ---------- */
+  .secondaires{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+  .mini-liste{display:flex;flex-direction:column;gap:10px}
+  .mini-ligne{display:grid;grid-template-columns:1fr 60px;align-items:center;gap:10px;font-size:.86rem}
+  .mini-piste{grid-column:1/-1;height:9px;border-radius:999px;background:var(--ligne);position:relative;margin-top:-4px}
+  .mini-remplie{position:absolute;inset:0 auto 0 0;background:var(--gold-fonce);border-radius:999px}
+
+  /* ---------- table de détail (accessibilité) ---------- */
+  #bascule-table{background:none;border:1px solid var(--ligne);color:var(--muet);font-family:inherit;
+    font-size:.82rem;font-weight:700;padding:8px 14px;border-radius:9px;cursor:pointer;margin-top:14px}
+  table{width:100%;border-collapse:collapse;margin-top:14px;font-size:.86rem}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--ligne)}
+  th{color:var(--muet);font-weight:700;font-size:.76rem;text-transform:uppercase;letter-spacing:.04em}
+  td:last-child,th:last-child{text-align:right;font-variant-numeric:tabular-nums}
+  .table-scroll{overflow-x:auto}
+
+  footer{margin-top:34px;font-size:.8rem;color:var(--muet);border-top:1px solid var(--ligne);padding-top:16px}
+
+  @media (max-width:720px){
+    .tuiles{grid-template-columns:repeat(2,1fr)}
+    .formats{grid-template-columns:1fr}
+    .secondaires{grid-template-columns:1fr}
+    .barre-ligne,.connecteur{grid-template-columns:128px 1fr 78px}
+    .barre-nom{font-size:.8rem}
+  }
+</style>
+</head>
+<body>
+
+<div class="entete">
+  <div class="entete-int">
+    <div>
+      <p class="oeil">Fluent &amp; Forward — usage interne</p>
+      <h1>Parcours des visiteurs</h1>
+    </div>
+    <div class="entete-droite">
+      <span id="maj">—</span>
+    </div>
+  </div>
+</div>
+
+<div class="page">
+  <div id="contenu">
+
+    <section style="margin-top:24px">
+      <div class="tuiles">
+        <div class="tuile">
+          <p class="repere" id="t-visites-repere">Visites humaines probables</p>
+          <div class="chiffre" id="t-visites">—</div>
+        </div>
+        <div class="tuile">
+          <p class="repere">Ont ouvert un format</p>
+          <div class="chiffre" id="t-formats">—</div>
+          <p class="detail" id="t-formats-pct">—</p>
+        </div>
+        <div class="tuile">
+          <p class="repere">Inscriptions envoyées</p>
+          <div class="chiffre" id="t-inscriptions">—</div>
+          <p class="detail" id="t-inscriptions-pct">—</p>
+        </div>
+        <div class="tuile">
+          <p class="repere">Taux de conversion global</p>
+          <div class="chiffre" id="t-conversion">—</div>
+          <span class="pastille" id="t-conversion-badge">—</span>
+        </div>
+      </div>
+      <p id="origine-note" style="font-size:.84rem;color:var(--muet);margin:12px 2px 0;display:flex;gap:10px;flex-wrap:wrap;align-items:center">—</p>
+    </section>
+
+    <section>
+      <h2>De l'arrivée à l'inscription</h2>
+      <p class="souligne">Combien de visites atteignent chaque étape, et le taux de passage d'une étape à la suivante.</p>
+      <div class="carte">
+        <div class="entonnoir" id="entonnoir"></div>
+        <button id="bascule-table" type="button" aria-expanded="false">Voir le détail en tableau</button>
+        <div class="table-scroll">
+          <table id="table-detail" hidden>
+            <thead><tr><th>Étape</th><th>Visites</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Quel format attire le plus</h2>
+      <p class="souligne">Nombre de fois où chaque bulle de format a été ouverte.</p>
+      <div class="formats" id="formats"></div>
+    </section>
+
+    <section>
+      <h2>Mobile ou ordinateur</h2>
+      <p class="souligne">Largeur de fenêtre au moment de la visite.</p>
+      <div class="carte">
+        <div class="appareils">
+          <div class="appareil-barre">
+            <div class="appareil-legende">
+              <span>Mobile / tablette</span>
+              <span>Ordinateur</span>
+            </div>
+            <div class="appareil-piste">
+              <span id="ap-mobile" style="width:50%"></span>
+              <span id="ap-bureau" style="width:50%"></span>
+            </div>
+          </div>
+          <div style="font-size:.86rem;color:var(--muet)" id="ap-detail">—</div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Autres actions</h2>
+      <p class="souligne">En dehors du tunnel d'inscription.</p>
+      <div class="secondaires">
+        <div class="carte">
+          <p style="font-weight:700;font-size:.86rem;margin:0 0 12px">Test de niveau</p>
+          <div class="mini-liste" id="test-niveau"></div>
+        </div>
+        <div class="carte">
+          <p style="font-weight:700;font-size:.86rem;margin:0 0 12px">Clics secondaires</p>
+          <div class="mini-liste" id="clics-secondaires"></div>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      Ces chiffres viennent du Google Sheet « Prospects Fluent &amp; Forward », onglet Parcours —
+      uniquement des compteurs de passage, aucune donnée qui identifie une personne.
+      Une visite compte une seule fois par étape, quel que soit le nombre de clics.
+      <br><br>
+      Cette page ne se connecte pas elle-même au tableau : les navigateurs bloquent ce genre de
+      lecture entre deux sites différents. C'est donc un instantané que Claude relit et republie
+      à la demande — dis-lui simplement « actualise le tableau de bord du parcours » quand tu veux
+      les derniers chiffres.
+      <br><br>
+      Cette page n'est protégée par aucun mot de passe : son adresse n'est reliée depuis aucune
+      autre page du site, mais toute personne qui la connaît peut l'ouvrir. Ne la partage pas.
+    </footer>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* Un navigateur ne peut pas lire lui-même la réponse d'un site
+     différent (Google Apps Script) — c'est une règle de sécurité que
+     cette page ne peut pas contourner depuis ici. C'est donc Claude
+     qui relit le Google Sheet et republie cette page avec les
+     chiffres à jour, sur demande. Date de cet instantané : voir
+     INSTANTANE.actualise ci-dessous. */
+  var INSTANTANE = {
+    actualise: "3 septembre 2026 à 23:21",
+    humains: {"total_visites":25,"origine":{"humains":25,"robots_suspects":0},"appareils":{"mobile":2,"ordinateur":23},"entonnoir":[{"cle":"arrivee","libelle":"Arrivée sur le site","compte":25},{"cle":"popup","libelle":"Popup de bienvenue affiché","compte":24},{"cle":"format_ouvert","libelle":"A ouvert au moins un format","compte":20},{"cle":"format_coaching","libelle":"— dont Coaching 1:1","compte":17},{"cle":"format_accelerator","libelle":"— dont Business Accelerator","compte":10},{"cle":"format_entreprise","libelle":"— dont Entreprise","compte":2},{"cle":"session_choisie","libelle":"A choisi une session","compte":0},{"cle":"formulaire_commence","libelle":"A commencé à remplir ses coordonnées","compte":0},{"cle":"etape_coordonnees","libelle":"A atteint l'étape des coordonnées","compte":6},{"cle":"inscription_envoyee","libelle":"Inscription envoyée (avant paiement)","compte":1},{"cle":"test_ouvert","libelle":"A ouvert le test de niveau","compte":3},{"cle":"test_termine","libelle":"A terminé le test de niveau","compte":3},{"cle":"clic_rdv","libelle":"A cliqué « prendre rendez-vous »","compte":0},{"cle":"clic_guide","libelle":"A cliqué vers le guide gratuit","compte":0},{"cle":"clic_whatsapp","libelle":"A cliqué sur WhatsApp","compte":0}]},
+    tout: {"total_visites":25,"origine":{"humains":25,"robots_suspects":0},"appareils":{"mobile":2,"ordinateur":23},"entonnoir":[{"cle":"arrivee","libelle":"Arrivée sur le site","compte":25},{"cle":"popup","libelle":"Popup de bienvenue affiché","compte":24},{"cle":"format_ouvert","libelle":"A ouvert au moins un format","compte":20},{"cle":"format_coaching","libelle":"— dont Coaching 1:1","compte":17},{"cle":"format_accelerator","libelle":"— dont Business Accelerator","compte":10},{"cle":"format_entreprise","libelle":"— dont Entreprise","compte":2},{"cle":"session_choisie","libelle":"A choisi une session","compte":0},{"cle":"formulaire_commence","libelle":"A commencé à remplir ses coordonnées","compte":0},{"cle":"etape_coordonnees","libelle":"A atteint l'étape des coordonnées","compte":6},{"cle":"inscription_envoyee","libelle":"Inscription envoyée (avant paiement)","compte":1},{"cle":"test_ouvert","libelle":"A ouvert le test de niveau","compte":3},{"cle":"test_termine","libelle":"A terminé le test de niveau","compte":3},{"cle":"clic_rdv","libelle":"A cliqué « prendre rendez-vous »","compte":0},{"cle":"clic_guide","libelle":"A cliqué vers le guide gratuit","compte":0},{"cle":"clic_whatsapp","libelle":"A cliqué sur WhatsApp","compte":0}]}
+  };
+
+  var garderTout = false;
+
+  var ETAPES_PRINCIPALES = [
+    {cle:"arrivee",             nom:"Arrivée sur le site"},
+    {cle:"popup",               nom:"Popup de bienvenue vu"},
+    {cle:"format_ouvert",       nom:"Format ouvert"},
+    {cle:"session_choisie",     nom:"Session choisie"},
+    {cle:"etape_coordonnees",   nom:"Coordonnées atteintes"},
+    {cle:"formulaire_commence", nom:"Formulaire commencé"},
+    {cle:"inscription_envoyee", nom:"Inscription envoyée"}
+  ];
+  var FORMATS = [
+    {cle:"format_coaching",     nom:"Coaching 1:1",           coul:"var(--fmt-coaching)"},
+    {cle:"format_accelerator",  nom:"Business Accelerator",   coul:"var(--fmt-accelerator)"},
+    {cle:"format_entreprise",   nom:"Entreprise",             coul:"var(--fmt-entreprise)"}
+  ];
+
+  function valeur(entonnoir, cle){
+    var t = entonnoir.filter(function(e){ return e.cle === cle; })[0];
+    return t ? t.compte : 0;
+  }
+
+  function rangTaux(pct){
+    if(pct >= 60) return "bon";
+    if(pct >= 30) return "moyen";
+    return "critique";
+  }
+
+  function dessiner(donnees){
+    var entonnoir = donnees.entonnoir || [];
+    var totalVisites = donnees.total_visites || 0;
+
+    document.getElementById("maj").textContent = "Instantané du " + INSTANTANE.actualise;
+    document.getElementById("t-visites").textContent = totalVisites;
+    document.getElementById("t-visites-repere").textContent =
+      garderTout ? "Visites suivies (avec robots)" : "Visites humaines probables";
+
+    var origine = donnees.origine || {humains:0, robots_suspects:0};
+    var noteOrigine = document.getElementById("origine-note");
+    noteOrigine.innerHTML =
+      '<span>' + origine.humains + ' visite' + (origine.humains>1?'s':'') + ' humaine' + (origine.humains>1?'s':'') + ' probable' + (origine.humains>1?'s':'') + '</span>' +
+      '<span>·</span>' +
+      '<span>' + origine.robots_suspects + ' robot' + (origine.robots_suspects>1?'s':'') + ' ou suspect' + (origine.robots_suspects>1?'s':'') +
+        (garderTout ? ' (inclus ci-dessus)' : ' (écarté' + (origine.robots_suspects>1?'s':'') + ' des chiffres)') + '</span>' +
+      '<label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-weight:700">' +
+        '<input type="checkbox" id="case-tout"' + (garderTout ? ' checked' : '') + '> Inclure les robots/suspects' +
+      '</label>';
+    document.getElementById("case-tout").addEventListener("change", function(){
+      garderTout = this.checked;
+      dessiner(garderTout ? INSTANTANE.tout : INSTANTANE.humains);
+    });
+
+    var vFormats = valeur(entonnoir, "format_ouvert");
+    var vInscriptions = valeur(entonnoir, "inscription_envoyee");
+    document.getElementById("t-formats").textContent = vFormats;
+    document.getElementById("t-inscriptions").textContent = vInscriptions;
+
+    var pctFormats = totalVisites ? Math.round(vFormats / totalVisites * 100) : 0;
+    var pctConversion = totalVisites ? Math.round(vInscriptions / totalVisites * 100) : 0;
+    document.getElementById("t-formats-pct").textContent = pctFormats + " % des visites";
+    document.getElementById("t-inscriptions-pct").textContent = pctConversion + " % des visites";
+    document.getElementById("t-conversion").textContent = pctConversion + " %";
+    var rang = rangTaux(pctConversion);
+    var badge = document.getElementById("t-conversion-badge");
+    badge.className = "pastille " + rang;
+    badge.textContent = rang === "bon" ? "Sain" : rang === "moyen" ? "À surveiller" : "Faible";
+
+    // ---- entonnoir principal ----
+    var maxCompte = Math.max.apply(null, ETAPES_PRINCIPALES.map(function(e){ return valeur(entonnoir, e.cle); }).concat([1]));
+    var conteneur = document.getElementById("entonnoir");
+    conteneur.innerHTML = "";
+    var precedent = null;
+    ETAPES_PRINCIPALES.forEach(function(e){
+      var compte = valeur(entonnoir, e.cle);
+      var largeur = Math.round(compte / maxCompte * 100);
+
+      if(precedent !== null){
+        var tauxPassage = precedent > 0 ? Math.min(100, Math.round(compte / precedent * 100)) : 0;
+        var rangPassage = rangTaux(tauxPassage);
+        var ligneConnecteur = document.createElement("div");
+        ligneConnecteur.className = "connecteur";
+        ligneConnecteur.innerHTML = '<span class="taux ' + rangPassage + '">' + tauxPassage + ' % passent à l’étape suivante</span>';
+        conteneur.appendChild(ligneConnecteur);
+      }
+
+      var ligne = document.createElement("div");
+      ligne.className = "barre-ligne";
+      ligne.innerHTML =
+        '<span class="barre-nom">' + e.nom + '</span>' +
+        '<span class="barre-piste"><span class="barre-remplie" style="width:' + largeur + '%"></span></span>' +
+        '<span class="barre-valeur">' + compte + '</span>';
+      conteneur.appendChild(ligne);
+      precedent = compte;
+    });
+
+    // ---- table de détail ----
+    var corps = document.querySelector("#table-detail tbody");
+    corps.innerHTML = "";
+    entonnoir.forEach(function(e){
+      var tr = document.createElement("tr");
+      tr.innerHTML = "<td>" + e.libelle + "</td><td>" + e.compte + "</td>";
+      corps.appendChild(tr);
+    });
+
+    // ---- formats ----
+    var zoneFormats = document.getElementById("formats");
+    zoneFormats.innerHTML = "";
+    var maxFormat = Math.max.apply(null, FORMATS.map(function(f){ return valeur(entonnoir, f.cle); }).concat([1]));
+    FORMATS.forEach(function(f){
+      var compte = valeur(entonnoir, f.cle);
+      var part = vFormats ? Math.round(compte / vFormats * 100) : 0;
+      var carte = document.createElement("div");
+      carte.className = "carte-format";
+      carte.style.setProperty("--f", f.coul);
+      carte.innerHTML =
+        '<p class="nom">' + f.nom + '</p>' +
+        '<p class="valeur">' + compte + ' <small>ouvertures</small></p>' +
+        '<p class="detail" style="font-size:.8rem;color:var(--muet);margin-top:4px">' + part + ' % des formats ouverts</p>';
+      zoneFormats.appendChild(carte);
+    });
+
+    // ---- appareils ----
+    var mobile = (donnees.appareils && donnees.appareils.mobile) || 0;
+    var bureau = (donnees.appareils && donnees.appareils.ordinateur) || 0;
+    var totalAppareils = mobile + bureau;
+    var pctMobile = totalAppareils ? Math.round(mobile / totalAppareils * 100) : 50;
+    document.getElementById("ap-mobile").style.width = pctMobile + "%";
+    document.getElementById("ap-bureau").style.width = (100 - pctMobile) + "%";
+    document.getElementById("ap-detail").textContent =
+      totalAppareils ? (mobile + " mobile/tablette · " + bureau + " ordinateur") : "Pas encore de donnée d'appareil.";
+
+    // ---- test de niveau ----
+    var zoneTest = document.getElementById("test-niveau");
+    zoneTest.innerHTML = "";
+    var testEtapes = [
+      {cle:"test_ouvert", nom:"Test ouvert"},
+      {cle:"test_termine", nom:"Test terminé"}
+    ];
+    var maxTest = Math.max(valeur(entonnoir,"test_ouvert"), 1);
+    testEtapes.forEach(function(e){
+      var compte = valeur(entonnoir, e.cle);
+      zoneTest.appendChild(ligneMini(e.nom, compte, Math.round(compte / maxTest * 100)));
+    });
+
+    // ---- clics secondaires ----
+    var zoneClics = document.getElementById("clics-secondaires");
+    zoneClics.innerHTML = "";
+    var clics = [
+      {cle:"clic_rdv", nom:"Prendre rendez-vous"},
+      {cle:"clic_guide", nom:"Guide gratuit"},
+      {cle:"clic_whatsapp", nom:"WhatsApp"}
+    ];
+    var maxClic = Math.max.apply(null, clics.map(function(c){ return valeur(entonnoir, c.cle); }).concat([1]));
+    clics.forEach(function(c){
+      var compte = valeur(entonnoir, c.cle);
+      zoneClics.appendChild(ligneMini(c.nom, compte, Math.round(compte / maxClic * 100)));
+    });
+
+  }
+
+  function ligneMini(nom, compte, pct){
+    var div = document.createElement("div");
+    div.className = "mini-ligne";
+    div.innerHTML =
+      '<span>' + nom + '</span><span style="text-align:right;font-weight:700;font-variant-numeric:tabular-nums">' + compte + '</span>' +
+      '<span class="mini-piste"><span class="mini-remplie" style="width:' + pct + '%"></span></span>';
+    return div;
+  }
+
+  document.getElementById("bascule-table").addEventListener("click", function(){
+    var table = document.getElementById("table-detail");
+    var ouvre = table.hidden;
+    table.hidden = !ouvre;
+    this.setAttribute("aria-expanded", String(ouvre));
+    this.textContent = ouvre ? "Masquer le détail en tableau" : "Voir le détail en tableau";
+  });
+
+  dessiner(INSTANTANE.humains);
+})();
+</script>
+
+</body>
+</html>
