@@ -1206,7 +1206,8 @@ strong{font-weight:700}
       largeur: window.innerWidth,
       duree: Math.round((Date.now() - DEPART) / 1000),
       etapes: resumeParcours(),
-      motif: motif || "fermeture"
+      motif: motif || "fermeture",
+      agent: navigator.userAgent || ""
     });
     /* sendBeacon survit à la fermeture de l'onglet, là où fetch est
        annulé par le navigateur. */
