@@ -19,8 +19,52 @@
   var REGLAGES = {
     fichier: "assets/stop-avoiding-english-essentials.pdf",
     nomFichier: "Stop-Avoiding-English-Essentials.pdf",
-    collecteur: "https://script.google.com/macros/s/AKfycbwg_-N5wG5108h1O2mqxfWmsFOeUDO_cp8XDzdzyCTCBQ3PZn7zTqqC6006yeAm1rh7/exec"
+    collecteur: "https://script.google.com/macros/s/AKfycbwg_-N5wG5108h1O2mqxfWmsFOeUDO_cp8XDzdzyCTCBQ3PZn7zTqqC6006yeAm1rh7/exec",
+    /* Le parcours est journalisé par le script du site, et non par celui
+       du guide : un seul endroit à tenir à jour, une seule feuille à
+       lire. Le contact, lui, continue d'aller au collecteur ci-dessus. */
+    journal: "https://script.google.com/macros/s/AKfycbwK0XxvWhNiwoWVsROAHi7EFQFRMymFOcH5gxV-KSZ3C5F39DPcT1YxSp83iJq9oMbO/exec"
   };
+
+  /* ---------- Parcours ----------
+     Même principe que sur le site : rien n'est écrit sur l'appareil du
+     visiteur. Le numéro de visite est tiré au hasard au chargement et
+     meurt avec l'onglet ; il ne relie jamais deux visites. Les étapes
+     sont accumulées et envoyées en un seul appel. */
+
+  var VISITE = Math.random().toString(36).slice(2, 10);
+  var DEPART = Date.now();
+  var PARCOURS = [];
+  var dejaEnvoye = 0;
+
+  function noterEtape(nom) {
+    if (PARCOURS.length >= 40) return;
+    PARCOURS.push(nom + " " + Math.round((Date.now() - DEPART) / 1000) + "s");
+  }
+
+  function envoyerParcours(motif) {
+    if (PARCOURS.length <= dejaEnvoye || !REGLAGES.journal) return;
+    dejaEnvoye = PARCOURS.length;
+    var charge = JSON.stringify({
+      type: "parcours",
+      visite: VISITE,
+      page: location.pathname,
+      provenance: document.referrer || "direct",
+      largeur: window.innerWidth,
+      duree: Math.round((Date.now() - DEPART) / 1000),
+      etapes: PARCOURS.join(" > "),
+      motif: motif || "fermeture"
+    });
+    try {
+      if (navigator.sendBeacon &&
+          navigator.sendBeacon(REGLAGES.journal,
+            new Blob([charge], { type: "text/plain;charset=utf-8" }))) return;
+    } catch (e) {}
+    try {
+      fetch(REGLAGES.journal, { method: "POST", mode: "no-cors", keepalive: true,
+        headers: { "Content-Type": "text/plain;charset=utf-8" }, body: charge });
+    } catch (e) {}
+  }
 
   /* ---------- Outils ---------- */
 
@@ -102,6 +146,9 @@
         return;
       }
 
+      noterEtape("guide demandé (" +
+        (formulaire.getAttribute("data-origine") || "inconnue") + ")");
+
       var contact = {
         prenom: prenom.value.trim(),
         email: email.value.trim(),
@@ -115,8 +162,12 @@
         demandeRappel: !!(rappel && rappel.checked),
         origine: formulaire.getAttribute("data-origine") || "inconnue",
         provenance: document.referrer || "direct",
-        page: location.href
+        page: location.href,
+        visite: VISITE,
+        parcours: PARCOURS.join(" > ")
       };
+
+      envoyerParcours("guide demandé");
 
       bouton.disabled = true;
       bouton.textContent = "Préparation du guide…";
@@ -184,5 +235,19 @@
     for (var i = 0; i < formulaires.length; i++) initFormulaire(formulaires[i]);
     initWhatsApp();
     initAnnee();
+
+    noterEtape("arrivée");
+    /* Première frappe dans un champ : la personne a commencé à remplir.
+       C'est l'étape qui sépare « a lu la page » de « a essayé ». */
+    var commence = false;
+    document.addEventListener("input", function () {
+      if (commence) return;
+      commence = true;
+      noterEtape("formulaire commencé");
+    }, true);
+    window.addEventListener("pagehide", function () { envoyerParcours("fermeture"); });
+    document.addEventListener("visibilitychange", function () {
+      if (document.visibilityState === "hidden") envoyerParcours("fermeture");
+    });
   });
 })();

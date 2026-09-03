@@ -565,7 +565,7 @@ strong{font-weight:700}
       <p class="accroche">Prenez la parole en anglais avec assurance, sans traduire chaque phrase dans votre tête.</p>
       <p class="programme">Un programme intensif de 8 semaines pour transformer votre anglais professionnel en véritable levier de performance.</p>
       <div class="hero-actions">
-        <a class="bouton bouton-vert" href="#test" data-test>1 minute pour tester mon niveau</a>
+        <a class="bouton bouton-vert" href="#test" data-test="hero">1 minute pour tester mon niveau</a>
         <a class="bouton bouton-clair" href="#formation">Découvrir le programme</a>
       </div>
       <p class="hero-reperes">8 semaines · Sessions live · Coaching individuel</p>
@@ -649,7 +649,7 @@ strong{font-weight:700}
         <h3>Testez votre anglais professionnel</h3>
         <p>Huit situations réelles, deux formulations au choix. À la fin, votre score et les modules du programme sur lesquels vous avez le plus à gagner. Deux minutes, sans inscription.</p>
       </div>
-      <button class="bouton bouton-or" type="button" data-test>1 minute pour tester mon niveau</button>
+      <button class="bouton bouton-or" type="button" data-test="encart">1 minute pour tester mon niveau</button>
     </div>
   </div>
 </section>
@@ -957,7 +957,7 @@ strong{font-weight:700}
     <span class="oeil" style="color:var(--gold-fonce)">Test de niveau</span>
     <h3 id="titre-accueil">Quel est ton vrai niveau en anglais business&nbsp;?</h3>
     <p>Huit situations réelles, celles qui reviennent en réunion et face à un client. Deux réponses au choix, aucune inscription.</p>
-    <button class="bouton bouton-or" type="button" data-test>1 minute pour tester mon niveau</button>
+    <button class="bouton bouton-or" type="button" data-test="fenêtre">1 minute pour tester mon niveau</button>
   </div>
 </div>
 
@@ -1043,6 +1043,95 @@ strong{font-weight:700}
   observerReveal(document);
 
   /* ==================================================================
+     PARCOURS — mesure du tunnel
+
+     Deux besoins servis par une seule mécanique : savoir où les
+     visiteurs décrochent, et remettre à Aurélie ce qu'a fait la
+     personne qui vient de lui laisser son adresse, pour préparer son
+     appel.
+
+     Rien n'est écrit sur l'appareil du visiteur : ni cookie, ni
+     mémoire locale. Le numéro de visite est tiré au hasard à
+     l'ouverture de la page et ne vit qu'en mémoire ; il disparaît avec
+     l'onglet et ne relie donc jamais deux visites entre elles. C'est
+     ce qui permet de se passer de bandeau de consentement.
+
+     Les étapes sont accumulées puis envoyées en un seul appel, quand
+     la page se ferme ou quand la personne se présente : un envoi par
+     visite plutôt qu'un par étape, pour ne pas saturer le script du
+     tableur.
+     ================================================================== */
+  var VISITE = Math.random().toString(36).slice(2, 10);
+  var DEPART = Date.now();
+  var PARCOURS = [];
+  var parcoursEnvoye = 0;          /* nombre d'étapes déjà transmises */
+
+  function noterEtape(nom){
+    if(PARCOURS.length >= 40) return;   /* garde-fou contre l'emballement */
+    PARCOURS.push(nom + " " + Math.round((Date.now() - DEPART) / 1000) + "s");
+  }
+  function resumeParcours(){ return PARCOURS.join(" > "); }
+
+  function envoyerParcours(motif){
+    /* Rien de neuf depuis le dernier envoi : on se tait. Le script du
+       tableur écrase la ligne portant le même numéro de visite, il n'y
+       a donc jamais qu'une ligne par visite, toujours à jour. */
+    if(PARCOURS.length <= parcoursEnvoye || !ADRESSE_COLLECTEUR) return;
+    parcoursEnvoye = PARCOURS.length;
+    var charge = JSON.stringify({
+      type: "parcours",
+      visite: VISITE,
+      page: location.pathname,
+      provenance: document.referrer || "direct",
+      largeur: window.innerWidth,
+      duree: Math.round((Date.now() - DEPART) / 1000),
+      etapes: resumeParcours(),
+      motif: motif || "fermeture"
+    });
+    /* sendBeacon survit à la fermeture de l'onglet, là où fetch est
+       annulé par le navigateur. */
+    try{
+      if(navigator.sendBeacon &&
+         navigator.sendBeacon(ADRESSE_COLLECTEUR,
+           new Blob([charge], { type:"text/plain;charset=utf-8" }))) return;
+    }catch(e){}
+    try{
+      fetch(ADRESSE_COLLECTEUR, { method:"POST", mode:"no-cors", keepalive:true,
+        headers:{ "Content-Type":"text/plain;charset=utf-8" }, body: charge });
+    }catch(e){}
+  }
+
+  noterEtape("arrivée");
+  /* « pagehide » couvre la fermeture et le retour en arrière ;
+     « hidden » couvre le passage à une autre application, seul signal
+     fiable sur iOS. */
+  window.addEventListener("pagehide", function(){ envoyerParcours("fermeture"); });
+  document.addEventListener("visibilitychange", function(){
+    if(document.visibilityState === "hidden") envoyerParcours("fermeture");
+  });
+
+  /* Les étapes qui se lisent depuis la page elle-même : le prix atteint,
+     et les liens qui font sortir vers un rendez-vous, le guide ou la
+     messagerie. */
+  (function(){
+    var tarif = document.getElementById("tarif");
+    if(tarif && "IntersectionObserver" in window){
+      var vu = new IntersectionObserver(function(e){
+        if(e[0].isIntersecting){ noterEtape("tarif vu"); vu.disconnect(); }
+      }, { threshold:.3 });
+      vu.observe(tarif);
+    }
+    document.addEventListener("click", function(ev){
+      var a = ev.target.closest && ev.target.closest("a");
+      if(!a) return;
+      var h = a.getAttribute("href") || "";
+      if(h.indexOf("calendly.com") > -1)      noterEtape("clic rendez-vous");
+      else if(h.indexOf("/guide") === 0)      noterEtape("clic guide");
+      else if(a.hasAttribute("data-whatsapp")) noterEtape("clic whatsapp");
+    }, true);
+  })();
+
+  /* ==================================================================
      L'offre fondatrice — prix, remise et compte à rebours
 
      Les trois valeurs ci-dessous sont les seules à modifier quand
@@ -1126,8 +1215,10 @@ strong{font-weight:700}
 
   if(accueil){
     setTimeout(function(){
-      if(!accueilVu && !document.body.hasAttribute("data-sans-accueil"))
+      if(!accueilVu && !document.body.hasAttribute("data-sans-accueil")){
         accueil.classList.add("ouvert");
+        noterEtape("fenêtre affichée");
+      }
     },3000);
     document.getElementById("fermer-accueil").addEventListener("click",fermerAccueil);
     accueil.addEventListener("click",function(e){ if(e.target===accueil) fermerAccueil(); });
@@ -1518,6 +1609,9 @@ strong{font-weight:700}
     function repondre(origine){
       if(reponses[pos]!==null) return;
       reponses[pos]=origine;
+      /* Une étape par question répondue : c'est ce qui montre à quelle
+         question précise les gens abandonnent. */
+      noterEtape("q" + (pos + 1));
       var q=QUESTIONS[pos], ordre=ordres[pos], juste=(origine===q.bonne);
       [].forEach.call(corps.querySelectorAll(".quiz-option"),function(o,k){
         o.disabled=true;
@@ -1626,6 +1720,7 @@ strong{font-weight:700}
       var vers = corps.querySelector("[data-vers-programme]");
       if(vers) vers.addEventListener("click", function(e){
         e.preventDefault();
+        noterEtape("vers le programme");
         fermerQuiz();
         var cible = document.getElementById("formation");
         if(cible) cible.scrollIntoView({ behavior: reduit ? "auto" : "smooth" });
@@ -1839,6 +1934,11 @@ strong{font-weight:700}
         retour.classList.remove("raté");
         retour.textContent = "Un instant, on prépare vos résultats…";
 
+        /* La personne se présente : son parcours cesse d'être anonyme et
+           part avec sa fiche, pour qu'Aurélie sache ce qu'elle a fait
+           avant de décrocher son téléphone. */
+        noterEtape("adresse donnée");
+
         if(ADRESSE_COLLECTEUR){
           fetch(ADRESSE_COLLECTEUR, { method:"POST", mode:"no-cors",
             headers:{ "Content-Type":"text/plain;charset=utf-8" },
@@ -1848,8 +1948,13 @@ strong{font-weight:700}
               score:donnees.note, total:QUESTIONS.length,
               modules:enClair(donnees.manques.join(" | ")),
               besoin:enClair(donnees.resume), /* repli si le script n'est pas à jour */
+              visite:VISITE, parcours:resumeParcours(),
+              provenance:document.referrer || "direct",
               jeton:jetonTest })});
         }
+        /* La ligne anonyme du parcours est close dans la foulée : elle
+           porte le même numéro de visite, les deux se recoupent donc. */
+        envoyerParcours("adresse donnée");
 
         telecharger(documentResultat(p, donnees.note, donnees.msg,
                                      donnees.manques, donnees.rates),
@@ -1892,7 +1997,7 @@ strong{font-weight:700}
     suiv.addEventListener("click",function(){
       if(reponses[pos]===null) return;
       if(pos<QUESTIONS.length-1){ pos++; dessiner(); }
-      else { fini=true; dessiner(); }
+      else { fini=true; noterEtape("test terminé"); dessiner(); }
       quizCarte.scrollTop=0;
     });
 
@@ -1900,6 +2005,10 @@ strong{font-weight:700}
        de la page. */
     function ouvrirQuiz(depuis){
       if(fini||reponses[0]!==null) reinitialiser();
+      /* D'où vient l'ouverture : la fenêtre d'accueil, le hero ou
+         l'encart. C'est ce qui dira laquelle des trois entrées
+         travaille vraiment. */
+      noterEtape("test ouvert (" + ((depuis && depuis.getAttribute("data-test")) || "?") + ")");
       dessiner();
       /* La fenêtre est déjà en place dans la page (simplement invisible) :
          on peut donc la mesurer et poser l'origine AVANT de lancer
