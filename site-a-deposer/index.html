@@ -152,41 +152,12 @@ strong{font-weight:700}
 .urgent{background:rgba(183,122,43,.15);color:#8f5f18}
 .complet{background:rgba(168,69,47,.12);color:var(--rouge)}
 .mois-vide{margin:4px 0 0;font-size:.94rem;color:var(--muted)}
-.sessions-appel{margin-top:34px;display:flex;flex-wrap:wrap;gap:14px;justify-content:center;max-width:700px;margin-left:auto;margin-right:auto}
-.sessions-appel .bouton{flex:1 1 0;min-width:250px}
-
-/* ---------- Bandeau Next Step : pleine largeur ---------- */
-.section-bandeau{padding-top:0}
-/* Bandeau nettement moins haut qu'avant. Le cadrage vertical est
-   remonté (« center 62 % ») pour garder le panneau et le chemin dans
-   l'image malgré la coupe : centré, on ne verrait plus que le ciel. */
-.bandeau-next{position:relative;width:100%;overflow:hidden;background-size:cover;background-position:center 62%;min-height:clamp(190px,21vw,290px);display:flex;align-items:center}
-.bandeau-next::before{content:"";position:absolute;inset:0;z-index:1;background:radial-gradient(85% 120% at 100% 30%,rgba(255,250,240,.86),rgba(255,250,240,.3) 46%,transparent 74%)}
-.bandeau-zone{position:relative;z-index:2;width:100%;max-width:var(--largeur);margin:0 auto;padding:0 26px;display:flex;justify-content:flex-end}
-.bandeau-texte{text-align:right;max-width:min(560px,72%)}
-.bandeau-texte .oeil{color:#8a5316;margin-bottom:12px}
-.bandeau-texte h2{color:#4e2c0c;font-size:clamp(2rem,4.4vw,3.3rem);line-height:1.06;text-shadow:0 2px 20px rgba(255,248,235,.9)}
-.bandeau-sous{max-width:780px;margin:38px auto 0;text-align:center;color:var(--muted)}
 
 /* ---------- Format : liste éditoriale (ni tiret, ni bulle) ---------- */
-/* ---------- Le format en cinq chiffres ----------
-   Trois chiffres, puis deux en dessous décalés d'un demi-pas : le
-   regard descend en diagonale au lieu de balayer une grille. Les
-   séparateurs verticaux se posent entre les chiffres d'un même rang. */
-.chiffres{margin-top:26px;display:grid;gap:0}
-.ch-rang{display:grid;grid-template-columns:repeat(3,1fr);justify-items:center}
-.ch-rang-bas{grid-template-columns:repeat(2,1fr);width:66.666%;margin:0 auto}
-.ch{position:relative;width:100%;text-align:center;padding:26px 12px}
-.ch-rang .ch + .ch::before{content:"";position:absolute;left:0;top:14%;bottom:14%;width:1px;background:var(--line)}
-.ch-rang-bas{border-top:1px solid var(--line)}
-.ch-nb{display:block;font-family:var(--titre);font-weight:800;font-size:clamp(2.1rem,4.4vw,2.9rem);line-height:1;color:var(--rouge);letter-spacing:-.02em}
-.ch-lib{display:block;margin-top:10px;font-size:.98rem;color:#5b4433}
-
 /* ---------- Pour qui (intégré à l'À propos) ---------- */
 
 /* ---------- Tarif ---------- */
 .tarif{margin-top:20px;background:#fff;border:1px solid var(--line);border-radius:16px;padding:30px;text-align:center;box-shadow:0 10px 26px rgba(16,56,42,.06)}
-.tarif .popup{margin-top:18px;display:inline-block;background:rgba(201,169,110,.16);color:#8a6a24;font-family:var(--titre);font-weight:700;font-size:.92rem;padding:10px 18px;border-radius:12px;border:1px dashed var(--gold)}
 
 /* ---------- À propos ---------- */
 .apropos-haut{display:grid;grid-template-columns:1.35fr .95fr;gap:44px;align-items:start}
@@ -202,17 +173,6 @@ strong{font-weight:700}
 .bande-guide p{margin:12px 0 0;color:#463829;font-size:1.02rem}
 .guide-actions{display:grid;gap:11px;min-width:min(300px,100%)}
 .guide-actions .bouton{width:100%}
-
-/* ---------- L'offre entreprise, seule et pleine largeur ---------- */
-.cadran-large{max-width:820px;margin:0 auto;text-align:center;align-items:center;padding:40px}
-.cadran-large h3{font-size:1.5rem}
-.cadran-large .bouton{align-self:center;min-width:280px}
-
-/* ---------- Pour qui : 2 cadrans ---------- */
-.cadran{background:#fff;border:1px solid var(--line);border-radius:18px;padding:32px;display:flex;flex-direction:column;box-shadow:0 12px 30px rgba(16,56,42,.06)}
-.cadran h3{font-size:1.3rem;color:var(--ink);margin-bottom:14px}
-.cadran p{color:#463829;flex:1}
-.cadran .bouton{margin-top:22px}
 
 /* ---------- Mon Accélérateur ---------- */
 .membres-grille{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:34px}
@@ -257,6 +217,76 @@ strong{font-weight:700}
 .rond:hover{background:var(--gold);transform:translateY(-2px);color:#0c2c21}
 .rond svg{width:21px;height:21px;display:block}
 .pied-bas{padding-top:26px;font-size:.86rem;color:rgba(245,239,230,.55);display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
+
+/* ==================================================================
+   Je choisis mon format — trois cartes cliquables
+
+   Chaque carte porte une barre dorée légèrement détachée du bord
+   supérieur, avec sa propre ombre : elle a l'air posée dessus plutôt
+   que peinte dessus, d'où l'effet de relief.
+   ================================================================== */
+.formats-grille{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;margin-top:36px}
+.carte-format{position:relative;display:flex;flex-direction:column;align-items:flex-start;text-align:left;
+  background:#fff;border:0;border-radius:18px;padding:36px 26px 28px;cursor:pointer;font-family:var(--texte);
+  box-shadow:0 2px 0 var(--gold),0 18px 40px rgba(16,56,42,.1);
+  transition:transform .22s ease,box-shadow .22s ease}
+.carte-format-barre{position:absolute;top:-7px;left:24px;right:24px;height:7px;border-radius:999px;
+  background:linear-gradient(135deg,var(--gold),var(--gold-fonce));box-shadow:0 6px 14px rgba(201,169,110,.5)}
+.carte-format:hover,.carte-format:focus-visible{transform:translateY(-6px);box-shadow:0 2px 0 var(--gold),0 26px 54px rgba(16,56,42,.16)}
+.carte-format-icone{width:32px;height:32px;color:var(--green);margin-bottom:16px}
+.carte-format-oeil{font-family:var(--titre);font-weight:700;font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-fonce)}
+.carte-format h3{margin:8px 0 10px;font-size:1.32rem;color:var(--ink)}
+.carte-format p{margin:0;color:#463829;font-size:.97rem;line-height:1.5}
+.carte-format-voir{margin-top:22px;display:inline-flex;align-items:center;gap:7px;font-family:var(--titre);font-weight:700;font-size:.9rem;color:var(--green)}
+.carte-format-voir svg{width:15px;height:15px;transition:transform .18s ease}
+.carte-format:hover .carte-format-voir svg{transform:translateX(3px)}
+
+/* ==================================================================
+   Les bulles de format — même mécanique visuelle que le test de
+   niveau (fond flou, carte qui grandit depuis la carte cliquée).
+   ================================================================== */
+.bulle-fond{position:fixed;inset:0;z-index:130;display:flex;align-items:center;justify-content:center;padding:24px;
+  background:rgba(24,44,36,.42);backdrop-filter:blur(16px) saturate(.9);-webkit-backdrop-filter:blur(16px) saturate(.9);
+  opacity:0;visibility:hidden;transition:opacity .3s ease,visibility .3s ease}
+.bulle-fond.ouvert{opacity:1;visibility:visible}
+.bulle-carte{position:relative;width:100%;max-width:680px;max-height:calc(100vh - 48px);overflow-y:auto;
+  background:var(--cream);border-radius:24px;border-top:5px solid var(--gold);
+  padding:38px 40px 34px;box-shadow:0 40px 100px rgba(10,32,24,.5);
+  transform:scale(.06);opacity:0;transition:transform .52s cubic-bezier(.22,1.1,.36,1),opacity .3s ease}
+.bulle-fond.ouvert .bulle-carte{transform:scale(1);opacity:1}
+.bulle-carte .fermer-popup{position:absolute;top:12px;right:14px;z-index:4;width:38px;height:38px;border:0;border-radius:50%;
+  background:transparent;font-size:1.7rem;line-height:1;color:var(--muted);cursor:pointer;transition:background .18s ease,color .18s ease}
+.bulle-carte .fermer-popup:hover{background:var(--sable);color:var(--ink)}
+.bulle-tete{margin-bottom:16px}
+.bulle-tete h3{font-size:clamp(1.4rem,3.2vw,1.85rem);color:var(--ink);margin-top:6px}
+.bulle-descriptif{color:#463829;font-size:1.02rem;line-height:1.55;margin:0}
+.bulle-souligne{margin:30px 0 12px;font-size:1.02rem;color:var(--ink);padding-top:18px;border-top:1px solid var(--line)}
+.bulle-liste{margin:0;padding-left:20px;display:grid;gap:9px;color:#463829;font-size:.98rem;line-height:1.5}
+.bulle-liste-numerotee{list-style:none;padding-left:0;counter-reset:mod}
+.bulle-liste-numerotee li{counter-increment:mod;position:relative;padding-left:32px}
+.bulle-liste-numerotee li::before{content:counter(mod);position:absolute;left:0;top:0;
+  width:21px;height:21px;border-radius:50%;background:var(--sable);color:var(--gold-fonce);
+  font-family:var(--titre);font-weight:800;font-size:.72rem;display:flex;align-items:center;justify-content:center}
+.bulle-prix{text-align:center;margin:4px 0 2px}
+.bulle-prix-valeur{font-family:var(--titre);font-weight:800;font-size:2.3rem;color:var(--green)}
+.bulle-carte .mois-grille{grid-template-columns:1fr;gap:12px;margin-top:16px}
+.bulle-carte .mois{padding:18px 20px;cursor:default}
+.bulle-carte .session-cta{cursor:pointer}
+.bulle-demarrage{margin:0;font-size:.86rem;color:var(--gold-fonce);font-family:var(--titre);font-weight:700}
+.bulle-form{margin-top:28px;padding-top:26px;border-top:1px solid var(--line)}
+.bulle-form .bouton{width:100%;margin-top:4px}
+.bulle-carte .champ label{color:var(--ink)}
+.bulle-carte .champ .note{color:var(--muted)}
+.bulle-carte .mention-acces{color:var(--muted)}
+.bulle-carte .retour{color:var(--gold-fonce)}
+.bulle-whatsapp{display:block;text-align:center;margin-top:14px;font-family:var(--titre);font-weight:700;font-size:.88rem;color:var(--muted);text-decoration:underline;text-underline-offset:3px}
+.bulle-whatsapp:hover{color:var(--green)}
+.bulle-phrase{margin-top:24px;font-size:.92rem;font-style:italic;color:#5b4433;line-height:1.55;text-align:center}
+.bulle-transition{display:none;text-align:center;padding:34px 6px 6px}
+.bulle-transition.actif{display:block}
+.bulle-transition p{margin-top:14px;color:#463829}
+.bulle-spin{width:34px;height:34px;margin:0 auto;border-radius:50%;border:3px solid var(--sable);border-top-color:var(--green);animation:tourner .8s linear infinite}
+@keyframes tourner{to{transform:rotate(360deg)}}
 
 /* ---------- Popup rentrée ---------- */
 .popup-fond{position:fixed;inset:0;z-index:120;background:rgba(16,56,42,.5);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:24px;opacity:0;visibility:hidden;transition:opacity .3s ease,visibility .3s ease}
@@ -435,14 +465,6 @@ strong{font-weight:700}
 .hero-reperes{margin-top:22px;font-family:var(--titre);font-weight:700;font-size:.86rem;letter-spacing:.03em;color:var(--gold-fonce)}
 .hero .programme{font-size:1.02rem;color:#42352a;margin-bottom:24px}
 
-/* ---------- Encart du test de niveau, dans la Formation ---------- */
-.test-carte{margin-top:56px;background:var(--deep);color:#f5efe6;border-radius:22px;padding:38px 42px;
-  display:grid;grid-template-columns:minmax(0,1fr) auto;gap:30px;align-items:center;box-shadow:0 20px 46px rgba(16,56,42,.2)}
-.test-carte h3{color:#fff;font-size:1.5rem;margin-bottom:10px}
-.test-carte p{color:rgba(245,239,230,.78);margin:0;font-size:1rem}
-.test-carte .bouton{white-space:nowrap}
-.formation-cta{margin-top:34px;text-align:center}
-
 /* ---------- Compte à rebours ---------- */
 .compte-titre{font-family:var(--titre);font-weight:700;font-size:.76rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-fonce);margin-bottom:12px}
 .compte{display:flex;justify-content:center;gap:10px}
@@ -466,10 +488,6 @@ strong{font-weight:700}
 .prix-lancement .prix-valeur{font-size:2.7rem;color:var(--green);text-decoration:none}
 .prix-remise{position:absolute;top:-14px;right:-10px;background:var(--gold);color:#231a0e;font-family:var(--titre);font-weight:800;font-size:.82rem;padding:6px 12px;border-radius:999px;box-shadow:0 6px 16px rgba(201,169,110,.42)}
 .prix-note{color:#463829;max-width:520px;margin:0 auto 24px!important}
-.prix-dates{border-top:1px solid var(--line);margin-top:22px;padding-top:20px;display:grid;gap:7px}
-.prix-dates p{margin:0;color:#463829;font-size:.98rem}
-.prix-dates b{font-family:var(--titre);color:var(--ink)}
-.tarif .bouton{margin-top:22px}
 
 /* ---------- Apparition ---------- */
 [data-reveal]{opacity:0;transform:translateY(26px);transition:opacity .7s ease,transform .7s ease}
@@ -479,12 +497,7 @@ strong{font-weight:700}
 /* ---------- Mobile ---------- */
 @media (max-width:860px){
   .section{padding:64px 0}
-  .format,.modules,.mois-grille,.membres-grille,.apropos-haut,.pied-haut{grid-template-columns:1fr}
-  .bandeau-texte{max-width:82%;padding:20px 22px}
-  .sessions-appel .bouton{width:100%}
-  .bandeau-texte{max-width:100%;text-align:left}
-  .bandeau-next::before{background:linear-gradient(to bottom,rgba(255,250,240,.9),rgba(255,250,240,.55) 55%,rgba(255,250,240,.25))}
-  .modules{grid-template-columns:1fr 1fr}
+  .mois-grille,.membres-grille,.apropos-haut,.pied-haut,.formats-grille{grid-template-columns:1fr}
   .apropos-photo{max-width:280px;margin:0 auto}
   .hero-carte{padding:30px 26px 32px}
   .pied-bas{flex-direction:column}
@@ -492,29 +505,19 @@ strong{font-weight:700}
      Promesse ensuite — l'ordre de lecture fait le basculement. */
   .miroir{grid-template-columns:1fr;gap:18px}
   .colonne{padding:26px 22px}
-  .test-carte{grid-template-columns:1fr;padding:30px 24px;gap:22px}
-  .test-carte .bouton{width:100%}
   .hero-actions .bouton{width:100%;flex:1 1 100%}
   .compte-case{min-width:0;flex:1 1 0;padding:9px 4px}
   .compte-nb{font-size:1.25rem}
   .prix-bloc{max-width:none}
-  /* Les chiffres passent en deux colonnes ; le rang du bas garde son
-     décalage en centrant son dernier élément. */
-  .ch-rang{grid-template-columns:repeat(2,1fr)}
-  .ch-rang-bas{width:100%;border-top:0}
-  .ch{padding:20px 8px}
-  .ch-rang .ch:nth-child(odd)::before{display:none}
-  .ch-rang .ch + .ch::before{top:18%;bottom:18%}
   .guide-zone{grid-template-columns:1fr;gap:22px}
   .guide-actions{min-width:0}
-  .cadran-large{padding:28px 22px}
-  .cadran-large .bouton{min-width:0;width:100%}
   .pied-haut{flex-direction:column;align-items:flex-start}
+  .bulle-carte{padding:30px 22px 24px;border-radius:20px;max-height:calc(100vh - 28px)}
 }
 @media (max-width:640px){ .bande-long{display:none} }
-@media (max-width:520px){ .modules{grid-template-columns:1fr} .format{grid-template-columns:1fr} }
 @media (prefers-reduced-motion:reduce){
   [data-reveal]{opacity:1;transform:none;transition:none} html{scroll-behavior:auto}
+  .bulle-spin{animation:none}
 }
 </style>
 </head>
@@ -522,12 +525,10 @@ strong{font-weight:700}
 
 <!-- ===================== BANDE + ENTÊTE ===================== -->
 <!-- La bande annonce l'offre fondatrice et son compte à rebours. Le
-     texte long disparaît sur petit écran, le décompte reste.
-
-     « Je m'inscris » plutôt qu'« Inscris-toi » : la phrase est celle du
-     visiteur, pas un ordre qu'on lui adresse. C'est aussi le seul
-     endroit du site qui tutoyait. -->
-<div class="bande" id="bande"><a href="#tarif">Je m'inscris<span class="bande-long"> — offre fondatrice <span id="bande-remise"></span></span><span class="bande-sep">·</span><span class="bande-compte" id="bande-compte"></span></a></div>
+     texte long disparaît sur petit écran, le décompte reste. Le
+     libellé suit celui des cartes de format plus bas dans la page :
+     une seule et même action, dite de la même façon partout. -->
+<div class="bande" id="bande"><a href="#formats">Je choisis mon format<span class="bande-long"> — Business Accelerator, offre fondatrice <span id="bande-remise"></span></span><span class="bande-sep">·</span><span class="bande-compte" id="bande-compte"></span></a></div>
 <header class="entete">
   <div class="barre">
     <span class="marque">Fluent &amp; Forward</span>
@@ -545,15 +546,14 @@ strong{font-weight:700}
   <nav>
     <a href="#accueil">Accueil</a>
     <a href="#formation">Le programme</a>
-    <a href="#sessions">Les Sessions</a>
+    <a href="#formats">Je choisis mon format</a>
     <a href="#apropos">À propos</a>
-    <a href="#entreprises">Pour les entreprises</a>
     <a href="#membres">Mon Accélérateur</a>
   </nav>
   <!-- Même libellé partout : les six boutons qui mènent au rendez-vous
        portent désormais la même phrase. Deux formulations pour une seule
        action se lisaient comme deux propositions différentes. -->
-  <a class="bouton bouton-or" href="https://calendly.com/aurelieameerpro/30min" target="_blank" rel="noopener">Vérifier si le programme vous correspond</a>
+  <a class="bouton bouton-or" href="#formats">Je choisis mon format</a>
 </aside>
 
 <!-- ===================== HERO ===================== -->
@@ -565,7 +565,7 @@ strong{font-weight:700}
       <p class="accroche">Prenez la parole en anglais avec assurance, sans traduire chaque phrase dans votre tête.</p>
       <p class="programme">Un programme intensif de 8 semaines pour transformer votre anglais professionnel en véritable levier de performance.</p>
       <div class="hero-actions">
-        <a class="bouton bouton-vert" href="#test" data-test="hero">1 minute pour tester mon niveau</a>
+        <a class="bouton bouton-vert" href="#formation" data-test="hero">1 minute pour tester mon niveau</a>
         <a class="bouton bouton-clair" href="#formation">Découvrir le programme</a>
       </div>
       <p class="hero-reperes">8 semaines · Sessions live · Coaching individuel</p>
@@ -607,111 +607,47 @@ strong{font-weight:700}
         </ul>
       </div>
     </div>
-    <p class="miroir-cta" data-reveal><a href="https://calendly.com/aurelieameerpro/30min" target="_blank" rel="noopener">Vérifier si le programme vous correspond</a></p>
-
-    <!-- Le format en cinq chiffres. Trois en haut, deux en dessous
-         décalés d'un demi-pas : l'œil descend en diagonale au lieu de
-         balayer un tableau. -->
-    <h3 style="margin-top:56px;font-size:1.3rem;color:var(--ink)" data-reveal>Le format</h3>
-    <div class="chiffres" data-reveal>
-      <div class="ch-rang">
-        <div class="ch"><span class="ch-nb">8</span><span class="ch-lib">semaines</span></div>
-        <div class="ch"><span class="ch-nb">8</span><span class="ch-lib">modules</span></div>
-        <div class="ch"><span class="ch-nb">1h</span><span class="ch-lib">live par semaine</span></div>
-      </div>
-      <div class="ch-rang ch-rang-bas">
-        <div class="ch"><span class="ch-nb">2</span><span class="ch-lib">coachings 1:1</span></div>
-        <div class="ch"><span class="ch-nb">10</span><span class="ch-lib">places max</span></div>
-      </div>
-    </div>
-
-    <h3 style="margin-top:52px;font-size:1.3rem;color:var(--ink)" data-reveal>Le contenu — 8 modules</h3>
-    <div class="modules">
-      <div class="module" data-reveal><div class="num">Module 1</div><h3>Think &amp; Speak Like a Business Person</h3></div>
-      <div class="module" data-reveal data-d="1"><div class="num">Module 2</div><h3>Professional Communication Essentials</h3></div>
-      <div class="module" data-reveal data-d="2"><div class="num">Module 3</div><h3>Meetings &amp; Calls Mastery</h3></div>
-      <div class="module" data-reveal data-d="3"><div class="num">Module 4</div><h3>Presenting your business with Confidence</h3></div>
-      <div class="module" data-reveal><div class="num">Module 5</div><h3>Networking Like a Pro</h3></div>
-      <div class="module" data-reveal data-d="1"><div class="num">Module 6</div><h3>Sales &amp; Negotiation English</h3></div>
-      <div class="module" data-reveal data-d="2"><div class="num">Module 7</div><h3>Confidence &amp; Fluency</h3></div>
-      <div class="module" data-reveal data-d="3"><div class="num">Module 8</div><h3>Industry-Specific English</h3></div>
-    </div>
-
-    <p class="formation-cta" data-reveal>
-      <a class="bouton bouton-clair" href="https://calendly.com/aurelieameerpro/30min" target="_blank" rel="noopener">Vérifier si le programme vous correspond</a>
-    </p>
-
-    <!-- Le test de niveau. Les questions vivent dans le script ; cet
-         encart est la porte d'entrée, juste avant le bloc tarif. -->
-    <div class="test-carte" id="test" style="scroll-margin-top:120px" data-reveal>
-      <div>
-        <span class="oeil">Test de niveau — 8 questions</span>
-        <h3>Testez votre anglais professionnel</h3>
-        <p>Huit situations réelles, deux formulations au choix. À la fin, votre score et les modules du programme sur lesquels vous avez le plus à gagner. Deux minutes, sans inscription.</p>
-      </div>
-      <button class="bouton bouton-or" type="button" data-test="encart">1 minute pour tester mon niveau</button>
-    </div>
+    <p class="miroir-cta" data-reveal><a href="#formats">Je choisis mon format</a></p>
   </div>
 </section>
 
 <!-- ===================== LES SESSIONS ===================== -->
-<section class="section section-sable section-bandeau" id="sessions">
-  <div class="bandeau-next" style="background-image:url(assets/visuels/next-step.jpg)" role="img" aria-label="Panneau « Next Step » indiquant un chemin qui s'éloigne vers un coucher de soleil.">
-    <div class="bandeau-zone">
-      <div class="bandeau-texte" data-reveal>
-        <span class="oeil">Les prochaines sessions</span>
-        <h2>Choisissez le mois qui vous convient</h2>
-      </div>
-    </div>
-  </div>
+<!-- ===================== JE CHOISIS MON FORMAT ===================== -->
+<section class="section section-sable" id="formats">
   <div class="contenu">
-    <p class="sous bandeau-sous" data-reveal>Les places sont limitées par session, pour garantir un accompagnement individualisé. Vérifiez avec Aurélie que le programme vous correspond et choisissez votre créneau.</p>
-
-    <!-- Les trois mois sont dessinés par le script à partir du tableau
-         Google Sheet d'Aurélie. Le contenu ci-dessous n'est jamais vu :
-         il est remplacé dès le chargement. -->
-    <div class="mois-grille" id="mois-grille"></div>
-
-    <div class="sessions-appel" data-reveal>
-      <a class="bouton bouton-vert" href="https://calendly.com/aurelieameerpro/30min" target="_blank" rel="noopener">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-        Vérifier si le programme vous correspond
-      </a>
-      <a class="bouton bouton-or" href="#" data-whatsapp>Je veux plus d'informations</a>
+    <div class="etroit centre" style="margin:0 auto" data-reveal>
+      <span class="oeil">Votre parcours</span>
+      <h2>Je choisis mon format</h2>
+      <p class="sous" style="margin-top:14px">Trois façons d'avancer, avec la même exigence. Cliquez sur celui qui vous correspond pour voir le détail, les prochaines sessions et vous inscrire.</p>
     </div>
 
-    <!-- Tarif et inscription -->
-    <div class="etroit" id="tarif" style="margin:64px auto 0;scroll-margin-top:120px" data-reveal>
-      <h3 style="font-size:1.3rem;color:var(--ink);text-align:center">Tarif et inscription</h3>
-      <div class="tarif">
-        <span class="oeil">Cohorte Fondatrice</span>
-        <div class="prix-duo">
-          <div class="prix-bloc prix-standard">
-            <span class="prix-oeil">Tarif standard</span>
-            <span class="prix-valeur" id="prix-standard">—</span>
-          </div>
-          <div class="prix-bloc prix-lancement">
-            <span class="prix-remise" id="prix-remise"></span>
-            <span class="prix-oeil">Prix de lancement</span>
-            <span class="prix-valeur" id="prix-lancement">—</span>
-          </div>
-        </div>
-        <p class="prix-note">Avant de vous engager, on vérifie ensemble que le programme correspond à votre niveau et vos objectifs, pas d'inscription à l'aveugle.</p>
+    <div class="formats-grille" data-reveal>
+      <button type="button" class="carte-format" data-format="coaching" aria-haspopup="dialog">
+        <span class="carte-format-barre" aria-hidden="true"></span>
+        <svg class="carte-format-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+        <span class="carte-format-oeil">Sur-mesure</span>
+        <h3>Coaching 1:1</h3>
+        <p>Un accompagnement individuel, entièrement calé sur vos situations réelles.</p>
+        <span class="carte-format-voir">Découvrir<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+      </button>
 
-        <!-- Compte à rebours de l'offre fondatrice. Passée l'échéance,
-             le script masque ce bloc et le prix de lancement : il ne
-             reste que le tarif standard, sans décompte figé à zéro. -->
-        <div id="zone-compte">
-          <p class="compte-titre">L'offre fondatrice se termine dans</p>
-          <div class="compte" id="compte-tarif" role="timer" aria-live="off"></div>
-        </div>
+      <button type="button" class="carte-format" data-format="accelerator" aria-haspopup="dialog">
+        <span class="carte-format-barre" aria-hidden="true"></span>
+        <svg class="carte-format-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><circle cx="17" cy="9" r="2.6"/><path d="M2.5 21c0-3.9 2.9-7 6.5-7s6.5 3.1 6.5 7"/><path d="M15.5 14.4c2.9.4 5 3 5 6.6"/></svg>
+        <span class="carte-format-oeil">Cohorte</span>
+        <h3>Business Accelerator</h3>
+        <p>8 semaines en groupe, avec d'autres professionnels francophones.</p>
+        <span class="carte-format-voir">Découvrir<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+      </button>
 
-        <div class="prix-dates">
-          <p><b>Démarrage : 14 septembre 2026</b></p>
-          <p id="tarif-sessions">Places limitées par session, pour garantir un accompagnement individualisé.</p>
-        </div>
-        <a class="bouton bouton-or" href="https://calendly.com/aurelieameerpro/30min" target="_blank" rel="noopener">Vérifier si le programme vous correspond</a>
-      </div>
+      <button type="button" class="carte-format" data-format="entreprise" aria-haspopup="dialog">
+        <span class="carte-format-barre" aria-hidden="true"></span>
+        <svg class="carte-format-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="1.5"/><path d="M9 8h1M14 8h1M9 12h1M14 12h1M9 16h1M14 16h1"/></svg>
+        <span class="carte-format-oeil">Collectif</span>
+        <h3>Entreprise</h3>
+        <p>Une formation sur mesure, conçue pour les besoins de vos équipes.</p>
+        <span class="carte-format-voir">Découvrir<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+      </button>
     </div>
   </div>
 </section>
@@ -757,20 +693,8 @@ strong{font-weight:700}
       </div>
       <div class="guide-actions">
         <a class="bouton bouton-or" href="/guide/" target="_blank" rel="noopener">Télécharger le guide</a>
-        <a class="bouton bouton-clair" href="https://calendly.com/aurelieameerpro/30min" target="_blank" rel="noopener">Vérifier si le programme vous correspond</a>
+        <a class="bouton bouton-clair" href="#formats">Je choisis mon format</a>
       </div>
-    </div>
-  </div>
-</section>
-
-<!-- ===================== POUR LES ENTREPRISES ===================== -->
-<section class="section" id="entreprises" style="scroll-margin-top:120px">
-  <div class="contenu">
-    <div class="cadran cadran-large" data-reveal>
-      <span class="oeil">Pour les entreprises</span>
-      <h3>Entreprise</h3>
-      <p>Vos équipes échangent régulièrement avec des interlocuteurs anglophones et l'anglais professionnel devient un enjeu collectif — pas seulement individuel. Chaque entreprise a ses propres réalités métier, ses interlocuteurs, ses urgences : la formation est donc <strong>conçue sur mesure</strong>, à partir des besoins concrets de vos équipes.</p>
-      <a class="bouton bouton-vert" href="#" data-mail-projet>Discutons de votre projet</a>
     </div>
   </div>
 </section>
@@ -921,7 +845,152 @@ strong{font-weight:700}
   </div>
 </footer>
 
-</button>
+<!-- ===================== BULLE — COACHING 1:1 ===================== -->
+<div class="bulle-fond" id="bulle-coaching" data-nom="Coaching 1:1">
+  <div class="bulle-carte" role="dialog" aria-modal="true" aria-labelledby="titre-coaching">
+    <button class="fermer-popup" data-fermer-bulle aria-label="Fermer">&times;</button>
+    <div class="bulle-tete">
+      <span class="oeil">Sur-mesure</span>
+      <h3 id="titre-coaching">Coaching 1:1</h3>
+    </div>
+    <p class="bulle-descriptif">Le programme en tête-à-tête, entièrement calé sur vos situations réelles, vos objectifs et vos échéances. En 8 semaines, vous gagnez l'assurance, le vocabulaire et les automatismes dont vous avez besoin — à votre rythme, avec un suivi personnalisé au quotidien.</p>
+
+    <h4 class="bulle-souligne">Le format</h4>
+    <ul class="bulle-liste">
+      <li>8h de coaching individuel</li>
+      <li>8 modules e-learning textes et vidéo</li>
+      <li>8 ressources vocabulaire et grammaire</li>
+      <li>Disponibilité par messages pour vous accompagner pendant le e-learning et dans les exercices</li>
+    </ul>
+
+    <h4 class="bulle-souligne">Tarif</h4>
+    <div class="bulle-prix"><span class="bulle-prix-valeur">790&nbsp;€</span></div>
+
+    <h4 class="bulle-souligne">Prochaines sessions</h4>
+    <div class="mois-grille" id="mois-coaching"></div>
+
+        <form class="bulle-form formulaire-inscription" data-programme="Coaching 1:1" novalidate>
+          <div class="champ"><label for="coaching-prenom">Prénom</label><input type="text" id="coaching-prenom" name="prenom" autocomplete="given-name"></div>
+          <div class="champ"><label for="coaching-nom">Nom</label><input type="text" id="coaching-nom" name="nom" autocomplete="family-name"></div>
+          <div class="champ"><label for="coaching-email">Adresse email</label><input type="email" id="coaching-email" name="email" autocomplete="email"></div>
+          <div class="champ">
+            <label for="coaching-tel">Numéro de téléphone</label>
+            <div class="champ-tel">
+              <select id="coaching-indicatif" name="indicatif" aria-label="Indicatif international">
+                <option value="+33">France (+33)</option>
+                <option value="+262" selected>La Réunion (+262)</option>
+              </select>
+              <input type="tel" id="coaching-tel" name="telephone" autocomplete="tel-national" placeholder="692 12 34 56">
+            </div>
+          </div>
+          <div class="piege" aria-hidden="true"><label for="coaching-site">Site web</label><input type="text" id="coaching-site" name="site" tabindex="-1" autocomplete="off"></div>
+          <div class="zone-turnstile" data-turnstile></div>
+          <button type="submit" class="bouton bouton-vert">Je réserve ma place</button>
+          <a class="bulle-whatsapp" href="#" data-whatsapp="Bonjour Aurélie, j'ai une question avant de m'inscrire au Coaching 1:1.">Poser ma question sur WhatsApp</a>
+          <p class="mention-acces">Vos informations servent à traiter votre inscription et à vous recontacter. <a href="politique-confidentialite.html" target="_blank" rel="noopener">Vos données</a></p>
+          <p class="retour retour-formulaire" role="status"></p>
+        </form>
+        <div class="bulle-transition" data-transition>
+          <div class="bulle-spin" aria-hidden="true"></div>
+          <p data-transition-texte></p>
+        </div>
+
+    <p class="bulle-phrase">Une fois votre inscription reçue, je prends personnellement contact avec vous afin de faire le point sur vos objectifs, vos besoins et vos disponibilités, et de préparer ensemble les modalités de votre accompagnement avant son démarrage à la date choisie.</p>
+  </div>
+</div>
+
+<!-- ===================== BULLE — BUSINESS ACCELERATOR ===================== -->
+<div class="bulle-fond" id="bulle-accelerator" data-nom="Business Accelerator">
+  <div class="bulle-carte" role="dialog" aria-modal="true" aria-labelledby="titre-accelerator">
+    <button class="fermer-popup" data-fermer-bulle aria-label="Fermer">&times;</button>
+    <div class="bulle-tete">
+      <span class="oeil">Cohorte</span>
+      <h3 id="titre-accelerator">Business Accelerator Program</h3>
+    </div>
+    <p class="bulle-descriptif">Le programme en cohorte, où vous avancez avec d'autres professionnels francophones. En 8 semaines, vous gagnez le vocabulaire, la pratique et l'assurance nécessaires pour prendre la parole en anglais dans vos situations professionnelles.</p>
+
+    <h4 class="bulle-souligne">Le format</h4>
+    <ul class="bulle-liste">
+      <li>8 semaines</li>
+      <li>8 modules</li>
+      <li>1h de live par semaine</li>
+      <li>2 coachings 1:1</li>
+      <li>10 places maximum</li>
+    </ul>
+
+    <h4 class="bulle-souligne">Le contenu — 8 modules</h4>
+    <ol class="bulle-liste bulle-liste-numerotee">
+      <li>Think &amp; Speak Like a Business Person</li>
+      <li>Professional Communication Essentials</li>
+      <li>Meetings &amp; Calls Mastery</li>
+      <li>Presenting your business with Confidence</li>
+      <li>Networking Like a Pro</li>
+      <li>Sales &amp; Negotiation English</li>
+      <li>Confidence &amp; Fluency</li>
+      <li>Industry-Specific English</li>
+    </ol>
+
+    <h4 class="bulle-souligne">Tarif — Cohorte Fondatrice</h4>
+    <div class="prix-duo">
+      <div class="prix-bloc prix-standard">
+        <span class="prix-oeil">Tarif standard</span>
+        <span class="prix-valeur" id="prix-standard">—</span>
+      </div>
+      <div class="prix-bloc prix-lancement">
+        <span class="prix-remise" id="prix-remise"></span>
+        <span class="prix-oeil">Prix de lancement</span>
+        <span class="prix-valeur" id="prix-lancement">—</span>
+      </div>
+    </div>
+    <p class="prix-note">Avant de vous engager, on vérifie ensemble que le programme correspond à votre niveau et vos objectifs, pas d'inscription à l'aveugle.</p>
+    <div id="zone-compte">
+      <p class="compte-titre">L'offre fondatrice se termine dans</p>
+      <div class="compte" id="compte-tarif" role="timer" aria-live="off"></div>
+    </div>
+
+    <h4 class="bulle-souligne">Prochaines sessions</h4>
+    <div class="mois-grille" id="mois-accelerator"></div>
+
+        <form class="bulle-form formulaire-inscription" data-programme="Business Accelerator" novalidate>
+          <div class="champ"><label for="accelerator-prenom">Prénom</label><input type="text" id="accelerator-prenom" name="prenom" autocomplete="given-name"></div>
+          <div class="champ"><label for="accelerator-nom">Nom</label><input type="text" id="accelerator-nom" name="nom" autocomplete="family-name"></div>
+          <div class="champ"><label for="accelerator-email">Adresse email</label><input type="email" id="accelerator-email" name="email" autocomplete="email"></div>
+          <div class="champ">
+            <label for="accelerator-tel">Numéro de téléphone</label>
+            <div class="champ-tel">
+              <select id="accelerator-indicatif" name="indicatif" aria-label="Indicatif international">
+                <option value="+33">France (+33)</option>
+                <option value="+262" selected>La Réunion (+262)</option>
+              </select>
+              <input type="tel" id="accelerator-tel" name="telephone" autocomplete="tel-national" placeholder="692 12 34 56">
+            </div>
+          </div>
+          <div class="piege" aria-hidden="true"><label for="accelerator-site">Site web</label><input type="text" id="accelerator-site" name="site" tabindex="-1" autocomplete="off"></div>
+          <div class="zone-turnstile" data-turnstile></div>
+          <button type="submit" class="bouton bouton-vert">Je réserve ma place</button>
+          <a class="bulle-whatsapp" href="#" data-whatsapp="Bonjour Aurélie, j'ai une question avant de m'inscrire au Business Accelerator.">Poser ma question sur WhatsApp</a>
+          <p class="mention-acces">Vos informations servent à traiter votre inscription et à vous recontacter. <a href="politique-confidentialite.html" target="_blank" rel="noopener">Vos données</a></p>
+          <p class="retour retour-formulaire" role="status"></p>
+        </form>
+        <div class="bulle-transition" data-transition>
+          <div class="bulle-spin" aria-hidden="true"></div>
+          <p data-transition-texte></p>
+        </div>
+  </div>
+</div>
+
+<!-- ===================== BULLE — ENTREPRISE ===================== -->
+<div class="bulle-fond" id="bulle-entreprise" data-nom="Entreprise">
+  <div class="bulle-carte" role="dialog" aria-modal="true" aria-labelledby="titre-entreprise">
+    <button class="fermer-popup" data-fermer-bulle aria-label="Fermer">&times;</button>
+    <div class="bulle-tete">
+      <span class="oeil">Pour les entreprises</span>
+      <h3 id="titre-entreprise">Entreprise</h3>
+    </div>
+    <p class="bulle-descriptif">Vos équipes échangent régulièrement avec des interlocuteurs anglophones et l'anglais professionnel devient un enjeu collectif — pas seulement individuel. Chaque entreprise a ses propres réalités métier, ses interlocuteurs, ses urgences : la formation est donc <strong>conçue sur mesure</strong>, à partir des besoins concrets de vos équipes.</p>
+    <a class="bouton bouton-vert" href="#" data-mail-projet>Discutons de votre projet</a>
+  </div>
+</div>
 
 <!-- ===================== FENÊTRE CONTACT PAR EMAIL =====================
      Ouvrir directement la messagerie ne fonctionne pas partout (navigateur
@@ -1144,7 +1213,7 @@ strong{font-weight:700}
      compte à rebours arrêté sur zéro fait plus de mal que pas d'offre
      du tout.
      ================================================================== */
-  var PRIX_STANDARD  = 799;
+  var PRIX_STANDARD  = 599;
   var PRIX_LANCEMENT = 349;
   var FIN_OFFRE      = new Date(2026,8,10,23,59,59); /* 10 septembre 2026, minuit */
 
@@ -1157,9 +1226,6 @@ strong{font-weight:700}
   poser("prix-lancement",euros(PRIX_LANCEMENT));
   poser("prix-remise","−"+REMISE+" %");
   poser("bande-remise","−"+REMISE+" %");
-  poser("popup-remise","−"+REMISE+" %");
-  poser("popup-prix",euros(PRIX_LANCEMENT));
-  poser("popup-plein",euros(PRIX_STANDARD));
 
   var caseCompte=document.getElementById("compte-tarif"),
       zoneCompte=document.getElementById("zone-compte"),
@@ -1179,7 +1245,7 @@ strong{font-weight:700}
     var pastille=document.getElementById("prix-remise"); if(pastille) pastille.hidden=true;
     if(zoneCompte) zoneCompte.hidden=true;
     var bande=document.getElementById("bande");
-    if(bande) bande.innerHTML='<a href="#tarif">Je m\'inscris</a>';
+    if(bande) bande.innerHTML='<a href="#formats">Je choisis mon format</a>';
   }
 
   function majCompte(){
@@ -1261,7 +1327,10 @@ strong{font-weight:700}
 
   [].forEach.call(document.querySelectorAll("[data-whatsapp]"),function(b){
     b.setAttribute("target","_blank"); b.setAttribute("rel","noopener");
-    armer(b,function(){ return "https://wa.me/"+TEL.join("")+"?text="+encodeURIComponent(MSG_WA); });
+    /* La valeur de l'attribut porte un message propre à ce bouton ;
+       à défaut (l'attribut est vide), le message générique s'applique. */
+    var messagePropre=b.getAttribute("data-whatsapp")||MSG_WA;
+    armer(b,function(){ return "https://wa.me/"+TEL.join("")+"?text="+encodeURIComponent(messagePropre); });
   });
 
   /* ---- Fenêtre « écrire à Aurélie » ----
@@ -1323,10 +1392,10 @@ strong{font-weight:700}
   /* ==================================================================
      Les sessions — pilotées depuis le Google Sheet d'Aurélie
 
-     Le tableau comporte trois colonnes, une par mois. Chaque colonne
-     porte le nom du mois (texte libre) et deux sessions de 10 places.
-     Pour chaque session : le nombre de places restantes, et une case à
-     cocher qui décide si la session paraît sur le site.
+     Le tableau comporte désormais deux blocs indépendants, un par
+     format (Coaching 1:1, Business Accelerator), chacun avec ses
+     propres colonnes : le mois, un jour de démarrage facultatif, et
+     deux sessions de 10 places (places restantes + case à publier).
 
      Les valeurs ci-dessous servent de secours : si le tableau est
      injoignable, ce sont elles qui s'affichent, et le site reste juste
@@ -1335,13 +1404,21 @@ strong{font-weight:700}
   var ADRESSE_SESSIONS="https://script.google.com/macros/s/AKfycbwK0XxvWhNiwoWVsROAHi7EFQFRMymFOcH5gxV-KSZ3C5F39DPcT1YxSp83iJq9oMbO/exec";
   var PLACES_PAR_SESSION=10;
 
-  var SESSIONS_SECOURS={ colonnes:[
-    { mois:"Septembre 2026", sessions:[ {places:4,publier:true},  {places:0,publier:false} ] },
-    { mois:"Octobre 2026",   sessions:[ {places:6,publier:true},  {places:0,publier:false} ] },
-    { mois:"Novembre 2026",  sessions:[ {places:10,publier:true}, {places:0,publier:false} ] }
-  ]};
+  var SESSIONS_SECOURS={
+    coaching:{ colonnes:[
+      { mois:"Septembre 2026", jour:"", sessions:[ {places:3,publier:true},  {places:0,publier:false} ] },
+      { mois:"Octobre 2026",   jour:"", sessions:[ {places:2,publier:true},  {places:0,publier:false} ] },
+      { mois:"Novembre 2026",  jour:"", sessions:[ {places:5,publier:true},  {places:0,publier:false} ] }
+    ]},
+    accelerator:{ colonnes:[
+      { mois:"Septembre 2026", jour:"14", sessions:[ {places:5,publier:true},  {places:0,publier:false} ] },
+      { mois:"Octobre 2026",   jour:"",   sessions:[ {places:8,publier:true},  {places:0,publier:false} ] },
+      { mois:"Novembre 2026",  jour:"",   sessions:[ {places:10,publier:true}, {places:0,publier:false} ] }
+    ]}
+  };
 
-  var grilleMois=document.getElementById("mois-grille");
+  var grilleCoaching=document.getElementById("mois-coaching"),
+      grilleAccelerator=document.getElementById("mois-accelerator");
 
   function badgeDe(places){
     if(places<=0)  return {classe:"complet",texte:"Complet"};
@@ -1349,10 +1426,18 @@ strong{font-weight:700}
     return {classe:"dispo", texte:places+" places disponibles"};
   }
 
-  function dessinerSessions(donnees){
-    if(!grilleMois||!donnees||!donnees.colonnes) return;
-    var lien=CALENDLY;
-    grilleMois.innerHTML="";
+  /* Un clic sur une session ouverte ne réserve rien en soi : il amène
+     au formulaire d'inscription de la même bulle, et note le mois
+     choisi pour que ce renseignement parte avec la demande. */
+  function choisirSession(bulle, libelle){
+    bulle.dataset.moisChoisi=libelle;
+    var form=bulle.querySelector(".formulaire-inscription");
+    if(form) form.scrollIntoView({behavior:reduit?"auto":"smooth",block:"center"});
+  }
+
+  function dessinerSessions(grille, donnees, bulle){
+    if(!grille||!donnees||!donnees.colonnes) return;
+    grille.innerHTML="";
 
     donnees.colonnes.forEach(function(col,i){
       var ouvertes=(col.sessions||[]).filter(function(s){ return s.publier; });
@@ -1367,9 +1452,15 @@ strong{font-weight:700}
                     : "Deux sessions programmées";
 
       var html='<div class="mois-titre">'+(col.mois||"")+'<small>'+soustitre+'</small></div>';
+      /* Le jour de démarrage est facultatif : une case vide dans le
+         tableau n'affiche rien, plutôt qu'une date à moitié écrite. */
+      if(col.jour && String(col.jour).trim()!==""){
+        html+='<p class="bulle-demarrage">Démarrage : '+String(col.jour).trim()+' '+
+              String(col.mois||"").replace(/\s*\d{4}\s*$/,"").toLowerCase()+'</p>';
+      }
 
       if(ouvertes.length===0){
-        html+='<p class="mois-vide">Les prochaines dates seront annoncées ici. Réservez un appel pour être prévenu en priorité.</p>';
+        html+='<p class="mois-vide">Les prochaines dates seront annoncées ici. Inscrivez-vous ci-dessous pour être prévenu en priorité.</p>';
       }else{
         ouvertes.forEach(function(s,k){
           /* Le nombre affiché est borné ici aussi, et pas seulement dans
@@ -1381,52 +1472,44 @@ strong{font-weight:700}
             html+='<div class="session session-complet"><div class="nom">'+nom+'</div>'+
                   '<span class="badge complet">Complet</span></div>';
           }else{
-            html+='<a class="session session-cta" href="'+lien+'" target="_blank" rel="noopener">'+
+            html+='<a class="session session-cta" href="#" data-mois="'+(col.mois||"")+' — '+nom+'">'+
                   '<div class="nom">'+nom+'</div><span class="badge '+b.classe+'">'+b.texte+'</span></a>';
           }
         });
       }
       bloc.innerHTML=html;
-      grilleMois.appendChild(bloc);
+      grille.appendChild(bloc);
     });
 
     /* Les blocs viennent d'être créés : ils doivent entrer dans la
        ronde des apparitions au défilement comme le reste de la page. */
-    if(typeof observerReveal==="function") observerReveal(grilleMois);
+    if(typeof observerReveal==="function") observerReveal(grille);
 
-    ligneSessionsTarif(donnees);
+    if(bulle){
+      [].forEach.call(grille.querySelectorAll(".session-cta"),function(a){
+        a.addEventListener("click",function(e){
+          e.preventDefault();
+          choisirSession(bulle, a.getAttribute("data-mois"));
+        });
+      });
+    }
   }
 
-  /* La ligne « Prochaines sessions disponibles » du bloc tarif est
-     tirée du même tableau que la grille au-dessus : les deux ne peuvent
-     donc pas se contredire. La première colonne est celle de la cohorte
-     fondatrice, dont la date de démarrage est annoncée juste au-dessus :
-     on ne la répète pas ici. */
-  function ligneSessionsTarif(donnees){
-    var cible=document.getElementById("tarif-sessions");
-    if(!cible||!donnees||!donnees.colonnes) return;
+  var bulleCoaching=document.getElementById("bulle-coaching"),
+      bulleAccelerator=document.getElementById("bulle-accelerator");
 
-    var suite=donnees.colonnes.slice(1).map(function(col){
-      var libres=(col.sessions||[]).reduce(function(t,s){
-        return t + (s.publier ? Math.min(PLACES_PAR_SESSION,Math.max(0,parseInt(s.places,10)||0)) : 0);
-      },0);
-      if(libres<=0) return null;
-      /* « Octobre 2026 » → « Octobre » : le mois suffit dans cette ligne. */
-      var mois=String(col.mois||"").replace(/\s*\d{4}\s*$/,"").trim();
-      return mois+" ("+libres+(libres>1?" places disponibles":" place disponible")+")";
-    }).filter(Boolean);
-
-    cible.textContent = suite.length
-      ? "Prochaines sessions disponibles : "+suite.join(". ")+"."
-      : "Places limitées par session, pour garantir un accompagnement individualisé.";
-  }
-
-  dessinerSessions(SESSIONS_SECOURS);
+  dessinerSessions(grilleCoaching, SESSIONS_SECOURS.coaching, bulleCoaching);
+  dessinerSessions(grilleAccelerator, SESSIONS_SECOURS.accelerator, bulleAccelerator);
 
   if(ADRESSE_SESSIONS){
     fetch(ADRESSE_SESSIONS,{cache:"no-store"})
       .then(function(r){ return r.json(); })
-      .then(function(d){ if(d&&d.colonnes&&d.colonnes.length) dessinerSessions(d); })
+      .then(function(d){
+        if(d&&d.coaching&&d.coaching.colonnes&&d.coaching.colonnes.length)
+          dessinerSessions(grilleCoaching, d.coaching, bulleCoaching);
+        if(d&&d.accelerator&&d.accelerator.colonnes&&d.accelerator.colonnes.length)
+          dessinerSessions(grilleAccelerator, d.accelerator, bulleAccelerator);
+      })
       .catch(function(){ /* tableau injoignable : on garde les valeurs de secours */ });
   }
 
@@ -2025,8 +2108,8 @@ strong{font-weight:700}
     }
     function fermerQuiz(){ quiz.classList.remove("ouvert"); document.body.style.overflow=""; }
 
-    /* Les deux portes d'entrée : le bouton du hero et l'encart de la
-       section Formation. */
+    /* Les portes d'entrée : le bouton du hero et la fenêtre d'accueil,
+       qui partagent tous deux l'attribut data-test. */
     [].forEach.call(document.querySelectorAll("[data-test]"),function(b){
       b.addEventListener("click",function(e){
         e.preventDefault();
@@ -2066,6 +2149,16 @@ strong{font-weight:700}
         sitekey:CLE_TURNSTILE, theme:"light", language:"fr",
         callback:function(t){ jetonTurnstile=t; },
         "expired-callback":function(){ jetonTurnstile=""; }
+      });
+      /* Un widget par formulaire d'inscription, chacun gardant son
+         jeton sur lui-même : il n'y a pas qu'un seul formulaire de ce
+         type sur la page, une variable globale unique ne suffirait pas. */
+      [].forEach.call(document.querySelectorAll("[data-turnstile]"),function(zone){
+        window.turnstile.render(zone,{
+          sitekey:CLE_TURNSTILE, theme:"light", language:"fr",
+          callback:function(t){ zone.jeton=t; },
+          "expired-callback":function(){ zone.jeton=""; }
+        });
       });
     };
     var s=document.createElement("script");
@@ -2133,6 +2226,122 @@ strong{font-weight:700}
       if(CLE_TURNSTILE&&window.turnstile){ window.turnstile.reset(); jetonTurnstile=""; }
     });
   }
+
+  /* ==================================================================
+     Les bulles de format
+
+     Ouverture/fermeture : même mécanique que le test de niveau (la
+     carte grandit depuis le bouton cliqué). Chaque bulle porte un
+     formulaire d'inscription identique dans sa forme (nom, prénom,
+     email, téléphone) : les coordonnées partent vers le tableau
+     d'Aurélie dès l'envoi, puis la personne est amenée vers le
+     paiement — capturer la demande ne dépend donc jamais du paiement.
+     ================================================================== */
+  function ouvrirBulle(bulle,depuis){
+    var carte=bulle.querySelector(".bulle-carte");
+    if(depuis){
+      var m=depuis.getBoundingClientRect(),c=carte.getBoundingClientRect();
+      carte.style.transformOrigin=(m.left+m.width/2-c.left)+"px "+(m.top+m.height/2-c.top)+"px";
+    }
+    void carte.offsetWidth;
+    carte.scrollTop=0;
+    bulle.classList.add("ouvert");
+    document.body.style.overflow="hidden";
+    noterEtape("format ouvert ("+(bulle.dataset.nom||bulle.id)+")");
+  }
+  function fermerBulle(bulle){ bulle.classList.remove("ouvert"); document.body.style.overflow=""; }
+
+  [].forEach.call(document.querySelectorAll("[data-format]"),function(b){
+    b.addEventListener("click",function(){
+      var bulle=document.getElementById("bulle-"+b.getAttribute("data-format"));
+      if(bulle) ouvrirBulle(bulle,b);
+    });
+  });
+  [].forEach.call(document.querySelectorAll(".bulle-fond"),function(bulle){
+    var boutonFermer=bulle.querySelector("[data-fermer-bulle]");
+    if(boutonFermer) boutonFermer.addEventListener("click",function(){ fermerBulle(bulle); });
+    bulle.addEventListener("click",function(e){ if(e.target===bulle) fermerBulle(bulle); });
+  });
+  addEventListener("keydown",function(e){
+    if(e.key!=="Escape") return;
+    [].forEach.call(document.querySelectorAll(".bulle-fond.ouvert"),fermerBulle);
+  });
+
+  /* Les liens ci-dessous sont à remplacer par les vrais liens de
+     paiement Stripe, une fois les deux produits créés dans le tableau
+     de bord Stripe d'Aurélie (Payment Links, personnalisés à ses
+     couleurs). Tant qu'un lien reste sur ce texte, l'inscription est
+     bien enregistrée mais la redirection ne peut pas aboutir — le
+     message le dit à la personne plutôt que de la laisser sur un lien
+     mort. */
+  var LIENS_STRIPE={
+    "Coaching 1:1":         "REMPLACER_PAR_LE_LIEN_STRIPE_COACHING",
+    "Business Accelerator": "REMPLACER_PAR_LE_LIEN_STRIPE_ACCELERATOR"
+  };
+
+  [].forEach.call(document.querySelectorAll(".formulaire-inscription"),function(formInscription){
+    var bulleParente=formInscription.closest(".bulle-fond"),
+        transition=bulleParente.querySelector("[data-transition]"),
+        texteTransition=transition.querySelector("[data-transition-texte]"),
+        retourInscription=formInscription.querySelector(".retour-formulaire"),
+        zoneTurnstileInscription=formInscription.querySelector("[data-turnstile]"),
+        programmeInscription=formInscription.getAttribute("data-programme"),
+        ouvertureInscription=Date.now();
+
+    formInscription.addEventListener("submit",function(e){
+      e.preventDefault();
+      var prenom=formInscription.querySelector("[name=prenom]").value.trim(),
+          nom=formInscription.querySelector("[name=nom]").value.trim(),
+          email=formInscription.querySelector("[name=email]").value.trim(),
+          indicatif=formInscription.querySelector("[name=indicatif]").value,
+          tel=formInscription.querySelector("[name=telephone]").value.trim(),
+          piege=formInscription.querySelector("[name=site]").value;
+
+      if(piege){ retourInscription.textContent="Merci, votre inscription est enregistrée."; formInscription.reset(); return; }
+      if(Date.now()-ouvertureInscription<3000){
+        retourInscription.textContent="Merci de prendre un instant pour vérifier vos informations avant l'envoi.";
+        return;
+      }
+      if(!prenom||!nom||!email||!tel){
+        retourInscription.textContent="Merci de renseigner votre nom, prénom, email et téléphone.";
+        return;
+      }
+      var jetonInscription=zoneTurnstileInscription?zoneTurnstileInscription.jeton:"";
+      if(CLE_TURNSTILE&&!jetonInscription){
+        retourInscription.textContent="Merci de valider la vérification anti-robots juste au-dessus.";
+        return;
+      }
+
+      var telCompletInscription=indicatif+" "+tel;
+
+      if(ADRESSE_COLLECTEUR){
+        fetch(ADRESSE_COLLECTEUR,{method:"POST",mode:"no-cors",
+          headers:{"Content-Type":"text/plain;charset=utf-8"},
+          body:JSON.stringify({
+            type:"inscription", programme:programmeInscription,
+            prenom:prenom, nom:nom, email:email, telephone:telCompletInscription,
+            session:bulleParente.dataset.moisChoisi||"non précisé",
+            visite:VISITE, parcours:PARCOURS.join(" > "),
+            provenance:document.referrer||"direct", jeton:jetonInscription
+          })});
+      }
+      noterEtape("inscription envoyée ("+programmeInscription+")");
+      envoyerParcours("inscription");
+
+      formInscription.hidden=true;
+      transition.classList.add("actif");
+      texteTransition.textContent="Merci "+prenom+" — votre inscription est enregistrée. Direction le paiement sécurisé…";
+
+      /* Le court délai laisse le temps à la requête ci-dessus de partir
+         avant que la page ne change d'adresse : une navigation immédiate
+         peut couper une requête encore en vol. */
+      setTimeout(function(){
+        var lien=LIENS_STRIPE[programmeInscription];
+        if(lien&&lien.indexOf("REMPLACER")!==0) location.href=lien;
+        else texteTransition.textContent="Votre inscription est bien enregistrée. Aurélie vous recontacte pour la suite — le paiement en ligne n'est pas encore activé.";
+      },1200);
+    });
+  });
 
   /* ---- Année ---- */
   [].forEach.call(document.querySelectorAll(".annee"),function(e){e.textContent=new Date().getFullYear()});
