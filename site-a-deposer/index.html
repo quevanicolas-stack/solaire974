@@ -1482,14 +1482,14 @@ strong{font-weight:700}
 
   var SESSIONS_SECOURS={
     coaching:{ colonnes:[
-      { mois:"Septembre 2026", jour:"", sessions:[ {places:3,publier:true},  {places:0,publier:false} ] },
-      { mois:"Octobre 2026",   jour:"", sessions:[ {places:2,publier:true},  {places:0,publier:false} ] },
-      { mois:"Novembre 2026",  jour:"", sessions:[ {places:5,publier:true},  {places:0,publier:false} ] }
+      { mois:"Septembre 2026", sessions:[ {jour:"",places:3,publier:true},  {jour:"",places:0,publier:false} ] },
+      { mois:"Octobre 2026",   sessions:[ {jour:"",places:2,publier:true},  {jour:"",places:0,publier:false} ] },
+      { mois:"Novembre 2026",  sessions:[ {jour:"",places:5,publier:true},  {jour:"",places:0,publier:false} ] }
     ]},
     accelerator:{ colonnes:[
-      { mois:"Septembre 2026", jour:"14", sessions:[ {places:5,publier:true},  {places:0,publier:false} ] },
-      { mois:"Octobre 2026",   jour:"",   sessions:[ {places:8,publier:true},  {places:0,publier:false} ] },
-      { mois:"Novembre 2026",  jour:"",   sessions:[ {places:10,publier:true}, {places:0,publier:false} ] }
+      { mois:"Septembre 2026", sessions:[ {jour:"14",places:5,publier:true},  {jour:"",places:0,publier:false} ] },
+      { mois:"Octobre 2026",   sessions:[ {jour:"",places:8,publier:true},    {jour:"",places:0,publier:false} ] },
+      { mois:"Novembre 2026",  sessions:[ {jour:"",places:10,publier:true},   {jour:"",places:0,publier:false} ] }
     ]}
   };
 
@@ -1527,28 +1527,30 @@ strong{font-weight:700}
                     : "Deux sessions programmées";
 
       var html='<div class="mois-titre">'+(col.mois||"")+'<small>'+soustitre+'</small></div>';
-      /* Le jour de démarrage est facultatif : une case vide dans le
-         tableau n'affiche rien, plutôt qu'une date à moitié écrite. */
-      if(col.jour && String(col.jour).trim()!==""){
-        html+='<p class="bulle-demarrage">Démarrage : '+String(col.jour).trim()+' '+
-              String(col.mois||"").replace(/\s*\d{4}\s*$/,"").toLowerCase()+'</p>';
-      }
 
       if(ouvertes.length===0){
         html+='<p class="mois-vide">Les prochaines dates seront annoncées ici. Inscrivez-vous ci-dessous pour être prévenu en priorité.</p>';
       }else{
+        /* « Octobre 2026 » → « octobre » : le jour de démarrage de
+           chaque session se lit « Démarrage : 14 octobre ». */
+        var moisSeul=String(col.mois||"").replace(/\s*\d{4}\s*$/,"").toLowerCase();
         ouvertes.forEach(function(s,k){
           /* Le nombre affiché est borné ici aussi, et pas seulement dans
              le script Google : une faute de frappe dans le tableau ne
              doit jamais annoncer plus de places qu'il n'en existe. */
           var places=Math.min(PLACES_PAR_SESSION,Math.max(0,parseInt(s.places,10)||0)),
               b=badgeDe(places), nom="Session "+(k+1);
+          /* Le jour de démarrage est facultatif et propre à chaque
+             session : deux sessions du même mois peuvent démarrer à
+             des dates différentes, une case vide n'affiche rien. */
+          var jourHtml = (s.jour && String(s.jour).trim()!=="")
+            ? '<p class="bulle-demarrage">Démarrage : '+String(s.jour).trim()+' '+moisSeul+'</p>' : '';
           if(places<=0){
-            html+='<div class="session session-complet"><div class="nom">'+nom+'</div>'+
+            html+='<div class="session session-complet"><div class="nom">'+nom+'</div>'+jourHtml+
                   '<span class="badge complet">Complet</span></div>';
           }else{
             html+='<a class="session session-cta" href="#" data-mois="'+(col.mois||"")+' — '+nom+'">'+
-                  '<div class="nom">'+nom+'</div><span class="badge '+b.classe+'">'+b.texte+'</span></a>';
+                  '<div class="nom">'+nom+'</div>'+jourHtml+'<span class="badge '+b.classe+'">'+b.texte+'</span></a>';
           }
         });
       }
