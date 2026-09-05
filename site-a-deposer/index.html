@@ -2347,15 +2347,12 @@ src="https://www.facebook.com/tr?id=1098827892487740&ev=PageView&noscript=1"/>
     [].forEach.call(document.querySelectorAll(".bulle-fond.ouvert"),fermerBulle);
   });
 
-  /* ATTENTION : liens de TEST Stripe (préfixe buy.stripe.com/test_).
-     Ils servent à vérifier tout le circuit sans encaisser de vrai
-     paiement (carte de test 4242 4242 4242 4242). À remplacer par les
-     liens en mode LIVE du tableau de bord Stripe d'Aurélie avant
-     toute mise en ligne réelle — sans quoi aucun client ne peut payer
-     pour de vrai. */
+  /* Liens de paiement Stripe en mode LIVE : un vrai paiement part
+     réellement d'ici. Créés par Aurélie dans son propre tableau de
+     bord Stripe. */
   var LIENS_STRIPE={
-    "Coaching 1:1":         "https://buy.stripe.com/test_14A7sM5KQdOmeDF0ql7ok01",
-    "Business Accelerator": "https://buy.stripe.com/test_4gM7sM2yEbGeeDFa0V7ok00"
+    "Coaching 1:1":         "https://buy.stripe.com/28E8wQfee6HNaUY1qmasg01",
+    "Business Accelerator": "https://buy.stripe.com/8x214o9TU8PVfbefhcasg00"
   };
 
   [].forEach.call(document.querySelectorAll(".formulaire-inscription"),function(formInscription){
