@@ -69,3 +69,12 @@
 # formulaire, pas par une recherche.
 /guide/assets/stop-avoiding-english-essentials.pdf
   X-Robots-Tag: noindex, nofollow
+
+# Tableau de bord interne (parcours des visiteurs) : jamais indexé, et
+# relié depuis aucune page du site — son adresse est la seule protection,
+# ce n'est pas un vrai mot de passe.
+/parcours-7f2q.html
+  X-Robots-Tag: noindex, nofollow
+
+/suiviparcours/*
+  X-Robots-Tag: noindex, nofollow

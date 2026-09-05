@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Parcours des visiteurs — Fluent &amp; Forward</title>
+<meta name="robots" content="noindex,nofollow">
+
+<!-- Redirection de secours si JavaScript est désactivé. -->
+<meta http-equiv="refresh" content="0; url=https://script.google.com/macros/s/AKfycbwK0XxvWhNiwoWVsROAHi7EFQFRMymFOcH5gxV-KSZ3C5F39DPcT1YxSp83iJq9oMbO/exec?vue=tableau">
+
+<style>
+  html{color-scheme:light dark}
+  body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
+    background:#FAF7F2;color:#2C1810;font-family:system-ui,sans-serif;font-size:15px}
+  @media (prefers-color-scheme:dark){ body{background:#18120D;color:#F3EBE2} }
+  a{color:inherit}
+</style>
+</head>
+<body>
+<p>Redirection vers le tableau de bord…
+  <a href="https://script.google.com/macros/s/AKfycbwK0XxvWhNiwoWVsROAHi7EFQFRMymFOcH5gxV-KSZ3C5F39DPcT1YxSp83iJq9oMbO/exec?vue=tableau">Cliquer ici si rien ne se passe.</a>
+</p>
+
+<script>
+/* Une vraie navigation déclenchée par le navigateur lui-même, plutôt
+   qu'une redirection au niveau du serveur : Apps Script fait son
+   propre saut interne pour servir ses pages, et ce saut se comporte
+   mal quand il arrive via une redirection d'un autre domaine
+   (téléchargement au lieu d'un affichage). location.replace() évite
+   aussi de garder cette page transitoire dans l'historique. */
+location.replace("https://script.google.com/macros/s/AKfycbwK0XxvWhNiwoWVsROAHi7EFQFRMymFOcH5gxV-KSZ3C5F39DPcT1YxSp83iJq9oMbO/exec?vue=tableau");
+</script>
+</body>
+</html>

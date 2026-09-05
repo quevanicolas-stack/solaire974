@@ -1,12 +1,9 @@
 # Fluent & Forward — redirections (Cloudflare Pages)
 #
-# Un lien court et stable sur le domaine, qui renvoie vers le tableau
-# de bord du parcours servi par Apps Script. Ce n'est qu'une
-# redirection : aucune copie de la page n'existe ici, donc elle ne
-# peut jamais se retrouver désynchronisée du script — si l'adresse
-# Apps Script change un jour (redéploiement avec une nouvelle URL),
-# il suffit de changer la ligne ci-dessous, sans rien dire à personne
-# d'autre. Le 302 (temporaire) plutôt que 301 évite qu'un navigateur
-# ne mette la redirection en cache de façon définitive.
-/suiviparcours   https://script.google.com/macros/s/AKfycbwK0XxvWhNiwoWVsROAHi7EFQFRMymFOcH5gxV-KSZ3C5F39DPcT1YxSp83iJq9oMbO/exec?vue=tableau   302
-/suiviparcours/  https://script.google.com/macros/s/AKfycbwK0XxvWhNiwoWVsROAHi7EFQFRMymFOcH5gxV-KSZ3C5F39DPcT1YxSp83iJq9oMbO/exec?vue=tableau   302
+# Le lien court vers le tableau de bord du parcours n'est PAS ici :
+# une redirection au niveau du serveur (Cloudflare) vers une page
+# Apps Script se heurte au second saut que Google fait lui-même en
+# interne pour servir ses pages, ce qui peut donner un téléchargement
+# au lieu d'un affichage normal. La solution retenue est une vraie
+# page à /suiviparcours/ qui navigue elle-même vers Apps Script en
+# JavaScript — voir site-a-deposer/suiviparcours/index.html.
