@@ -13,7 +13,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import configuration
 from app.db import initialiser_base
-from app.routes import commandes, extraction, ingestion, tableau_bord
+from app.routes import commandes, extraction, ingestion, prompts, tableau_bord
 from app.services.planificateur import boucle_polling
 
 
@@ -37,4 +37,5 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 app.include_router(tableau_bord.routeur)
 app.include_router(commandes.routeur)
 app.include_router(extraction.routeur)
+app.include_router(prompts.routeur)
 app.include_router(ingestion.routeur)
