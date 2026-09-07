@@ -8,6 +8,9 @@
 
 torch>=2.4
 diffusers>=0.30
-transformers>=4.44
+# transformers 5.x casse le code IP-Adapter de diffusers (erreur
+# "'tuple' object has no attribute 'shape'" observée en test réel) :
+# on reste sur la branche 4.x, la seule éprouvée avec cette fonctionnalité.
+transformers>=4.44,<5
 accelerate>=0.33
 safetensors>=0.4.3
