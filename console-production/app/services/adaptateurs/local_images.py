@@ -59,7 +59,11 @@ def _charger_pipeline() -> Any:
         ) from erreur
 
     pipeline = pipeline.to(peripherique)
-    pipeline.enable_attention_slicing()
+    # Ne pas appeler enable_attention_slicing() (ni xformers, ni cpu_offload)
+    # ici : fait après load_ip_adapter(), ça casse les processeurs
+    # d'attention installés par l'IP-Adapter et provoque une erreur
+    # "'tuple' object has no attribute 'shape'" (bug connu de diffusers,
+    # voir huggingface/diffusers#6914, #8863, #9448).
     pipeline.set_ip_adapter_scale(0.6)
     _pipeline_charge = pipeline
     return pipeline
