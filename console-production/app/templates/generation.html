@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block titre %}Génération — {{ commande['numero'] }}{% endblock %}
+{% block contenu %}
+<h1>Génération — {{ commande['numero'] }}</h1>
+<p class="champ-aide"><a href="/commandes/{{ commande['numero'] }}">Retour à la commande</a></p>
+<p class="champ-aide">Adaptateur actif : <strong>{{ adaptateur_actif }}</strong>{% if adaptateur_actif == 'factice' %} — aucun appel réseau, images de test uniquement.{% endif %}</p>
+
+{% if erreur %}
+<div class="message-erreur">{{ erreur }}</div>
+{% endif %}
+
+{% if not historique_prompts %}
+<p>Aucun prompt enregistré. <a href="/commandes/{{ commande['numero'] }}/prompt">Construire un prompt</a> d'abord.</p>
+{% else %}
+<h2>Lancer une génération</h2>
+<form method="post" action="/commandes/{{ commande['numero'] }}/generation/lancer">
+    <label for="prompt_id">Prompt à utiliser</label>
+    <select id="prompt_id" name="prompt_id">
+        {% for p in historique_prompts %}
+        <option value="{{ p['id'] }}">{{ p['horodatage'] }} — {{ p['prompt_texte'][:80] }}…</option>
+        {% endfor %}
+    </select>
+
+    <label for="nb_variantes">Nombre de variantes</label>
+    <input type="number" id="nb_variantes" name="nb_variantes" min="1" max="10" value="3">
+
+    <button type="submit">Générer</button>
+</form>
+{% endif %}
+
+<h2>Variantes générées</h2>
+{% if not variantes %}
+<p>Aucune variante pour l'instant.</p>
+{% else %}
+<div class="grille-vignettes">
+    {% for v in variantes %}
+    <div class="vignette">
+        <a href="{{ v['url'] }}" target="_blank"><img src="{{ v['url'] }}" alt="Variante générée"></a>
+        <span>seed {{ v['seed'] }}</span>
+        <span class="champ-aide">{{ v['horodatage'][:16] }}</span>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

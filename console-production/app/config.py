@@ -32,6 +32,7 @@ class Configuration:
     jeton_site: str
     extraction_nb_images: int
     extraction_seuil_nettete: float
+    adaptateur_generation: str
 
 
 def charger_configuration() -> Configuration:
@@ -43,6 +44,7 @@ def charger_configuration() -> Configuration:
         jeton_site=os.getenv("JETON_SITE", ""),
         extraction_nb_images=int(os.getenv("EXTRACTION_NB_IMAGES", "40")),
         extraction_seuil_nettete=float(os.getenv("EXTRACTION_SEUIL_NETTETE", "100.0")),
+        adaptateur_generation=os.getenv("ADAPTATEUR_GENERATION", "factice"),
     )
 
 
