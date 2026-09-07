@@ -116,7 +116,10 @@ class AdaptateurGenerationLocaleImages:
             try:
                 image = pipeline(
                     prompt,
-                    ip_adapter_image=images_reference_pil,
+                    # Un seul IP-Adapter chargé : diffusers attend une liste
+                    # d'un élément par adaptateur, chaque élément étant lui-même
+                    # la liste des images de référence pour cet adaptateur.
+                    ip_adapter_image=[images_reference_pil],
                     num_inference_steps=nb_etapes,
                     generator=generateur,
                 ).images[0]
