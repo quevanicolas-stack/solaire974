@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block titre %}Prompt — {{ commande['numero'] }}{% endblock %}
+{% block contenu %}
+<h1>Prompt de génération — {{ commande['numero'] }}</h1>
+<p class="champ-aide"><a href="/commandes/{{ commande['numero'] }}">Retour à la commande</a></p>
+
+{% if erreur %}
+<div class="message-erreur">{{ erreur }}</div>
+{% else %}
+<h2>Aperçu</h2>
+<form method="get" action="/commandes/{{ commande['numero'] }}/prompt">
+    <label for="style">Style (facultatif, sinon le style par défaut de l'espèce est utilisé)</label>
+    <input type="text" id="style" name="style" value="{{ style }}">
+    <button type="submit">Actualiser l'aperçu</button>
+</form>
+
+<p class="champ-aide">Gabarit utilisé : {{ apercu['template_utilise'] }}</p>
+<pre style="white-space: pre-wrap; background: white; padding: 1rem; border: 1px solid var(--couleur-bordure); border-radius: 6px;">{{ apercu['prompt_texte'] }}</pre>
+
+<form method="post" action="/commandes/{{ commande['numero'] }}/prompt/enregistrer">
+    <input type="hidden" name="style" value="{{ style }}">
+    <button type="submit">Enregistrer ce prompt dans l'historique</button>
+</form>
+{% endif %}
+
+<h2>Historique</h2>
+{% if not historique %}
+<p>Aucun prompt enregistré pour l'instant.</p>
+{% else %}
+{% for entree in historique %}
+<details>
+    <summary>{{ entree['horodatage'] }} — gabarit {{ entree['template_utilise'] }}</summary>
+    <pre style="white-space: pre-wrap;">{{ entree['prompt_texte'] }}</pre>
+</details>
+{% endfor %}
+{% endif %}
+{% endblock %}

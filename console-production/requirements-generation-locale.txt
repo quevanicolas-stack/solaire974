@@ -1,0 +1,20 @@
+# Dépendances de l'adaptateur de génération LOCAL (Stable Diffusion via
+# diffusers). Volumineuses (plusieurs centaines de Mo à installer, puis
+# plusieurs Go de poids de modèle téléchargés au premier lancement) :
+# installées à part, uniquement si tu actives ADAPTATEUR_GENERATION=local_texte
+# dans le .env. Le mode "factice" (par défaut) n'en a pas besoin.
+#
+# Installation : pip install -r requirements-generation-locale.txt
+
+torch>=2.4
+torchvision
+# Sans torchvision, transformers bascule sur CLIPImageProcessorPil (repli
+# de secours) pour préparer l'image de référence de l'IP-Adapter, ce qui
+# provoque une erreur "'tuple' object has no attribute 'shape'" observée
+# en test réel. torchvision active le chemin de code normal.
+diffusers>=0.30
+# transformers 5.x casse aussi le code IP-Adapter de diffusers : on reste
+# sur la branche 4.x, la seule éprouvée avec cette fonctionnalité.
+transformers>=4.44,<5
+accelerate>=0.33
+safetensors>=0.4.3

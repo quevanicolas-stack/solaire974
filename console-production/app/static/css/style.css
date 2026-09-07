@@ -1,0 +1,146 @@
+:root {
+    --couleur-fond: #f7f6f3;
+    --couleur-texte: #2a2a28;
+    --couleur-accent: #8a5a3b;
+    --couleur-bordure: #ddd8ce;
+    --couleur-erreur: #a3312a;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", sans-serif;
+    background: var(--couleur-fond);
+    color: var(--couleur-texte);
+}
+
+.entete {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 2rem;
+    background: white;
+    border-bottom: 1px solid var(--couleur-bordure);
+}
+
+.entete-titre {
+    font-weight: 600;
+    color: var(--couleur-texte);
+    text-decoration: none;
+}
+
+.entete-nav a {
+    margin-left: 1.5rem;
+    color: var(--couleur-accent);
+    text-decoration: none;
+}
+
+.contenu {
+    max-width: 900px;
+    margin: 2rem auto;
+    padding: 0 1.5rem;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+}
+
+th, td {
+    text-align: left;
+    padding: 0.6rem 0.8rem;
+    border-bottom: 1px solid var(--couleur-bordure);
+}
+
+form {
+    background: white;
+    padding: 1.5rem;
+    border: 1px solid var(--couleur-bordure);
+    border-radius: 6px;
+}
+
+label {
+    display: block;
+    margin-top: 1rem;
+    font-weight: 600;
+}
+
+input, select, textarea {
+    width: 100%;
+    padding: 0.5rem;
+    margin-top: 0.3rem;
+    border: 1px solid var(--couleur-bordure);
+    border-radius: 4px;
+    font-family: inherit;
+}
+
+button {
+    margin-top: 1.5rem;
+    padding: 0.6rem 1.2rem;
+    background: var(--couleur-accent);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.message-erreur {
+    background: #fbeceb;
+    color: var(--couleur-erreur);
+    border: 1px solid var(--couleur-erreur);
+    padding: 0.8rem;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+}
+
+.message-info {
+    background: #eef4ee;
+    border: 1px solid #4a7a4a;
+    padding: 0.8rem;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+}
+
+.statut {
+    display: inline-block;
+    padding: 0.15rem 0.6rem;
+    border-radius: 3px;
+    background: #eee8dc;
+    font-size: 0.85rem;
+}
+
+.champ-aide {
+    font-weight: 400;
+    font-size: 0.85rem;
+    color: #777;
+}
+
+.grille-vignettes {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 0.8rem;
+    margin: 1rem 0;
+}
+
+.vignette {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3rem;
+    background: white;
+    border: 1px solid var(--couleur-bordure);
+    border-radius: 6px;
+    padding: 0.5rem;
+    font-size: 0.8rem;
+    cursor: pointer;
+}
+
+.vignette img {
+    width: 100%;
+    border-radius: 4px;
+    object-fit: cover;
+}
