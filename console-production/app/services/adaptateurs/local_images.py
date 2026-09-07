@@ -64,7 +64,7 @@ def _charger_pipeline() -> Any:
     # d'attention installés par l'IP-Adapter et provoque une erreur
     # "'tuple' object has no attribute 'shape'" (bug connu de diffusers,
     # voir huggingface/diffusers#6914, #8863, #9448).
-    pipeline.set_ip_adapter_scale(0.6)
+    pipeline.set_ip_adapter_scale(0.4)
     _pipeline_charge = pipeline
     return pipeline
 
