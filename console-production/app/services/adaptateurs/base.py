@@ -14,6 +14,11 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 
 
+class ErreurAdaptateurGeneration(Exception):
+    """Erreur levée par un adaptateur pendant la génération (dépendance
+    manquante, modèle introuvable, échec d'inférence)."""
+
+
 class AdaptateurGeneration(ABC):
     @abstractmethod
     def generer(

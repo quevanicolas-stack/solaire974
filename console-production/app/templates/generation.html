@@ -3,7 +3,14 @@
 {% block contenu %}
 <h1>Génération — {{ commande['numero'] }}</h1>
 <p class="champ-aide"><a href="/commandes/{{ commande['numero'] }}">Retour à la commande</a></p>
-<p class="champ-aide">Adaptateur actif : <strong>{{ adaptateur_actif }}</strong>{% if adaptateur_actif == 'factice' %} — aucun appel réseau, images de test uniquement.{% endif %}</p>
+<p class="champ-aide">
+    Adaptateur actif : <strong>{{ adaptateur_actif }}</strong>
+    {% if adaptateur_actif == 'factice' %}
+    — aucun appel réseau, images de test uniquement.
+    {% elif adaptateur_actif == 'local_texte' %}
+    — génération locale (Stable Diffusion, texte seul), aucun appel réseau une fois le modèle téléchargé. Peut prendre plusieurs minutes par image sur cette machine.
+    {% endif %}
+</p>
 
 {% if erreur %}
 <div class="message-erreur">{{ erreur }}</div>

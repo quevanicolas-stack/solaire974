@@ -33,6 +33,7 @@ class Configuration:
     extraction_nb_images: int
     extraction_seuil_nettete: float
     adaptateur_generation: str
+    modele_generation_local: str
 
 
 def charger_configuration() -> Configuration:
@@ -45,6 +46,7 @@ def charger_configuration() -> Configuration:
         extraction_nb_images=int(os.getenv("EXTRACTION_NB_IMAGES", "40")),
         extraction_seuil_nettete=float(os.getenv("EXTRACTION_SEUIL_NETTETE", "100.0")),
         adaptateur_generation=os.getenv("ADAPTATEUR_GENERATION", "factice"),
+        modele_generation_local=os.getenv("MODELE_GENERATION_LOCAL", "sd-legacy/stable-diffusion-v1-5"),
     )
 
 

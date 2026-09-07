@@ -9,11 +9,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from app.config import configuration
-from app.services.adaptateurs.base import AdaptateurGeneration
+from app.services.adaptateurs.base import AdaptateurGeneration, ErreurAdaptateurGeneration
 from app.services.adaptateurs.factice import AdaptateurGenerationFactice
+from app.services.adaptateurs.local_texte import AdaptateurGenerationLocaleTexte
 
 ADAPTATEURS_DISPONIBLES: dict[str, type[AdaptateurGeneration]] = {
     "factice": AdaptateurGenerationFactice,
+    "local_texte": AdaptateurGenerationLocaleTexte,
 }
 
 
@@ -61,7 +63,10 @@ def lancer_generation(
     parametres = {"nb_variantes": nb_variantes}
 
     adaptateur = obtenir_adaptateur()
-    resultats = adaptateur.generer(ligne_prompt["prompt_texte"], images_reference, parametres, dossier_sortie)
+    try:
+        resultats = adaptateur.generer(ligne_prompt["prompt_texte"], images_reference, parametres, dossier_sortie)
+    except ErreurAdaptateurGeneration as erreur:
+        raise ErreurGeneration(str(erreur)) from erreur
 
     horodatage = datetime.now(timezone.utc).isoformat()
     ids_crees = []
