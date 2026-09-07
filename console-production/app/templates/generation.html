@@ -9,6 +9,8 @@
     — aucun appel réseau, images de test uniquement.
     {% elif adaptateur_actif == 'local_texte' %}
     — génération locale (Stable Diffusion, texte seul), aucun appel réseau une fois le modèle téléchargé. Peut prendre plusieurs minutes par image sur cette machine.
+    {% elif adaptateur_actif == 'local_images' %}
+    — génération locale avec photo de référence (IP-Adapter), aucun appel réseau une fois les modèles téléchargés. Utilise la première photo de détail disponible (ou, à défaut, un extrait vidéo retenu).
     {% endif %}
 </p>
 

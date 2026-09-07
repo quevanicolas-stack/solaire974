@@ -11,11 +11,13 @@ from pathlib import Path
 from app.config import configuration
 from app.services.adaptateurs.base import AdaptateurGeneration, ErreurAdaptateurGeneration
 from app.services.adaptateurs.factice import AdaptateurGenerationFactice
+from app.services.adaptateurs.local_images import AdaptateurGenerationLocaleImages
 from app.services.adaptateurs.local_texte import AdaptateurGenerationLocaleTexte
 
 ADAPTATEURS_DISPONIBLES: dict[str, type[AdaptateurGeneration]] = {
     "factice": AdaptateurGenerationFactice,
     "local_texte": AdaptateurGenerationLocaleTexte,
+    "local_images": AdaptateurGenerationLocaleImages,
 }
 
 
@@ -34,14 +36,21 @@ def obtenir_adaptateur(nom: str | None = None) -> AdaptateurGeneration:
 
 
 def collecter_images_reference(connexion: sqlite3.Connection, commande_numero: str) -> list[Path]:
-    """Images de référence pour la génération : extraits vidéo retenus + photos de détail du client."""
-    extraits_retenus = connexion.execute(
-        "SELECT chemin FROM extraits_images WHERE commande_numero = ? AND retenue = 1", (commande_numero,)
-    ).fetchall()
+    """Images de référence pour la génération.
+
+    Les photos de détail du client sont placées en premier : plus
+    proches et mieux cadrées sur le visage de l'animal que les
+    extraits vidéo, elles font de meilleures références pour
+    l'IP-Adapter (voir local_images.py, qui utilise la première image
+    de cette liste).
+    """
     photos_detail = connexion.execute(
         "SELECT chemin FROM fichiers_sources WHERE commande_numero = ? AND type = 'photo'", (commande_numero,)
     ).fetchall()
-    return [Path(ligne["chemin"]) for ligne in [*extraits_retenus, *photos_detail]]
+    extraits_retenus = connexion.execute(
+        "SELECT chemin FROM extraits_images WHERE commande_numero = ? AND retenue = 1", (commande_numero,)
+    ).fetchall()
+    return [Path(ligne["chemin"]) for ligne in [*photos_detail, *extraits_retenus]]
 
 
 def lancer_generation(
