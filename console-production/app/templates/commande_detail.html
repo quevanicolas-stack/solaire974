@@ -3,6 +3,7 @@
 {% block contenu %}
 <h1>{{ commande['numero'] }}</h1>
 <p><span class="statut">{{ libelles_statuts[commande['statut']] }}</span> — origine : {{ commande['origine'] }}</p>
+<p><a href="/commandes/{{ commande['numero'] }}/extraction">Extraction des images depuis la vidéo</a></p>
 
 <table>
     <tbody>

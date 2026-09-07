@@ -118,3 +118,29 @@ button {
     font-size: 0.85rem;
     color: #777;
 }
+
+.grille-vignettes {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 0.8rem;
+    margin: 1rem 0;
+}
+
+.vignette {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3rem;
+    background: white;
+    border: 1px solid var(--couleur-bordure);
+    border-radius: 6px;
+    padding: 0.5rem;
+    font-size: 0.8rem;
+    cursor: pointer;
+}
+
+.vignette img {
+    width: 100%;
+    border-radius: 4px;
+    object-fit: cover;
+}
