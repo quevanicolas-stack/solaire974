@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block titre %}Commande {{ commande['numero'] }}{% endblock %}
+{% block contenu %}
+<h1>{{ commande['numero'] }}</h1>
+<p><span class="statut">{{ libelles_statuts[commande['statut']] }}</span> — origine : {{ commande['origine'] }}</p>
+
+<table>
+    <tbody>
+        <tr><th>Animal</th><td>{{ commande['prenom_animal'] }} ({{ commande['espece_autre'] or commande['espece'] }})</td></tr>
+        <tr><th>Objet préféré</th><td>{{ commande['objet_prefere'] }}</td></tr>
+        <tr><th>Note d'identité</th><td>{{ commande['note_identite'] or '—' }}</td></tr>
+        <tr><th>Format</th><td>{{ commande['format'] }}</td></tr>
+        <tr><th>Créée le</th><td>{{ commande['date_creation'] }}</td></tr>
+    </tbody>
+</table>
+
+<h2>Fichiers sources</h2>
+{% if not fichiers %}
+<p>Aucun fichier enregistré.</p>
+{% else %}
+<table>
+    <thead><tr><th>Type</th><th>Chemin</th><th>Taille</th><th>Récupéré le</th></tr></thead>
+    <tbody>
+        {% for f in fichiers %}
+        <tr>
+            <td>{{ f['type'] }}</td>
+            <td>{{ f['chemin'] }}</td>
+            <td>{{ (f['taille_octets'] / 1_000_000) | round(1) }} Mo</td>
+            <td>{{ f['recupere_le'] }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+{% endblock %}

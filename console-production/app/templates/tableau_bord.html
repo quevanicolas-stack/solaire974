@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block titre %}Tableau de bord{% endblock %}
+{% block contenu %}
+<h1>Commandes</h1>
+
+{% if not commandes %}
+<p>Aucune commande pour l'instant. <a href="/commandes/nouvelle">Créer une commande manuelle</a> ou
+   <a href="/ingestion">récupérer les commandes du site</a>.</p>
+{% else %}
+<table>
+    <thead>
+        <tr>
+            <th>Numéro</th>
+            <th>Animal</th>
+            <th>Espèce</th>
+            <th>Statut</th>
+            <th>Origine</th>
+            <th>Créée le</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for commande in commandes %}
+        <tr>
+            <td><a href="/commandes/{{ commande['numero'] }}">{{ commande['numero'] }}</a></td>
+            <td>{{ commande['prenom_animal'] }}</td>
+            <td>{{ commande['espece'] }}</td>
+            <td><span class="statut">{{ libelles_statuts[commande['statut']] }}</span></td>
+            <td>{{ commande['origine'] }}</td>
+            <td>{{ commande['date_creation'][:10] }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+{% endblock %}

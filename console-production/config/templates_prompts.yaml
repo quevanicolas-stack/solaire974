@@ -1,0 +1,27 @@
+# Templates de prompt de génération, indexés par espèce.
+# Utilisés à l'étape 4 du pipeline (construction du prompt).
+# Variables disponibles : {prenom}, {espece}, {objet_prefere}, {note_identite}, {style}
+
+chien:
+  style_defaut: "peinture à l'huile, portrait animalier réaliste"
+  gabarit: >
+    Portrait de {prenom}, un chien, dans le style {style}.
+    Représenter fidèlement sa morphologie canine (truffe, oreilles,
+    posture). {prenom} est associé à {objet_prefere}.
+    Élément d'identité à préserver : {note_identite}.
+
+chat:
+  style_defaut: "peinture à l'huile, portrait animalier réaliste"
+  gabarit: >
+    Portrait de {prenom}, un chat, dans le style {style}.
+    Représenter fidèlement sa morphologie féline (moustaches, position
+    des oreilles, regard). {prenom} est associé à {objet_prefere}.
+    Élément d'identité à préserver : {note_identite}.
+
+autre:
+  style_defaut: "peinture à l'huile, portrait animalier réaliste"
+  gabarit: >
+    Portrait de {prenom}, {espece}, dans le style {style}.
+    Respecter la morphologie propre à cette espèce.
+    {prenom} est associé à {objet_prefere}.
+    Élément d'identité à préserver : {note_identite}.

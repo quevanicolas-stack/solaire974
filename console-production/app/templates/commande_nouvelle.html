@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block titre %}Nouvelle commande{% endblock %}
+{% block contenu %}
+<h1>Nouvelle commande (mode manuel)</h1>
+<p class="champ-aide">Le numéro de commande est généré automatiquement (MAN-AAAAMMJJ-compteur).</p>
+
+{% if erreur %}
+<div class="message-erreur">{{ erreur }}</div>
+{% endif %}
+
+<form method="post" action="/commandes/nouvelle" enctype="multipart/form-data">
+    <label for="prenom_animal">Prénom de l'animal</label>
+    <input type="text" id="prenom_animal" name="prenom_animal" required>
+
+    <label for="espece">Espèce</label>
+    <select id="espece" name="espece" required>
+        {% for e in especes %}
+        <option value="{{ e }}">{{ e }}</option>
+        {% endfor %}
+    </select>
+
+    <label for="espece_autre">Si "autre", préciser l'espèce</label>
+    <input type="text" id="espece_autre" name="espece_autre">
+
+    <label for="objet_prefere">Objet préféré de l'animal</label>
+    <input type="text" id="objet_prefere" name="objet_prefere" required>
+
+    <label for="photo_objet">Photo de l'objet préféré <span class="champ-aide">(facultatif)</span></label>
+    <input type="file" id="photo_objet" name="photo_objet" accept=".jpg,.jpeg,.png">
+
+    <label for="note_identite">Note d'identité <span class="champ-aide">— qu'est-ce qui fait qu'on le reconnaît</span></label>
+    <textarea id="note_identite" name="note_identite" rows="3"></textarea>
+
+    <label for="format">Format</label>
+    <select id="format" name="format" required>
+        {% for f in formats %}
+        <option value="{{ f }}">{{ f }}</option>
+        {% endfor %}
+    </select>
+
+    <label for="video">Vidéo de l'animal (15-20 s, .mp4 ou .mov)</label>
+    <input type="file" id="video" name="video" accept=".mp4,.mov" required>
+
+    <label for="photos">Photos rapprochées <span class="champ-aide">(2 à 3 fichiers)</span></label>
+    <input type="file" id="photos" name="photos" accept=".jpg,.jpeg,.png" multiple required>
+
+    <button type="submit">Créer la commande</button>
+</form>
+{% endblock %}

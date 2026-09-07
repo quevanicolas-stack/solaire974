@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block titre %}Ingestion{% endblock %}
+{% block contenu %}
+<h1>Récupération des commandes depuis le site</h1>
+
+{% if resume %}
+<div class="message-info">{{ resume }}</div>
+{% endif %}
+
+<form method="post" action="/ingestion/executer">
+    <button type="submit">Récupérer les nouvelles commandes</button>
+</form>
+
+<h2>Interrogation automatique</h2>
+<p class="champ-aide">Désactivée par défaut. Une fois activée, l'outil vérifie régulièrement s'il est temps
+   de relancer un cycle, selon l'intervalle choisi.</p>
+
+<form method="post" action="/ingestion/polling">
+    <label for="actif">Activer l'interrogation automatique</label>
+    <select id="actif" name="actif">
+        <option value="0" {% if not etat_polling['actif'] %}selected{% endif %}>Désactivée</option>
+        <option value="1" {% if etat_polling['actif'] %}selected{% endif %}>Activée</option>
+    </select>
+
+    <label for="intervalle_minutes">Intervalle (minutes)</label>
+    <input type="number" id="intervalle_minutes" name="intervalle_minutes" min="1"
+           value="{{ etat_polling['intervalle_minutes'] }}">
+
+    <button type="submit">Enregistrer</button>
+</form>
+
+{% if etat_polling['derniere_execution'] %}
+<p class="champ-aide">Dernier cycle automatique : {{ etat_polling['derniere_execution'] }}</p>
+{% endif %}
+{% endblock %}
