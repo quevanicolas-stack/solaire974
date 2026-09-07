@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from fastapi import APIRouter, Form, Request
@@ -26,12 +27,18 @@ def _charger_contexte(connexion, numero: str, erreur: str | None = None) -> dict
     historique_prompts = connexion.execute(
         "SELECT * FROM prompts_historique WHERE commande_numero = ? ORDER BY horodatage DESC", (numero,)
     ).fetchall()
-    variantes = [
-        {**dict(ligne), "url": _url_fichier(ligne["chemin"])}
-        for ligne in connexion.execute(
-            "SELECT * FROM variantes WHERE commande_numero = ? ORDER BY horodatage DESC", (numero,)
-        ).fetchall()
-    ]
+    variantes = []
+    for ligne in connexion.execute(
+        "SELECT * FROM variantes WHERE commande_numero = ? ORDER BY horodatage DESC", (numero,)
+    ).fetchall():
+        parametres = json.loads(ligne["parametres_json"] or "{}")
+        variantes.append(
+            {
+                **dict(ligne),
+                "url": _url_fichier(ligne["chemin"]),
+                "images_reference_utilisees": parametres.get("images_reference_disponibles", []),
+            }
+        )
     return {
         "commande": commande,
         "historique_prompts": historique_prompts,

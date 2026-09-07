@@ -69,7 +69,12 @@ def lancer_generation(
 
     images_reference = collecter_images_reference(connexion, commande_numero)
     dossier_sortie = configuration.dossier_commandes / commande_numero / "variantes"
-    parametres = {"nb_variantes": nb_variantes}
+    parametres = {
+        "nb_variantes": nb_variantes,
+        # Noms des fichiers de référence disponibles, pour vérifier après coup
+        # lesquels ont réellement été fournis à l'adaptateur (débogage).
+        "images_reference_disponibles": [chemin.name for chemin in images_reference],
+    }
 
     adaptateur = obtenir_adaptateur()
     try:

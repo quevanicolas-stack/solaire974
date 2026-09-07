@@ -20,7 +20,12 @@ from app.services.adaptateurs.base import ErreurAdaptateurGeneration
 _pipeline_charge: Any = None
 
 DEPOT_IP_ADAPTER = "h94/IP-Adapter"
-POIDS_IP_ADAPTER = "ip-adapter_sd15.bin"
+# La version "plus" retient des détails de l'image de référence (tokens par
+# patch) au lieu d'un unique vecteur global : bien meilleure fidélité et
+# réglage plus progressif que la version standard, qui basculait
+# brutalement entre "quasi-copie" et "aucune ressemblance" selon l'intensité.
+POIDS_IP_ADAPTER = "ip-adapter-plus_sd15.bin"
+NB_IMAGES_REFERENCE_MAX = 3
 
 
 def _charger_pipeline() -> Any:
@@ -64,20 +69,21 @@ def _charger_pipeline() -> Any:
     # d'attention installés par l'IP-Adapter et provoque une erreur
     # "'tuple' object has no attribute 'shape'" (bug connu de diffusers,
     # voir huggingface/diffusers#6914, #8863, #9448).
-    pipeline.set_ip_adapter_scale(0.4)
+    pipeline.set_ip_adapter_scale(0.5)
     _pipeline_charge = pipeline
     return pipeline
 
 
-def choisir_image_reference(images_reference: list[Path]) -> Path:
-    """La première image de la liste (photo de détail en priorité, voir
-    generation.collecter_images_reference)."""
+def choisir_images_reference(images_reference: list[Path]) -> list[Path]:
+    """Jusqu'à NB_IMAGES_REFERENCE_MAX images (photos de détail en priorité,
+    voir generation.collecter_images_reference), pour une meilleure fidélité
+    que sur une seule image."""
     if not images_reference:
         raise ErreurAdaptateurGeneration(
             "Aucune image de référence disponible : sélectionne des extraits vidéo "
             "et/ou vérifie que des photos de détail ont été déposées."
         )
-    return images_reference[0]
+    return images_reference[:NB_IMAGES_REFERENCE_MAX]
 
 
 class AdaptateurGenerationLocaleImages:
@@ -91,14 +97,14 @@ class AdaptateurGenerationLocaleImages:
         dossier_sortie: Path,
     ) -> list[dict]:
         dossier_sortie.mkdir(parents=True, exist_ok=True)
-        chemin_reference = choisir_image_reference(images_reference)
+        chemins_reference = choisir_images_reference(images_reference)
 
         pipeline = _charger_pipeline()
 
         import torch
         from PIL import Image as ImagePIL
 
-        image_reference = ImagePIL.open(chemin_reference).convert("RGB")
+        images_reference_pil = [ImagePIL.open(chemin).convert("RGB") for chemin in chemins_reference]
 
         nb_variantes = int(parametres.get("nb_variantes", 3))
         nb_etapes = int(parametres.get("nb_etapes", 25))
@@ -110,7 +116,7 @@ class AdaptateurGenerationLocaleImages:
             try:
                 image = pipeline(
                     prompt,
-                    ip_adapter_image=image_reference,
+                    ip_adapter_image=images_reference_pil,
                     num_inference_steps=nb_etapes,
                     generator=generateur,
                 ).images[0]

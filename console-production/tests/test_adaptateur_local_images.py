@@ -13,8 +13,9 @@ import pytest
 
 from app.services.adaptateurs.base import ErreurAdaptateurGeneration
 from app.services.adaptateurs.local_images import (
+    NB_IMAGES_REFERENCE_MAX,
     AdaptateurGenerationLocaleImages,
-    choisir_image_reference,
+    choisir_images_reference,
 )
 from app.services.generation import obtenir_adaptateur
 
@@ -26,14 +27,15 @@ def test_obtenir_adaptateur_local_images_instancie_la_bonne_classe():
     assert isinstance(adaptateur, AdaptateurGenerationLocaleImages)
 
 
-def test_choisir_image_reference_prend_la_premiere_de_la_liste():
-    images = [Path("/tmp/photo_detail.jpg"), Path("/tmp/extrait_video.jpg")]
-    assert choisir_image_reference(images) == Path("/tmp/photo_detail.jpg")
+def test_choisir_images_reference_garde_lordre_et_plafonne_au_maximum():
+    images = [Path(f"/tmp/photo_{i}.jpg") for i in range(NB_IMAGES_REFERENCE_MAX + 2)]
+    resultat = choisir_images_reference(images)
+    assert resultat == images[:NB_IMAGES_REFERENCE_MAX]
 
 
-def test_choisir_image_reference_sans_aucune_image_leve_une_erreur():
+def test_choisir_images_reference_sans_aucune_image_leve_une_erreur():
     with pytest.raises(ErreurAdaptateurGeneration):
-        choisir_image_reference([])
+        choisir_images_reference([])
 
 
 @pytest.mark.skipif(

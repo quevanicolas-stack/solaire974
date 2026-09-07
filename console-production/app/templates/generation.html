@@ -10,7 +10,7 @@
     {% elif adaptateur_actif == 'local_texte' %}
     — génération locale (Stable Diffusion, texte seul), aucun appel réseau une fois le modèle téléchargé. Peut prendre plusieurs minutes par image sur cette machine.
     {% elif adaptateur_actif == 'local_images' %}
-    — génération locale avec photo de référence (IP-Adapter), aucun appel réseau une fois les modèles téléchargés. Utilise la première photo de détail disponible (ou, à défaut, un extrait vidéo retenu).
+    — génération locale avec photo(s) de référence (IP-Adapter), aucun appel réseau une fois les modèles téléchargés. Utilise jusqu'à 3 photos de détail (ou, à défaut, des extraits vidéo retenus).
     {% endif %}
 </p>
 
@@ -47,6 +47,9 @@
         <a href="{{ v['url'] }}" target="_blank"><img src="{{ v['url'] }}" alt="Variante générée"></a>
         <span>seed {{ v['seed'] }}</span>
         <span class="champ-aide">{{ v['horodatage'][:16] }}</span>
+        {% if v['images_reference_utilisees'] %}
+        <span class="champ-aide">référence(s) : {{ v['images_reference_utilisees'] | join(', ') }}</span>
+        {% endif %}
     </div>
     {% endfor %}
 </div>
