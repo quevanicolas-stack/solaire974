@@ -477,7 +477,9 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
         <div class="note n-amb">
           <div class="note-t">Mode démonstration actif</div>
           Aucune voix n'est clonée dans ce mode : la synthèse utilisera une voix générique du navigateur.
-          Repassez en clonage réel dans les réglages pour reproduire une voix enregistrée.
+          <div style="margin-top:10px">
+            <button class="btn btn-g btn-sm" onclick="revenirAuClonage()">Revenir au clonage de ma voix</button>
+          </div>
         </div>
       </div>
 
@@ -488,6 +490,9 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
           Ces voix appartiennent au service distant. Aucune personne de votre entourage n'est reproduite,
           et aucun échantillon n'est envoyé. Le rendu reste une voix de synthèse et doit être présenté
           comme tel. Vérifiez les conditions d'utilisation du fournisseur avant tout usage commercial.
+          <div style="margin-top:10px">
+            <button class="btn btn-g btn-sm" onclick="revenirAuClonage()">Enregistrer ma voix à la place</button>
+          </div>
         </div>
         <div class="sec">Choisir une voix</div>
         <div class="card">
@@ -942,6 +947,7 @@ const etat = {
   mode:'reel',           // 'reel' | 'demo'
   fournisseur:'local',   // 'local' | 'distant' — le serveur local est le défaut
   typeVoix:'clonee',     // 'clonee' | 'catalogue'
+  fournisseurAvant:null, // fournisseur à rétablir en quittant le catalogue
   voixAAmeliorer:null,   // voix dont on prépare une nouvelle version
   connexion:null,        // dernier résultat de vérification du service
   voixId:null,
@@ -1572,7 +1578,22 @@ function choisirTypeVoix(t){
   /* Le catalogue n'existe que chez le service distant : le choix du
      fournisseur n'a plus lieu d'être proposé. */
   $('blocFournisseur').style.display = (t === 'catalogue') ? 'none' : 'block';
-  if(t === 'catalogue' && etat.fournisseur !== 'distant') choisirFournisseur('distant');
+
+  /* Le fournisseur d'avant est retenu puis rétabli au retour. Sans cela, un
+     aller-retour par le catalogue laisse l'application branchée sur le service
+     distant alors que le serveur local tourne, sans que rien ne l'indique. */
+  if(t === 'catalogue'){
+    if(etat.fournisseur !== 'distant'){
+      etat.fournisseurAvant = etat.fournisseur;
+      if(bd) bdEcrire('config', {cle:'fournisseurAvant', valeur:etat.fournisseurAvant});
+      choisirFournisseur('distant');
+    }
+  }else if(etat.fournisseurAvant){
+    const precedent = etat.fournisseurAvant;
+    etat.fournisseurAvant = null;
+    if(bd) bdEffacerLigne('config','fournisseurAvant');
+    choisirFournisseur(precedent);
+  }
 
   /* Changer de type invalide la voix retenue précédemment, mais rétablir
      l'affichage au démarrage ne doit rien effacer. */
@@ -1583,6 +1604,15 @@ function choisirTypeVoix(t){
   }
   majAffichageEtape4();
   majEtat();
+}
+
+/* Le catalogue et le mode démonstration masquent l'enregistreur, et le chemin
+   du retour est replié dans les réglages : sans ce raccourci, on ne retrouve
+   plus comment enregistrer sa propre voix. */
+function revenirAuClonage(){
+  if(etat.mode !== 'reel') choisirMode('reel');
+  choisirTypeVoix('clonee');
+  toast('Retour au clonage : vous pouvez enregistrer votre voix.', 'ok');
 }
 
 function choisirFournisseur(f){
@@ -2818,6 +2848,9 @@ async function demarrer(){
 
       const type = await bdLire('config','typeVoix');
       if(type && type.valeur === 'catalogue') etat.typeVoix = 'catalogue';
+
+      const avant = await bdLire('config','fournisseurAvant');
+      if(avant && avant.valeur) etat.fournisseurAvant = avant.valeur;
 
       const eloc = await bdLire('config','elocution');
       if(eloc && eloc.valeur && $('elocution').querySelector('option[value="'+eloc.valeur+'"]')){
