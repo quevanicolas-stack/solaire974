@@ -219,6 +219,23 @@ Ces valeurs sont normalement déduites des curseurs de rendu. La case « piloter
 le moteur à la main » court-circuite cette déduction ; un bouton rétablit les
 valeurs déduites.
 
+### Le niveau sonore, et le plafond de qualité
+
+L'étape Synthèse propose une mise au niveau en **LUFS**, la mesure du volume
+perçu employée en télévision, au cinéma et sur les plateformes : -23 LUFS pour
+la norme EBU R128, -16 pour l'écoute en ligne, -14 pour les plateformes
+musicales. Elle agit en tout dernier, après le traitement, et respecte un
+plafond de crête pour ne jamais saturer.
+
+C'est ce qui manquait pour que deux phrases générées séparément s'entendent au
+même niveau : la normalisation sur la crête, elle, ne dit rien du volume perçu.
+
+**Ce qu'aucun réglage ne rattrapera.** XTTS-v2 produit du 24 kHz. Rien n'existe
+donc au-dessus de 12 kHz, et convertir en 48 kHz ne crée pas cette information :
+mesurée sur une conversion, la bande 13-23 kHz est 51 dB sous la bande utile,
+c'est-à-dire vide. Un dialogue de cinéma porte du contenu jusque vers 20 kHz.
+Pour franchir ce plafond il faut changer de modèle, pas de réglage.
+
 ### La régularité du débit
 
 Sur un texte de plusieurs phrases, le modèle reprenait chaque phrase de zéro :
