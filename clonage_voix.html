@@ -945,6 +945,20 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
               <option value="48000">48 000 Hz — standard vidéo</option>
             </select>
           </div>
+          <div class="champ">
+            <label class="lbl" for="loudness">Niveau sonore normalisé</label>
+            <select id="loudness" onchange="enregistrerExport()">
+              <option value="0">Aucun — niveau laissé tel quel</option>
+              <option value="-23">-23 LUFS — norme télévision et cinéma (EBU R128)</option>
+              <option value="-16">-16 LUFS — écoute en ligne et podcast</option>
+              <option value="-14">-14 LUFS — plateformes musicales</option>
+            </select>
+            <div class="aide">
+              Mesure du volume <em>perçu</em>, pondérée comme l'oreille et insensible aux silences.
+              C'est ce qui fait que deux phrases générées séparément s'entendent au même niveau.
+              Appliqué en tout dernier, après le traitement.
+            </div>
+          </div>
         </div>
         <div class="note n-blu" style="margin-top:12px">
           <div class="note-t">Ce que ces réglages font, et ne font pas</div>
@@ -2617,7 +2631,8 @@ function chaineCourante(){
       ? {seuil: parseFloat($('porte').value), rogner: $('rogner').checked}
       : null,
     resolution: resolutionExport(),
-    frequence: frequenceExport()
+    frequence: frequenceExport(),
+    loudness: $('loudness').value
   };
 }
 
@@ -2699,8 +2714,99 @@ async function appliquerTraitement(blob, chaineDemandee){
     }
   }
 
+  /* La mise au niveau vient en tout dernier : toute correction appliquée après
+     elle ferait manquer la cible. C'est aussi pourquoi elle a lieu ici, dans
+     le navigateur, et non sur le serveur dont la sortie est encore retouchée. */
+  const loudness = CIBLES_LOUDNESS[String(c.loudness || '0')];
+  if(loudness){
+    const mesure = await mesurerLoudness(donnees, rendu.sampleRate);
+    if(mesure !== null){
+      let facteur = Math.pow(10, (loudness.cible - mesure) / 20);
+      /* Le plafond de crête n'est pas négociable : dépasser sature. */
+      let crete = 0;
+      for(let i=0;i<donnees.length;i++){
+        const v = Math.abs(donnees[i]);
+        if(v > crete) crete = v;
+      }
+      const plafond = Math.pow(10, loudness.creteMax / 20);
+      if(crete * facteur > plafond) facteur = plafond / Math.max(crete, 1e-9);
+      for(let i=0;i<donnees.length;i++) donnees[i] *= facteur;
+    }
+  }
+
   const converti = await reechantillonner(donnees, rendu.sampleRate, c.frequence || 0);
   return encoderWav(converti.donnees, converti.frequence, c.resolution || 16);
+}
+
+/* ══════════════════════════════════════════════════════
+   NIVEAU SONORE NORMALISÉ (EBU R128)
+   ══════════════════════════════════════════════════════ */
+
+/* Normaliser sur la crête, comme le fait la chaîne radio, ne dit rien du volume
+   perçu : deux phrases de même crête peuvent s'entendre très différemment. Le
+   cinéma, la télévision et les plateformes raisonnent en LUFS, une mesure qui
+   pondère le spectre comme l'oreille et ignore les silences.
+
+   La mesure suit la recommandation UIT-R BS.1770 : pondération K, blocs de
+   400 ms recouverts de 75 %, porte absolue à -70 LUFS puis porte relative à
+   -10 LU. Les coefficients de la pondération sont ceux définis pour 48 kHz :
+   le signal y est donc ramené avant mesure. */
+
+const CIBLES_LOUDNESS = {
+  '0':    null,
+  '-23':  {cible:-23, creteMax:-1.5, nom:'-23 LUFS — norme télévision et cinéma (EBU R128)'},
+  '-16':  {cible:-16, creteMax:-1.5, nom:'-16 LUFS — écoute en ligne et podcast'},
+  '-14':  {cible:-14, creteMax:-1.0, nom:'-14 LUFS — plateformes musicales'}
+};
+
+function filtrerBiquad(x, b, a){
+  const y = new Float32Array(x.length);
+  let x1=0, x2=0, y1=0, y2=0;
+  for(let i=0;i<x.length;i++){
+    const v = b[0]*x[i] + b[1]*x1 + b[2]*x2 - a[1]*y1 - a[2]*y2;
+    x2 = x1; x1 = x[i]; y2 = y1; y1 = v; y[i] = v;
+  }
+  return y;
+}
+
+/* Renvoie la loudness intégrée, en LUFS, ou null si le signal est trop court. */
+async function mesurerLoudness(donnees, frequence){
+  let x = donnees, fe = frequence;
+  if(fe !== 48000){
+    const c = await reechantillonner(donnees, frequence, 48000);
+    x = c.donnees; fe = c.frequence;
+  }
+  if(x.length < fe * 0.4) return null;
+
+  /* Pondération K : correction de tête, puis coupe-bas. Coefficients BS.1770. */
+  const etage1 = filtrerBiquad(x,
+    [1.53512485958697, -2.69169618940638, 1.19839281085285],
+    [1, -1.69065929318241, 0.73248077421585]);
+  const z = filtrerBiquad(etage1,
+    [1.0, -2.0, 1.0],
+    [1, -1.99004745483398, 0.99007225036621]);
+
+  const bloc = Math.round(fe * 0.4);
+  const pas  = Math.round(fe * 0.1);
+  const carres = [];
+  for(let deb=0; deb + bloc <= z.length; deb += pas){
+    let s = 0;
+    for(let i=deb;i<deb+bloc;i++) s += z[i]*z[i];
+    carres.push(s / bloc);
+  }
+  if(!carres.length) return null;
+
+  const enLufs = m => -0.691 + 10*Math.log10(Math.max(m, 1e-30));
+  const moyenne = liste => liste.reduce((a,b)=>a+b, 0) / liste.length;
+
+  /* Porte absolue, puis porte relative dix décibels sous le résultat. */
+  let retenus = carres.filter(m => enLufs(m) > -70);
+  if(!retenus.length) return null;
+  const seuilRelatif = enLufs(moyenne(retenus)) - 10;
+  retenus = retenus.filter(m => enLufs(m) > seuilRelatif);
+  if(!retenus.length) return null;
+
+  return enLufs(moyenne(retenus));
 }
 
 /* ══════════════════════════════════════════════════════
@@ -2801,7 +2907,8 @@ function chaineProposee(m){
 
   return {
     chaine: {traitement: t, nettoyage: {seuil: seuilPorte, rogner: true},
-             resolution: resolutionExport(), frequence: frequenceExport()},
+             resolution: resolutionExport(), frequence: frequenceExport(),
+             loudness: $('loudness').value},
     raisons
   };
 }
@@ -2813,12 +2920,13 @@ function frequenceExport(){ return parseInt($('frequenceExport').value, 10) || 0
 
 /* Une conversion est nécessaire dès qu'un réglage s'écarte du format natif. */
 function exportModifie(){
-  return frequenceExport() > 0 || resolutionExport() !== 16;
+  return frequenceExport() > 0 || resolutionExport() !== 16 || $('loudness').value !== '0';
 }
 
 function enregistrerExport(){
   if(bd) bdEcrire('config', {cle:'export', valeur:{
-    resolution: resolutionExport(), frequence: frequenceExport()
+    resolution: resolutionExport(), frequence: frequenceExport(),
+    loudness: $('loudness').value
   }});
 }
 
@@ -3250,6 +3358,7 @@ async function demarrer(){
       if(exp && exp.valeur){
         if(exp.valeur.resolution) $('resolution').value = String(exp.valeur.resolution);
         $('frequenceExport').value = String(exp.valeur.frequence || 0);
+        if(exp.valeur.loudness) $('loudness').value = String(exp.valeur.loudness);
       }
 
       const net = await bdLire('config','nettoyage');
