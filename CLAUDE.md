@@ -53,6 +53,9 @@ Serveur local optionnel : `voix_locale/serveur.py` (FastAPI), qui expose les mê
 - Stockage local des échantillons et des audios générés en IndexedDB (base `studio_voix`).
 
 ## Notes techniques
+- Suppression du bruit de fond : traitement spectral côté serveur (`NIVEAUX_DEBRUITAGE`), cinq niveaux, « moyen » par défaut. Ne jamais ajouter `tn=1` à `afftdn` : le suivi de bruit annule la réduction.
+- Régularité du débit : le serveur découpe le texte sur les retours à la ligne, prononce chaque morceau avec la même graine, puis recolle avec des silences (`PAUSE_COURTE`, `PAUSE_LONGUE`). Ne pas laisser le modèle redécouper : `split_sentences` reste faux sous `PASSAGE_UNIQUE_MAX`.
+- `VERSION` dans `serveur.py` est exposée sur `/` et `/v1/user` : c'est le moyen de vérifier quel fichier tourne réellement chez l'utilisateur.
 - Le clonage instantané exige un abonnement payant chez le fournisseur ; les offres gratuites le refusent.
 - Ouvert en `file://`, le navigateur bloque les appels distants : servir la page par un serveur local (`npx http-server`) pour tester le clonage réel.
 - Le mode démonstration (voix du navigateur) fonctionne sans clé ni réseau.

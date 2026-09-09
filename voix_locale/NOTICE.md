@@ -161,7 +161,44 @@ quota à autre chose qu'un identifiant fourni par le navigateur.
 
 ---
 
-## 6. Options utiles
+## 6. Qualité de la sortie
+
+### Le grain de fond
+
+Le moteur laisse un léger souffle sous la parole. La porte de bruit de
+l'application ne peut rien contre lui : elle coupe entre les mots, et couper
+sous la parole reviendrait à couper la voix. Un traitement spectral est donc
+appliqué par le serveur, réglable à l'étape Synthèse sous **Suppression du bruit
+de fond**.
+
+| Niveau  | Souffle retiré | Perte sur les sifflantes |
+|---------|----------------|--------------------------|
+| léger   | 12 dB          | 0,3 dB                   |
+| moyen   | 24 dB          | 0,4 dB                   |
+| fort    | 40 dB          | 0,5 dB                   |
+| maximum | 60 dB          | 0,6 dB                   |
+
+**Moyen** est le réglage par défaut. Au-delà de **fort**, les aigus commencent à
+se ternir sur certaines voix : jugez à l'oreille, la comparaison avant/après
+reste affichée sous chaque génération.
+
+Cela ne dispense pas d'une référence propre : un souffle présent dans
+l'enregistrement est appris par le modèle et ressort à chaque phrase. Pour le
+traiter à la source, cochez « Retirer le bruit de fond » à l'étape Voix et
+recréez la voix.
+
+### La régularité du débit
+
+Sur un texte de plusieurs phrases, le modèle reprenait chaque phrase de zéro :
+le débit et l'intonation changeaient en cours de route. Le serveur découpe
+désormais lui-même le texte sur les respirations posées par le style
+d'élocution, prononce chaque morceau avec les mêmes réglages et la même graine,
+puis recolle avec des silences de durée choisie — 0,28 s entre propositions,
+0,55 s entre phrases, raccourcis à proportion quand le débit augmente.
+
+---
+
+## 7. Options utiles
 
 ```
 python serveur.py --moteur test --port 8771     # changer de port
@@ -175,7 +212,7 @@ authentification.
 
 ---
 
-## 7. Où sont les données
+## 8. Où sont les données
 
 ```
 voix_locale/donnees/voix/<identifiant>/
@@ -189,7 +226,7 @@ correspondant.
 
 ---
 
-## 8. En cas de problème
+## 9. En cas de problème
 
 **« Le serveur local ne répond pas »** — vérifiez que la fenêtre de Terminal du serveur
 est toujours ouverte, et que l'adresse de l'étape 03 correspond à celle affichée au
@@ -210,6 +247,11 @@ est antérieur à ce correctif.
 **Le port est déjà utilisé** — relancez avec `--port 8771` et corrigez l'adresse dans
 l'application.
 
+**« Not Found » en ouvrant /chat** — le `serveur.py` en place est antérieur à
+l'assistant. Vérifiez la version affichée au démarrage, ou ouvrez
+`http://127.0.0.1:8770/` : le champ `version` doit être présent. Si la ligne
+manque, refaites la mise à jour des fichiers.
+
 **« Le paquet anthropic n'est pas installé »** — `source venv/bin/activate` puis
 `pip install anthropic`. Sans lui, lancez avec `--chat test`.
 
@@ -224,7 +266,7 @@ celle demandée n'existe pas. Créez-la dans le studio, page Voix, puis rouvrez 
 
 ---
 
-## 9. Rappel sur le consentement
+## 10. Rappel sur le consentement
 
 Le verrou de l'étape 01 reste la seule protection en mode local : les garde-fous du
 fournisseur distant n'existent plus ici. Le consentement de la personne dont la voix est
