@@ -55,6 +55,9 @@ Serveur local optionnel : `voix_locale/serveur.py` (FastAPI), qui expose les mê
 ## Notes techniques
 - Suppression du bruit de fond : traitement spectral côté serveur (`NIVEAUX_DEBRUITAGE`), cinq niveaux, « moyen » par défaut. Ne jamais ajouter `tn=1` à `afftdn` : le suivi de bruit annule la réduction.
 - Régularité du débit : le serveur découpe le texte sur les retours à la ligne, prononce chaque morceau avec la même graine, puis recolle avec des silences (`PAUSE_COURTE`, `PAUSE_LONGUE`). Ne pas laisser le modèle redécouper : `split_sentences` reste faux sous `PASSAGE_UNIQUE_MAX`.
+- Trois versions par génération (non traitée, vos réglages, proposition) pour une seule prononciation : le drapeau `variantes` fait renvoyer du JSON base64. Ne jamais synthétiser trois fois le même texte pour comparer, chaque prononciation diffère.
+- La proposition est déduite des mesures (`mesurer_wav` côté serveur, `mesurerAudio` côté page) et motivée à l'écran, valeur par valeur. Aucun réglage n'y est décidé à l'avance.
+- La commande directe du moteur expose tous les paramètres d'inférence. Ils ne sont transmis que si l'utilisateur prend la main ; sinon le serveur les déduit de la stabilité.
 - `VERSION` dans `serveur.py` est exposée sur `/` et `/v1/user` : c'est le moyen de vérifier quel fichier tourne réellement chez l'utilisateur.
 - Le clonage instantané exige un abonnement payant chez le fournisseur ; les offres gratuites le refusent.
 - Ouvert en `file://`, le navigateur bloque les appels distants : servir la page par un serveur local (`npx http-server`) pour tester le clonage réel.

@@ -187,6 +187,38 @@ l'enregistrement est appris par le modèle et ressort à chaque phrase. Pour le
 traiter à la source, cochez « Retirer le bruit de fond » à l'étape Voix et
 recréez la voix.
 
+### Trois versions à chaque génération
+
+Le serveur ne prononce le texte qu'une fois, puis en filtre trois copies. Les
+trois sont écoutables côte à côte, téléchargeables séparément, et conservées en
+bibliothèque :
+
+- **Non traité** — exactement ce que le moteur a produit, sans aucun filtre.
+- **Vos réglages** — le débruitage, le nettoyage et la chaîne radio que vous avez choisis.
+- **Proposition** — une chaîne déduite des mesures de l'audio réellement produit,
+  accompagnée du détail de chaque décision : plancher de bruit, énergie des graves,
+  place des sifflantes, écart entre crête et niveau moyen.
+
+Demander trois fois le même texte au modèle serait à la fois plus lent et
+trompeur : chaque prononciation diffère légèrement, et la comparaison ne
+porterait plus sur le seul traitement.
+
+### Commande directe du moteur
+
+L'étape Synthèse expose, sous **Commande directe du moteur**, tout ce que le
+modèle accepte : température, diversité (`top_p`), nombre de choix examinés
+(`top_k`), pénalités de répétition et de longueur, découpage interne, durée des
+deux pauses et graine.
+
+La graine mérite une mention : à réglages égaux, deux générations de même graine
+donnent le même audio. En changer donne une autre interprétation du même texte
+sans rien modifier d'autre — c'est le moyen propre de relancer un essai qui ne
+convient pas.
+
+Ces valeurs sont normalement déduites des curseurs de rendu. La case « piloter
+le moteur à la main » court-circuite cette déduction ; un bouton rétablit les
+valeurs déduites.
+
 ### La régularité du débit
 
 Sur un texte de plusieurs phrases, le modèle reprenait chaque phrase de zéro :
