@@ -517,7 +517,9 @@ async function dire(texte, bulle){
         voice_settings:{
           /* Réglages du style « conversation » du studio : naturel, sans emphase. */
           stability: 0.40, similarity_boost: 0.80, style: 0.45,
-          use_speaker_boost: true, speed: parseFloat($('debit').value)
+          use_speaker_boost: true, speed: parseFloat($('debit').value),
+          /* Le grain de fond s'entend d'autant plus qu'on écoute au casque. */
+          denoise: 'moyen'
         }
       })
     });

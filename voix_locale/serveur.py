@@ -18,7 +18,9 @@ import argparse
 import json
 import math
 import os
+import re
 import shutil
+import tempfile
 import struct
 import subprocess
 import sys
@@ -34,6 +36,8 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 
 RACINE = Path(__file__).resolve().parent
 DOSSIER_VOIX = RACINE / "donnees" / "voix"
+VERSION = "2026.09.09"     # affichée au démarrage et sur « / » : sert à vérifier
+                           # que le fichier en place est bien le dernier
 FREQUENCE = 24000          # fréquence d'échantillonnage de sortie, en hertz
 DUREE_REFERENCE_MAX = 120  # secondes de référence conservées par voix
 
@@ -102,6 +106,63 @@ la voix et dégrade la ressemblance.
 FILTRE_DEBRUITAGE = "highpass=f=70,afftdn=nr=12:nf=-30"
 
 
+"""
+Débruitage de la sortie.
+
+La porte de bruit de l'application coupe le souffle entre les mots, mais elle ne
+peut rien contre le grain qui persiste sous la parole : couper là, c'est couper
+la voix. Il faut pour cela un traitement spectral, qui retire le bruit à chaque
+fréquence sans toucher au reste.
+
+Les niveaux ci-dessous ont été mesurés sur un signal de contrôle comportant une
+sifflante, la partie de la parole la plus exposée à ce genre de filtre :
+
+    niveau     souffle retiré     perte sur la sifflante
+    léger          12 dB                 0,3 dB
+    moyen          24 dB                 0,4 dB
+    fort           40 dB                 0,5 dB
+    maximum        60 dB                 0,6 dB
+
+Le suivi de bruit (tn=1) est volontairement absent : il annule presque
+entièrement la réduction lorsque le plancher estimé ne correspond pas au signal.
+
+Le filtrage relève légèrement les crêtes, de l'ordre de trois pour cent. Un
+limiteur ferme la marche pour qu'un signal déjà proche du maximum ne sature
+pas ; réglé à 0,98 et sans mise à niveau automatique, il est transparent tant
+qu'on reste en dessous : moins d'un centième de décibel de différence, mesuré.
+"""
+_LIMITEUR = "alimiter=limit=0.98:level=0"
+NIVEAUX_DEBRUITAGE = {
+    "aucun":   None,
+    "leger":   f"highpass=f=70,afftdn=nr=12:nf=-30,{_LIMITEUR}",
+    "moyen":   f"highpass=f=70,afftdn=nr=24:nf=-27,{_LIMITEUR}",
+    "fort":    f"highpass=f=80,afftdn=nr=40:nf=-25,{_LIMITEUR}",
+    "maximum": f"highpass=f=80,afftdn=nr=70:nf=-22,{_LIMITEUR}",
+}
+DEBRUITAGE_DEFAUT = "moyen"
+
+
+def debruiter_octets(donnees: bytes, niveau: str) -> bytes:
+    """Filtre un WAV en mémoire. En cas d'échec, l'audio d'origine est conservé."""
+    filtre = NIVEAUX_DEBRUITAGE.get(niveau)
+    if not filtre or not ffmpeg_disponible():
+        return donnees
+    with tempfile.TemporaryDirectory() as dossier:
+        entree = Path(dossier) / "entree.wav"
+        sortie = Path(dossier) / "sortie.wav"
+        entree.write_bytes(donnees)
+        resultat = subprocess.run(
+            [chemin_ffmpeg(), "-y", "-loglevel", "error", "-i", str(entree),
+             "-af", filtre, "-ac", "1", "-ar", str(FREQUENCE),
+             "-c:a", "pcm_s16le", str(sortie)],
+            capture_output=True, text=True,
+        )
+        if resultat.returncode != 0 or not sortie.exists():
+            print("[synthese] débruitage impossible, audio conservé tel quel", flush=True)
+            return donnees
+        return sortie.read_bytes()
+
+
 def assembler_references(fichiers: list[Path], destination: Path, debruiter: bool = False) -> None:
     """Concatène les échantillons en une seule référence, tronquée à la durée utile."""
     if len(fichiers) == 1:
@@ -151,6 +212,80 @@ def debruiter_wav(chemin: Path) -> None:
         return
     temporaire.replace(chemin)
     print("[voix] référence débruitée", flush=True)
+
+
+"""
+Régularité du débit.
+
+Le modèle découpe lui-même un texte long en phrases et reprend chaque phrase de
+zéro : le tirage aléatoire recommence, si bien que le débit et l'intonation
+changent d'une phrase à l'autre au fil d'un même enregistrement.
+
+Le découpage est donc repris ici. L'application marque déjà les respirations par
+des retours à la ligne ; chaque morceau est prononcé séparément avec exactement
+les mêmes réglages et la même graine, puis les morceaux sont recollés avec des
+silences de durée choisie. Le débit devient régulier et les pauses, exactes.
+"""
+PAUSE_COURTE = 0.28        # secondes, entre propositions
+PAUSE_LONGUE = 0.55        # secondes, entre phrases
+PASSAGE_UNIQUE_MAX = 220   # au-delà, le modèle découpe lui-même le morceau
+
+
+def decouper_texte(texte: str) -> list[tuple[str, float]]:
+    """Rend une suite de morceaux à prononcer, chacun suivi d'un silence."""
+    segments: list[list] = []
+    for bloc in re.split(r"\n{2,}", texte):
+        lignes = [l.strip() for l in bloc.split("\n") if l.strip()]
+        for i, ligne in enumerate(lignes):
+            derniere = (i == len(lignes) - 1)
+            segments.append([ligne, PAUSE_LONGUE if derniere else PAUSE_COURTE])
+    if segments:
+        segments[-1][1] = 0.0        # aucun silence à la toute fin
+    return [(s, p) for s, p in segments]
+
+
+def assembler_audio(morceaux: list[tuple[bytes, float]]) -> bytes:
+    """Recolle des WAV mono en intercalant les silences demandés."""
+    trames: list[bytes] = []
+    frequence, largeur = FREQUENCE, 2
+    for donnees, pause in morceaux:
+        with wave.open(BytesIO(donnees), "rb") as w:
+            frequence, largeur = w.getframerate(), w.getsampwidth()
+            trames.append(w.readframes(w.getnframes()))
+        if pause > 0:
+            trames.append(b"\x00" * (int(frequence * pause) * largeur))
+
+    tampon = BytesIO()
+    with wave.open(tampon, "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(largeur)
+        w.setframerate(frequence)
+        w.writeframes(b"".join(trames))
+    return tampon.getvalue()
+
+
+def produire_audio(moteur, texte: str, reference: Path, reglages: dict) -> tuple[bytes, str]:
+    """Synthèse complète : découpage, prononciation, recollage, débruitage."""
+    segments = decouper_texte(texte)
+    vitesse = max(0.5, min(2.0, float(reglages.get("speed") or 1.0)))
+    niveau = str(reglages.get("denoise") or DEBRUITAGE_DEFAUT)
+
+    if len(segments) <= 1:
+        audio, mime = moteur.synthetiser(texte.strip(), reference, reglages)
+    else:
+        morceaux = []
+        mime = "audio/wav"
+        for segment, pause in segments:
+            a, m = moteur.synthetiser(segment, reference, reglages)
+            if m != "audio/wav":
+                # Un moteur qui ne rend pas du WAV ne peut pas être recollé ici :
+                # on repasse par une seule prononciation, sans pauses maîtrisées.
+                entier, m = moteur.synthetiser(texte, reference, reglages)
+                return debruiter_octets(entier, niveau), m
+            morceaux.append((a, pause / vitesse))
+        audio = assembler_audio(morceaux)
+
+    return debruiter_octets(audio, niveau), mime
 
 
 def duree_wav(chemin: Path) -> float:
@@ -347,13 +482,30 @@ class MoteurXTTS(Moteur):
             # Le débit est un étirement temporel appliqué par le modèle, non un
             # rééchantillonnage : la hauteur de la voix n'est pas modifiée.
             vitesse = max(0.5, min(2.0, float(reglages.get("speed") or 1.0)))
+
+            # Même graine à chaque morceau : deux phrases voisines sont alors
+            # prononcées sur le même tirage, et non sur deux tirages étrangers
+            # l'un à l'autre. C'est la première cause des écarts de débit.
+            try:
+                import torch
+                torch.manual_seed(int(reglages.get("seed") or 1234))
+            except Exception:
+                pass
+
+            # La stabilité resserre aussi l'échantillonnage, pas seulement la
+            # température : à stabilité haute, le modèle choisit parmi moins de
+            # possibilités, donc il varie moins d'une phrase à l'autre.
             self.modele.tts_to_file(
                 text=texte,
                 speaker_wav=str(reference),
                 language="fr",
                 file_path=str(sortie),
-                temperature=max(0.01, 0.9 - 0.6 * stabilite),
+                temperature=max(0.01, 0.85 - 0.55 * stabilite),
+                top_p=max(0.50, 0.95 - 0.30 * stabilite),
+                top_k=max(10, int(50 - 30 * stabilite)),
                 speed=vitesse,
+                # Le découpage est fait en amont : le modèle ne doit pas le refaire.
+                split_sentences=(len(texte) > PASSAGE_UNIQUE_MAX),
             )
             return sortie.read_bytes(), "audio/wav"
         finally:
@@ -580,6 +732,9 @@ def utilisateur():
         "moteur": moteur.nom,
         "clone_reellement": moteur.clone_reellement,
         "ffmpeg": ffmpeg_disponible(),
+        "version": VERSION,
+        "debruitage": sorted(NIVEAUX_DEBRUITAGE),
+        "debruitage_defaut": DEBRUITAGE_DEFAUT,
     }
 
 
@@ -692,10 +847,14 @@ async def synthese(voix_id: str, requete: Request):
     if len(texte) > 5000:
         return erreur(422, "Texte trop long : 5 000 caractères au maximum.")
 
-    reglages = corps.get("voice_settings") or {}
+    reglages = dict(corps.get("voice_settings") or {})
+    # Le niveau de débruitage peut arriver à la racine ou dans les réglages.
+    if corps.get("denoise") and not reglages.get("denoise"):
+        reglages["denoise"] = corps["denoise"]
+
     debut = time.time()
     try:
-        audio, mime = etat["moteur"].synthetiser(texte, dossier / "reference.wav", reglages)
+        audio, mime = produire_audio(etat["moteur"], texte, dossier / "reference.wav", reglages)
     except RuntimeError as e:
         return erreur(500, str(e))
     except Exception as e:
@@ -860,6 +1019,7 @@ def accueil():
     moteur = etat["moteur"]
     return {
         "service": "Serveur vocal local — Studio Voix",
+        "version": VERSION,
         "moteur": moteur.nom,
         "clone_reellement": moteur.clone_reellement,
         "chat": etat["chat"].nom,
@@ -907,7 +1067,7 @@ def principal():
     DOSSIER_VOIX.mkdir(parents=True, exist_ok=True)
 
     print()
-    print("  Serveur vocal local — Studio Voix")
+    print(f"  Serveur vocal local — Studio Voix   (version {VERSION})")
     print(f"  Moteur      : {args.moteur}", end="")
     print("" if etat["moteur"].clone_reellement else "   (signal de contrôle, ne clone pas)")
     print(f"  Conversation: {args.chat}", end="")

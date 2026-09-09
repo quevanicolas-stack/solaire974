@@ -711,6 +711,21 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
 
       <div class="sec">Nettoyage du signal</div>
       <div class="card">
+        <div class="champ">
+          <label class="lbl" for="debruitage">Suppression du bruit de fond, à la production</label>
+          <select id="debruitage" onchange="enregistrerDebruitage()">
+            <option value="aucun">Aucune — son brut du moteur</option>
+            <option value="leger">Légère — retire environ 12 dB de souffle</option>
+            <option value="moyen" selected>Moyenne — environ 24 dB, réglage conseillé</option>
+            <option value="fort">Forte — environ 40 dB</option>
+            <option value="maximum">Maximum — environ 60 dB, peut ternir les aigus</option>
+          </select>
+          <div class="aide">
+            Traitement effectué par le serveur, sur le grain qui persiste <em>sous</em> la parole.
+            La porte ci-dessous ne peut rien contre celui-là : couper à cet endroit, ce serait couper
+            la voix. Sans effet sur le service distant, qui produit son audio lui-même.
+          </div>
+        </div>
         <label class="check"><input type="checkbox" id="nettoyageActif" checked onchange="majNettoyage()">
           <span>Faire taire ce qui n'est pas de la parole : souffle, clics et bruits entre les mots.</span></label>
         <div id="reglagesNettoyage" style="margin-top:13px">
@@ -2178,6 +2193,10 @@ function appliquerElocution(){
   enregistrerElocution();
 }
 
+function enregistrerDebruitage(){
+  if(bd) bdEcrire('config', {cle:'debruitage', valeur:$('debruitage').value});
+}
+
 function enregistrerElocution(){
   if(bd) bdEcrire('config', {cle:'elocution', valeur:$('elocution').value});
 }
@@ -2612,7 +2631,9 @@ async function synthetiser(){
         similarity_boost: parseFloat($('similarite').value),
         style: parseFloat($('style').value),
         use_speaker_boost: $('boost').checked,
-        speed: parseFloat($('debit').value)
+        speed: parseFloat($('debit').value),
+        /* Ignoré par le service distant, appliqué par le serveur local. */
+        denoise: $('debruitage').value
       }
     };
     const r = await fetch(baseApi() + '/text-to-speech/' + etat.voixId + '?output_format=mp3_44100_128', {
@@ -2851,6 +2872,10 @@ async function demarrer(){
 
       const avant = await bdLire('config','fournisseurAvant');
       if(avant && avant.valeur) etat.fournisseurAvant = avant.valeur;
+
+      const deb = await bdLire('config','debruitage');
+      if(deb && deb.valeur && $('debruitage').querySelector('option[value="'+deb.valeur+'"]'))
+        $('debruitage').value = deb.valeur;
 
       const eloc = await bdLire('config','elocution');
       if(eloc && eloc.valeur && $('elocution').querySelector('option[value="'+eloc.valeur+'"]')){
