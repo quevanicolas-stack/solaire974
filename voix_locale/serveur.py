@@ -15,6 +15,7 @@ Lancement :
 """
 
 import argparse
+import base64
 import json
 import math
 import os
@@ -264,28 +265,134 @@ def assembler_audio(morceaux: list[tuple[bytes, float]]) -> bytes:
     return tampon.getvalue()
 
 
-def produire_audio(moteur, texte: str, reference: Path, reglages: dict) -> tuple[bytes, str]:
-    """Synthèse complète : découpage, prononciation, recollage, débruitage."""
+def prononcer(moteur, texte: str, reference: Path, reglages: dict) -> tuple[bytes, str]:
+    """Découpage, prononciation morceau par morceau, recollage. Aucun filtrage."""
     segments = decouper_texte(texte)
     vitesse = max(0.5, min(2.0, float(reglages.get("speed") or 1.0)))
-    niveau = str(reglages.get("denoise") or DEBRUITAGE_DEFAUT)
+    # Les pauses sont réglables : l'application peut les allonger ou les supprimer.
+    courte = float(reglages.get("pause_courte", PAUSE_COURTE))
+    longue = float(reglages.get("pause_longue", PAUSE_LONGUE))
 
     if len(segments) <= 1:
-        audio, mime = moteur.synthetiser(texte.strip(), reference, reglages)
-    else:
-        morceaux = []
-        mime = "audio/wav"
-        for segment, pause in segments:
-            a, m = moteur.synthetiser(segment, reference, reglages)
-            if m != "audio/wav":
-                # Un moteur qui ne rend pas du WAV ne peut pas être recollé ici :
-                # on repasse par une seule prononciation, sans pauses maîtrisées.
-                entier, m = moteur.synthetiser(texte, reference, reglages)
-                return debruiter_octets(entier, niveau), m
-            morceaux.append((a, pause / vitesse))
-        audio = assembler_audio(morceaux)
+        return moteur.synthetiser(texte.strip(), reference, reglages)
 
+    morceaux = []
+    for segment, pause in segments:
+        audio, mime = moteur.synthetiser(segment, reference, reglages)
+        if mime != "audio/wav":
+            # Un moteur qui ne rend pas du WAV ne peut pas être recollé ici :
+            # on repasse par une seule prononciation, sans pauses maîtrisées.
+            return moteur.synthetiser(texte, reference, reglages)
+        duree = longue if pause == PAUSE_LONGUE else (courte if pause == PAUSE_COURTE else 0.0)
+        morceaux.append((audio, duree / vitesse))
+    return assembler_audio(morceaux), "audio/wav"
+
+
+def produire_audio(moteur, texte: str, reference: Path, reglages: dict) -> tuple[bytes, str]:
+    """Synthèse complète : prononciation puis débruitage au niveau demandé."""
+    audio, mime = prononcer(moteur, texte, reference, reglages)
+    niveau = str(reglages.get("denoise") or DEBRUITAGE_DEFAUT)
     return debruiter_octets(audio, niveau), mime
+
+
+def mesurer_wav(donnees: bytes) -> dict:
+    """
+    Mesure l'audio produit, pour que la proposition de réglages repose sur le
+    signal réel et non sur des valeurs décidées à l'avance.
+
+    Le plancher de bruit est pris au premier décile des fenêtres de 50 ms : les
+    silences entre les mots donnent ainsi le niveau du souffle, sans qu'aucune
+    détection de parole soit nécessaire.
+    """
+    with wave.open(BytesIO(donnees), "rb") as w:
+        frequence = w.getframerate()
+        largeur = w.getsampwidth()
+        brut = w.readframes(w.getnframes())
+
+    if largeur != 2 or not brut:
+        return {}
+
+    total = len(brut) // 2
+    valeurs = struct.unpack(f"<{total}h", brut[: total * 2])
+    if not valeurs:
+        return {}
+
+    crete = max(abs(v) for v in valeurs) / 32768.0
+    somme = sum(float(v) * v for v in valeurs)
+    rms = math.sqrt(somme / total) / 32768.0
+
+    fenetre = max(1, int(frequence * 0.05))
+    niveaux = []
+    for debut in range(0, total - fenetre + 1, fenetre):
+        bloc = valeurs[debut : debut + fenetre]
+        niveaux.append(math.sqrt(sum(float(v) * v for v in bloc) / fenetre) / 32768.0)
+    niveaux.sort()
+    plancher = niveaux[max(0, len(niveaux) // 10)] if niveaux else 0.0
+
+    # Énergie des extrêmes du spectre, par deux filtres du premier ordre : assez
+    # pour savoir s'il faut couper les graves ou calmer les sifflantes.
+    def energie(coupure: float, passe_haut: bool) -> float:
+        rc = 1.0 / (2 * math.pi * coupure)
+        dt = 1.0 / frequence
+        alpha = rc / (rc + dt) if passe_haut else dt / (rc + dt)
+        sortie, precedent, cumul = 0.0, 0.0, 0.0
+        for v in valeurs:
+            x = v / 32768.0
+            sortie = alpha * (sortie + x - precedent) if passe_haut else sortie + alpha * (x - sortie)
+            precedent = x
+            cumul += sortie * sortie
+        return math.sqrt(cumul / total)
+
+    db = lambda v: round(20 * math.log10(v), 1) if v > 1e-9 else -99.0
+    graves = energie(120.0, False)
+    aigus = energie(5000.0, True)
+
+    return {
+        "duree": round(total / frequence, 2),
+        "frequence": frequence,
+        "crete": db(crete),
+        "rms": db(rms),
+        "plancher": db(plancher),
+        "rapport": round(db(rms) - db(plancher), 1),
+        "graves": round(db(graves) - db(rms), 1),
+        "aigus": round(db(aigus) - db(rms), 1),
+    }
+
+
+def proposer_reglages(mesures: dict) -> tuple[str, list[str]]:
+    """Choisit un niveau de débruitage d'après les mesures, et dit pourquoi."""
+    if not mesures:
+        return DEBRUITAGE_DEFAUT, ["Mesure impossible : réglage conseillé par défaut."]
+
+    plancher = mesures.get("plancher", -99.0)
+    rapport = mesures.get("rapport", 99.0)
+    raisons = []
+    # Les nombres montrés à l'écran suivent l'usage français.
+    nb = lambda v: f"{v:.1f}".replace(".", ",")
+
+    if plancher <= -70:
+        niveau = "aucun"
+        raisons.append(f"Plancher de bruit à {nb(plancher)} dB : rien à retirer.")
+    elif plancher <= -55:
+        niveau = "leger"
+        raisons.append(f"Souffle discret, plancher à {nb(plancher)} dB.")
+    elif plancher <= -45:
+        niveau = "moyen"
+        raisons.append(f"Souffle audible, plancher à {nb(plancher)} dB.")
+    elif plancher <= -35:
+        niveau = "fort"
+        raisons.append(f"Souffle marqué, plancher à {nb(plancher)} dB.")
+    else:
+        niveau = "maximum"
+        raisons.append(f"Souffle très présent, plancher à {nb(plancher)} dB.")
+
+    if rapport < 20 and niveau in ("fort", "maximum"):
+        niveau = "fort"
+        raisons.append(
+            f"Écart parole/bruit de seulement {nb(rapport)} dB : le débruitage est "
+            "retenu à « fort » pour ne pas creuser la voix."
+        )
+    return niveau, raisons
 
 
 def duree_wav(chemin: Path) -> float:
@@ -495,17 +602,35 @@ class MoteurXTTS(Moteur):
             # La stabilité resserre aussi l'échantillonnage, pas seulement la
             # température : à stabilité haute, le modèle choisit parmi moins de
             # possibilités, donc il varie moins d'une phrase à l'autre.
+            #
+            # Chaque valeur déduite reste remplaçable : l'application peut
+            # piloter le moteur directement, réglage par réglage.
+            def choix(cle, defaut, mini, maxi, entier=False):
+                valeur = reglages.get(cle)
+                if valeur is None or valeur == "":
+                    return defaut
+                try:
+                    v = float(valeur)
+                except (TypeError, ValueError):
+                    return defaut
+                v = max(mini, min(maxi, v))
+                return int(round(v)) if entier else v
+
+            decoupe = reglages.get("split_sentences")
             self.modele.tts_to_file(
                 text=texte,
                 speaker_wav=str(reference),
                 language="fr",
                 file_path=str(sortie),
-                temperature=max(0.01, 0.85 - 0.55 * stabilite),
-                top_p=max(0.50, 0.95 - 0.30 * stabilite),
-                top_k=max(10, int(50 - 30 * stabilite)),
+                temperature=choix("temperature", max(0.01, 0.85 - 0.55 * stabilite), 0.01, 1.5),
+                top_p=choix("top_p", max(0.50, 0.95 - 0.30 * stabilite), 0.05, 1.0),
+                top_k=choix("top_k", max(10, int(50 - 30 * stabilite)), 1, 100, entier=True),
+                repetition_penalty=choix("repetition_penalty", 10.0, 1.0, 20.0),
+                length_penalty=choix("length_penalty", 1.0, 0.2, 3.0),
                 speed=vitesse,
                 # Le découpage est fait en amont : le modèle ne doit pas le refaire.
-                split_sentences=(len(texte) > PASSAGE_UNIQUE_MAX),
+                split_sentences=(bool(decoupe) if decoupe is not None
+                                 else len(texte) > PASSAGE_UNIQUE_MAX),
             )
             return sortie.read_bytes(), "audio/wav"
         finally:
@@ -853,6 +978,40 @@ async def synthese(voix_id: str, requete: Request):
         reglages["denoise"] = corps["denoise"]
 
     debut = time.time()
+
+    # Trois versions à comparer, pour une seule prononciation : la synthèse est
+    # la partie coûteuse, le filtrage ne l'est pas. Demander trois fois le même
+    # texte au modèle serait à la fois lent et trompeur, chaque prononciation
+    # étant légèrement différente.
+    if corps.get("variantes"):
+        try:
+            brut, mime = prononcer(etat["moteur"], texte, dossier / "reference.wav", reglages)
+        except RuntimeError as e:
+            return erreur(500, str(e))
+        except Exception as e:
+            return erreur(500, f"Synthèse impossible : {e}")
+
+        mesures = mesurer_wav(brut) if mime == "audio/wav" else {}
+        demande = str(reglages.get("denoise") or DEBRUITAGE_DEFAUT)
+        conseille, raisons = proposer_reglages(mesures)
+
+        etat["caracteres"] += len(texte)
+        print(f"[synthese] {len(texte)} caractères en {time.time() - debut:.1f} s "
+              f"({fiche['name']}, trois versions, conseil « {conseille} »)", flush=True)
+
+        encoder = lambda d: base64.b64encode(d).decode("ascii")
+        return {
+            "mime": mime,
+            "mesures": mesures,
+            "versions": {
+                "brut":    {"audio": encoder(brut), "debruitage": "aucun"},
+                "traite":  {"audio": encoder(debruiter_octets(brut, demande)),
+                            "debruitage": demande},
+                "propose": {"audio": encoder(debruiter_octets(brut, conseille)),
+                            "debruitage": conseille, "raisons": raisons},
+            },
+        }
+
     try:
         audio, mime = produire_audio(etat["moteur"], texte, dossier / "reference.wav", reglages)
     except RuntimeError as e:

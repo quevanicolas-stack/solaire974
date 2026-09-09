@@ -709,6 +709,85 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
           <span>Renforcement du locuteur : améliore la ressemblance, allonge légèrement le calcul.</span></label>
       </div>
 
+      <div class="sec">Commande directe du moteur
+        <button class="btn btn-g btn-sm" style="margin-left:8px;text-transform:none;letter-spacing:0"
+                id="btnAvance" onclick="basculerAvance()">Afficher</button></div>
+      <div class="card" id="blocAvance" style="display:none">
+        <div class="note n-amb">
+          <div class="note-t">Réservé au réglage fin</div>
+          Ces valeurs sont normalement déduites des curseurs ci-dessus. En les reprenant à la main,
+          vous court-circuitez cette déduction : c'est ce qui permet d'aller plus loin, et aussi ce qui
+          permet de tout dérégler. Le bouton en bas rétablit la déduction automatique.
+          Sans effet sur le service distant, qui n'expose pas ces réglages.
+        </div>
+
+        <label class="check" style="margin-top:13px"><input type="checkbox" id="avanceActif" onchange="majAvance()">
+          <span>Piloter le moteur à la main plutôt que par les curseurs de rendu.</span></label>
+
+        <div id="reglagesAvance" style="margin-top:13px">
+          <div class="grid2">
+            <div class="champ">
+              <div class="curs-tete"><span>Température</span><span class="curs-val" id="vTemperature">0,58</span></div>
+              <input type="range" id="temperature" min="0.05" max="1.2" step="0.01" value="0.58" oninput="majAvance(true)">
+              <div class="aide">Liberté laissée au moteur. Basse : lecture sage et répétable. Haute : plus de relief, plus d'accidents.</div>
+            </div>
+            <div class="champ">
+              <div class="curs-tete"><span>Diversité (top_p)</span><span class="curs-val" id="vTopP">0,80</span></div>
+              <input type="range" id="topP" min="0.10" max="1" step="0.01" value="0.80" oninput="majAvance(true)">
+              <div class="aide">Part des possibilités retenues à chaque instant. Baisser resserre l'élocution.</div>
+            </div>
+            <div class="champ">
+              <div class="curs-tete"><span>Choix examinés (top_k)</span><span class="curs-val" id="vTopK">35</span></div>
+              <input type="range" id="topK" min="1" max="100" step="1" value="35" oninput="majAvance(true)">
+              <div class="aide">Nombre de candidats considérés. Agit dans le même sens que la diversité.</div>
+            </div>
+            <div class="champ">
+              <div class="curs-tete"><span>Pénalité de répétition</span><span class="curs-val" id="vRepetition">10,0</span></div>
+              <input type="range" id="repetition" min="1" max="20" step="0.5" value="10" oninput="majAvance(true)">
+              <div class="aide">Décourage les boucles et les syllabes bégayées. Trop haute, elle hache la phrase.</div>
+            </div>
+            <div class="champ">
+              <div class="curs-tete"><span>Pénalité de longueur</span><span class="curs-val" id="vLongueur">1,00</span></div>
+              <input type="range" id="longueur" min="0.2" max="3" step="0.05" value="1" oninput="majAvance(true)">
+              <div class="aide">Sous 1, le moteur écourte ; au-dessus, il étire. À laisser à 1 dans le doute.</div>
+            </div>
+            <div class="champ">
+              <label class="lbl" for="decoupage">Découpage du texte</label>
+              <select id="decoupage" onchange="majAvance(true)">
+                <option value="auto">Automatique — un seul passage sous 220 caractères</option>
+                <option value="serveur">Toujours découper par le moteur</option>
+                <option value="jamais">Ne jamais laisser le moteur découper</option>
+              </select>
+              <div class="aide">Le découpage en respirations reste fait en amont. Ceci ne concerne que le découpage interne du moteur.</div>
+            </div>
+            <div class="champ">
+              <div class="curs-tete"><span>Pause entre propositions</span><span class="curs-val" id="vPauseCourte">280 ms</span></div>
+              <input type="range" id="pauseCourte" min="0" max="1200" step="10" value="280" oninput="majAvance(true)">
+            </div>
+            <div class="champ">
+              <div class="curs-tete"><span>Pause entre phrases</span><span class="curs-val" id="vPauseLongue">550 ms</span></div>
+              <input type="range" id="pauseLongue" min="0" max="2000" step="10" value="550" oninput="majAvance(true)">
+            </div>
+          </div>
+
+          <div class="champ" style="margin-top:13px">
+            <label class="lbl" for="graine">Graine</label>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <input type="text" id="graine" value="1234" style="flex:1;min-width:140px" oninput="majAvance(true)">
+              <button class="btn btn-g btn-sm" onclick="graineAleatoire()">Tirer au hasard</button>
+            </div>
+            <div class="aide">
+              Deux générations de même graine et de mêmes réglages donnent le même audio. Changer de graine
+              donne une autre interprétation du même texte, sans rien changer d'autre : c'est le moyen de
+              relancer un essai qui ne vous plaît pas.
+            </div>
+          </div>
+
+          <button class="btn btn-g btn-sm" style="margin-top:6px" onclick="reinitialiserAvance()">
+            Revenir aux valeurs déduites des curseurs</button>
+        </div>
+      </div>
+
       <div class="sec">Nettoyage du signal</div>
       <div class="card">
         <div class="champ">
@@ -2193,6 +2272,93 @@ function appliquerElocution(){
   enregistrerElocution();
 }
 
+/* ══════════════════════════════════════════════════════
+   COMMANDE DIRECTE DU MOTEUR
+   ══════════════════════════════════════════════════════ */
+
+const CURSEURS_AVANCE = ['temperature','topP','topK','repetition','longueur','pauseCourte','pauseLongue'];
+
+function avanceActif(){ const c = $('avanceActif'); return !!(c && c.checked); }
+
+function basculerAvance(){ basculer('blocAvance', $('btnAvance')); }
+
+/* Valeurs que le serveur déduirait de la stabilité : les afficher évite de
+   régler à l'aveugle, et sert de point de départ quand on reprend la main. */
+function valeursDeduites(){
+  const s = parseFloat($('stabilite').value);
+  return {
+    temperature: Math.max(0.05, 0.85 - 0.55 * s),
+    topP:        Math.max(0.10, 0.95 - 0.30 * s),
+    topK:        Math.max(1, Math.round(50 - 30 * s)),
+    repetition:  10,
+    longueur:    1
+  };
+}
+
+function reinitialiserAvance(){
+  const d = valeursDeduites();
+  $('temperature').value = d.temperature.toFixed(2);
+  $('topP').value        = d.topP.toFixed(2);
+  $('topK').value        = d.topK;
+  $('repetition').value  = d.repetition;
+  $('longueur').value    = d.longueur;
+  $('pauseCourte').value = 280;
+  $('pauseLongue').value = 550;
+  $('decoupage').value   = 'auto';
+  $('avanceActif').checked = false;
+  majAvance();
+  toast('Réglages du moteur rétablis.', 'ok');
+}
+
+function graineAleatoire(){
+  $('graine').value = String(Math.floor(Math.random() * 1000000));
+  majAvance(true);
+}
+
+function majAvance(){
+  const actif = avanceActif();
+  $('reglagesAvance').style.opacity = actif ? '1' : '.45';
+  const f = (n, d) => parseFloat(n).toFixed(d).replace('.', ',');
+  $('vTemperature').textContent = f($('temperature').value, 2);
+  $('vTopP').textContent        = f($('topP').value, 2);
+  $('vTopK').textContent        = String(parseInt($('topK').value, 10));
+  $('vRepetition').textContent  = f($('repetition').value, 1);
+  $('vLongueur').textContent    = f($('longueur').value, 2);
+  $('vPauseCourte').textContent = Math.round(parseFloat($('pauseCourte').value)) + ' ms';
+  $('vPauseLongue').textContent = Math.round(parseFloat($('pauseLongue').value)) + ' ms';
+  enregistrerAvance();
+}
+
+function enregistrerAvance(){
+  if(!bd) return;
+  const v = {actif: avanceActif(), decoupage: $('decoupage').value, graine: $('graine').value};
+  CURSEURS_AVANCE.forEach(id => v[id] = parseFloat($(id).value));
+  bdEcrire('config', {cle:'avance', valeur:v});
+}
+
+/* Réglages envoyés au moteur. Les pauses partent toujours : elles sont gérées
+   par le serveur, pas par le modèle, et ne dépendent donc pas du pilotage
+   manuel. Le reste n'est transmis que si l'on a pris la main. */
+function reglagesMoteur(){
+  const v = {
+    pause_courte: parseFloat($('pauseCourte').value) / 1000,
+    pause_longue: parseFloat($('pauseLongue').value) / 1000
+  };
+  const graine = parseInt($('graine').value, 10);
+  if(!isNaN(graine)) v.seed = graine;
+  if(!avanceActif()) return v;
+
+  v.temperature        = parseFloat($('temperature').value);
+  v.top_p              = parseFloat($('topP').value);
+  v.top_k              = parseInt($('topK').value, 10);
+  v.repetition_penalty = parseFloat($('repetition').value);
+  v.length_penalty     = parseFloat($('longueur').value);
+  const d = $('decoupage').value;
+  if(d === 'serveur') v.split_sentences = true;
+  if(d === 'jamais')  v.split_sentences = false;
+  return v;
+}
+
 function enregistrerDebruitage(){
   if(bd) bdEcrire('config', {cle:'debruitage', valeur:$('debruitage').value});
 }
@@ -2442,7 +2608,20 @@ async function reechantillonner(donnees, freqSource, freqCible){
 
 /* Applique la chaîne de traitement au signal reçu. Le calcul est fait hors
    temps réel : la durée du rendu ne dépend pas de la durée de l'audio. */
-async function appliquerTraitement(blob){
+/* Réglages tels qu'affichés. Les extraire permet d'appliquer la même chaîne à
+   une autre série de valeurs, ce dont la version proposée a besoin. */
+function chaineCourante(){
+  return {
+    traitement: traitementActif() ? reglagesTraitement() : null,
+    nettoyage: nettoyageActif()
+      ? {seuil: parseFloat($('porte').value), rogner: $('rogner').checked}
+      : null,
+    resolution: resolutionExport(),
+    frequence: frequenceExport()
+  };
+}
+
+async function appliquerTraitement(blob, chaineDemandee){
   const HorsLigne = window.OfflineAudioContext || window.webkitOfflineAudioContext;
   if(!HorsLigne) return blob;
 
@@ -2454,8 +2633,9 @@ async function appliquerTraitement(blob){
     return blob;
   }
 
-  const r = reglagesTraitement();
-  const chaineActive = traitementActif();
+  const c = chaineDemandee || chaineCourante();
+  const r = c.traitement || reglagesTraitement();
+  const chaineActive = !!c.traitement;
   const off = new HorsLigne(1, source.length, source.sampleRate);
   const lecteur = off.createBufferSource();
   lecteur.buffer = source;
@@ -2501,10 +2681,10 @@ async function appliquerTraitement(blob){
 
   /* Le nettoyage vient après la chaîne : la compression ayant remonté le bruit
      de fond, c'est à ce moment que la porte doit juger du niveau réel. */
-  if(nettoyageActif()){
-    const seuilPorte = parseFloat($('porte').value);
+  if(c.nettoyage){
+    const seuilPorte = c.nettoyage.seuil;
     porteDeBruit(donnees, rendu.sampleRate, seuilPorte);
-    if($('rogner').checked) donnees = rognerSilences(donnees, rendu.sampleRate, seuilPorte);
+    if(c.nettoyage.rogner) donnees = rognerSilences(donnees, rendu.sampleRate, seuilPorte);
   }
 
   if(chaineActive && r.normaliser){
@@ -2519,8 +2699,111 @@ async function appliquerTraitement(blob){
     }
   }
 
-  const converti = await reechantillonner(donnees, rendu.sampleRate, frequenceExport());
-  return encoderWav(converti.donnees, converti.frequence, resolutionExport());
+  const converti = await reechantillonner(donnees, rendu.sampleRate, c.frequence || 0);
+  return encoderWav(converti.donnees, converti.frequence, c.resolution || 16);
+}
+
+/* ══════════════════════════════════════════════════════
+   MESURE ET PROPOSITION
+   ══════════════════════════════════════════════════════ */
+
+/* Mesure l'audio produit, côté navigateur : le service distant ne renvoie
+   aucune mesure, et la proposition doit rester possible dans les deux cas. */
+async function mesurerAudio(blob){
+  let source;
+  try{ source = await decoderAudio(blob); }catch(e){ return null; }
+  const d = source.getChannelData(0);
+  const fe = source.sampleRate;
+  if(!d.length) return null;
+
+  let crete = 0, somme = 0;
+  for(let i=0;i<d.length;i++){ const v = Math.abs(d[i]); if(v > crete) crete = v; somme += d[i]*d[i]; }
+  const rms = Math.sqrt(somme / d.length);
+
+  /* Plancher de bruit : premier décile des fenêtres de 50 ms. Les silences
+     entre les mots donnent le niveau du souffle, sans détection de parole. */
+  const fenetre = Math.max(1, Math.round(fe * 0.05));
+  const niveaux = [];
+  for(let deb=0; deb + fenetre <= d.length; deb += fenetre){
+    let s = 0;
+    for(let i=deb;i<deb+fenetre;i++) s += d[i]*d[i];
+    niveaux.push(Math.sqrt(s / fenetre));
+  }
+  niveaux.sort((a,b)=>a-b);
+  const plancher = niveaux.length ? niveaux[Math.floor(niveaux.length/10)] : 0;
+
+  /* Énergie des extrêmes du spectre, par deux filtres du premier ordre. */
+  const energie = (coupure, passeHaut) => {
+    const rc = 1/(2*Math.PI*coupure), dt = 1/fe;
+    const alpha = passeHaut ? rc/(rc+dt) : dt/(rc+dt);
+    let sortie = 0, precedent = 0, cumul = 0;
+    for(let i=0;i<d.length;i++){
+      sortie = passeHaut ? alpha*(sortie + d[i] - precedent) : sortie + alpha*(d[i]-sortie);
+      precedent = d[i];
+      cumul += sortie*sortie;
+    }
+    return Math.sqrt(cumul/d.length);
+  };
+
+  const db = v => v > 1e-9 ? 20*Math.log10(v) : -99;
+  return {
+    duree: source.duration,
+    frequence: fe,
+    crete: db(crete),
+    rms: db(rms),
+    plancher: db(plancher),
+    rapport: db(rms) - db(plancher),
+    crest: db(crete) - db(rms),
+    graves: db(energie(120, false)) - db(rms),
+    aigus: db(energie(5000, true)) - db(rms)
+  };
+}
+
+/* Déduit une chaîne de traitement des mesures, et dit ce qu'elle corrige.
+   Rien n'est décidé à l'avance : chaque valeur découle d'un nombre mesuré. */
+function chaineProposee(m){
+  const raisons = [];
+  /* Les nombres montrés à l'écran suivent l'usage français. */
+  const d1 = v => v.toFixed(1).replace('.', ',');
+  if(!m) return {chaine: chaineCourante(), raisons: ["Mesure impossible : réglages actuels conservés."]};
+
+  const t = {passeHaut:75, passeBas:12000, graves:0, mediums:1, aigus:1.5,
+             deess:-2, seuil:-18, ratio:3, cible:-3, normaliser:true};
+
+  if(m.graves > -14){
+    t.passeHaut = 110; t.graves = -2;
+    raisons.push('Grondement dans le bas du spectre (' + d1(m.graves) +
+                 ' dB sous la voix) : coupe-bas remonté à 110 Hz.');
+  }else{
+    raisons.push('Bas du spectre sain (' + d1(m.graves) + ' dB) : coupe-bas laissé à 75 Hz.');
+  }
+
+  if(m.aigus > -16){
+    t.deess = -5; t.aigus = 0.5;
+    raisons.push('Sifflantes en avant (' + d1(m.aigus) + ' dB) : atténuation à 7 kHz portée à -5 dB.');
+  }else{
+    raisons.push('Sifflantes mesurées (' + d1(m.aigus) + ' dB) : atténuation légère suffisante.');
+  }
+
+  if(m.crest > 18){
+    t.seuil = -24; t.ratio = 4.5;
+    raisons.push('Écarts de niveau importants (' + d1(m.crest) +
+                 ' dB entre crête et moyenne) : compression renforcée.');
+  }else{
+    raisons.push('Dynamique déjà régulière (' + d1(m.crest) + ' dB) : compression légère.');
+  }
+
+  /* La porte se place au-dessus du souffle mesuré, avec une marge : trop bas
+     elle ne sert à rien, trop haut elle rogne les fins de mots. */
+  const seuilPorte = Math.max(-75, Math.min(-15, Math.round(m.plancher + 8)));
+  raisons.push('Porte de bruit placée à ' + seuilPorte +
+               ' dB, huit décibels au-dessus du plancher mesuré.');
+
+  return {
+    chaine: {traitement: t, nettoyage: {seuil: seuilPorte, rogner: true},
+             resolution: resolutionExport(), frequence: frequenceExport()},
+    raisons
+  };
 }
 
 /* ─── Export ─── */
@@ -2632,10 +2915,16 @@ async function synthetiser(){
         style: parseFloat($('style').value),
         use_speaker_boost: $('boost').checked,
         speed: parseFloat($('debit').value),
-        /* Ignoré par le service distant, appliqué par le serveur local. */
-        denoise: $('debruitage').value
+        /* Ignorés par le service distant, appliqués par le serveur local. */
+        denoise: $('debruitage').value,
+        ...reglagesMoteur()
       }
     };
+    /* Le serveur local sait rendre plusieurs versions pour une seule
+       prononciation. Le service distant, non : on s'en passe alors. */
+    const troisVersions = (etat.fournisseur === 'local');
+    if(troisVersions) corps.variantes = true;
+
     const r = await fetch(baseApi() + '/text-to-speech/' + etat.voixId + '?output_format=mp3_44100_128', {
       method:'POST', headers: entetes(true), body: JSON.stringify(corps)
     });
@@ -2643,46 +2932,85 @@ async function synthetiser(){
       $('resSynth').innerHTML = '<div class="note n-red">' + echapper(await messageErreur(r)) + '</div>';
       return;
     }
-    const brut = await r.blob();
-    let blob = brut, traite = false;
-    if(traitementActif() || nettoyageActif() || exportModifie()){
-      occupe(bouton, true, 'Traitement…');
-      blob = await appliquerTraitement(brut);
-      traite = (blob !== brut);
+    let brut, departVotre, versionProposeeBrute;
+    let debruitageServeur = null, raisonsServeur = [];
+
+    if(troisVersions && (r.headers.get('content-type') || '').indexOf('json') >= 0){
+      const d = await r.json();
+      brut = base64VersBlob(d.versions.brut.audio, d.mime);
+      debruitageServeur = d.versions.propose.debruitage;
+      raisonsServeur = d.versions.propose.raisons || [];
+      /* La version « votre réglage » part du débruitage demandé, la version
+         proposée du débruitage que le serveur a jugé adapté aux mesures. */
+      departVotre = base64VersBlob(d.versions.traite.audio, d.mime);
+      versionProposeeBrute = base64VersBlob(d.versions.propose.audio, d.mime);
+    }else{
+      brut = await r.blob();
+      departVotre = brut;
+      versionProposeeBrute = brut;
     }
+
+    occupe(bouton, true, 'Traitement…');
+
+    /* Version 2 : vos réglages. */
+    const votre = chaineCourante();
+    const besoinChaine = !!(votre.traitement || votre.nettoyage || exportModifie());
+    const blob = besoinChaine ? await appliquerTraitement(departVotre, votre) : departVotre;
+    const traite = (blob !== departVotre) || (departVotre !== brut);
+
+    /* Version 3 : proposition déduite des mesures de l'audio réellement produit. */
+    const mesures = await mesurerAudio(brut);
+    const proposition = chaineProposee(mesures);
+    if(debruitageServeur) proposition.raisons = raisonsServeur.concat(proposition.raisons);
+    const propose = await appliquerTraitement(versionProposeeBrute, proposition.chaine);
+
     await majInfoFormat(blob);
 
-    /* L'extension suit le format réellement produit : le service distant renvoie
-       du mp3, le serveur local et le traitement du wav. Le préfixe est conservé. */
+    const base = 'voix-synthetique_' + slug(etat.voixNom || 'voix') + '_' + horodatage();
+    const ext = b => extensionDe(b.type || 'audio/mpeg');
     const gen = {
       id: ident(),
-      nom: 'voix-synthetique_' + slug(etat.voixNom || 'voix') + '_' + horodatage() +
-           '.' + extensionDe(blob.type || 'audio/mpeg'),
+      nom: base + '.' + ext(blob),
       texte: saisi, blob, date: new Date().toISOString(), voix: etat.voixNom || etat.voixId,
-      traitement: traite && traitementActif() ? $('preset').value : null,
-      nettoyage: traite && nettoyageActif(),
-      elocution: $('elocution').value
+      traitement: votre.traitement ? $('preset').value : null,
+      nettoyage: !!votre.nettoyage,
+      elocution: $('elocution').value,
+      /* Les trois versions sont conservées : la comparaison doit rester
+         possible plus tard, pas seulement dans la minute qui suit. */
+      brut: brut, nomBrut: base + '_brut.' + ext(brut),
+      propose: propose, nomPropose: base + '_propose.' + ext(propose),
+      debruitagePropose: debruitageServeur,
+      raisons: proposition.raisons,
+      mesures: mesures
     };
     etat.generations.unshift(gen);
     await bdEcrire('generations', gen);
 
-    /* En cas de traitement, les deux versions sont proposées côte à côte :
-       c'est la seule façon de juger le réglage à l'oreille. */
-    const comparaison = traite
-      ? '<div style="margin-top:10px">' +
-          '<div class="item-meta" style="margin-bottom:4px">Sans traitement, pour comparer</div>' +
-          '<audio controls src="'+URL.createObjectURL(brut)+'"></audio>' +
-        '</div>'
-      : '';
+    const lecteur = (titre, b, nom, marque) =>
+      '<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--bdr)">' +
+        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">' +
+          '<span style="font-size:12.5px;font-weight:600">' + echapper(titre) + '</span>' +
+          (marque ? '<span class="badge b-vio">' + echapper(marque) + '</span>' : '') +
+        '</div>' +
+        '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">' +
+          '<audio controls src="' + URL.createObjectURL(b) + '"></audio>' +
+          '<button class="btn btn-g btn-sm" onclick="telechargerVersion(\'' + gen.id + '\',\'' + nom + '\')">Télécharger</button>' +
+        '</div>' +
+      '</div>';
+
+    const explication =
+      '<div style="margin-top:8px;font-size:11.5px;line-height:1.6;color:var(--txt2)">' +
+        proposition.raisons.map(x => '— ' + echapper(x)).join('<br>') +
+      '</div>';
 
     $('resSynth').innerHTML =
-      '<div class="note n-grn"><div class="note-t">Audio généré</div>' +
-        '<div style="display:flex;gap:10px;align-items:center;margin-top:8px;flex-wrap:wrap">' +
-          '<audio controls src="'+URL.createObjectURL(blob)+'"></audio>' +
-          '<button class="btn btn-g btn-sm" onclick="telechargerGeneration(\''+gen.id+'\')">Télécharger</button>' +
-          (traite ? '<span class="badge b-vio">traité</span>' : '') +
-        '</div>' + comparaison +
-        '<div style="margin-top:8px;font-size:11.5px">Le nom du fichier porte la mention « voix-synthetique » : ne la retirez pas.</div>' +
+      '<div class="note n-grn"><div class="note-t">Audio généré — trois versions à comparer</div>' +
+        lecteur('Non traité, tel que le moteur l\'a produit', brut, 'brut', null) +
+        lecteur('Vos réglages', blob, 'votre', traite ? 'traité' : null) +
+        lecteur('Proposition, déduite des mesures', propose, 'propose', 'automatique') +
+        explication +
+        '<div style="margin-top:10px;font-size:11.5px">Le nom des fichiers porte la mention ' +
+        '« voix-synthetique » : ne la retirez pas.</div>' +
       '</div>';
     toast('Audio généré.', 'ok');
     memoriserCle();
@@ -2735,6 +3063,10 @@ function afficherGenerations(){
       '<audio controls preload="none" src="'+URL.createObjectURL(g.blob)+'"></audio>' +
       '<div class="item-btns">' +
         '<button class="btn btn-g btn-sm" onclick="telechargerGeneration(\''+g.id+'\')">Télécharger</button>' +
+        (g.brut ? '<button class="btn btn-g btn-sm" title="Sans aucun traitement" ' +
+                  'onclick="telechargerVersion(\''+g.id+'\',\'brut\')">Brut</button>' : '') +
+        (g.propose ? '<button class="btn btn-g btn-sm" title="Version proposée d\'après les mesures" ' +
+                     'onclick="telechargerVersion(\''+g.id+'\',\'propose\')">Proposé</button>' : '') +
         '<button class="btn btn-r btn-sm" onclick="supprimerGeneration(\''+g.id+'\')">Supprimer</button>' +
       '</div>' +
     '</div>').join('');
@@ -2746,6 +3078,23 @@ function telecharger(blob, nom){
   a.href = url; a.download = nom;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(()=>URL.revokeObjectURL(url), 4000);
+}
+
+/* Le serveur renvoie les trois versions encodées en base64 dans une seule
+   réponse : une prononciation, trois filtrages. */
+function base64VersBlob(donnees, type){
+  const binaire = atob(donnees);
+  const octets = new Uint8Array(binaire.length);
+  for(let i=0;i<binaire.length;i++) octets[i] = binaire.charCodeAt(i);
+  return new Blob([octets], {type: type || 'audio/wav'});
+}
+
+function telechargerVersion(id, quelle){
+  const g = etat.generations.find(x=>x.id === id);
+  if(!g) return;
+  if(quelle === 'brut'    && g.brut)    return telecharger(g.brut, g.nomBrut);
+  if(quelle === 'propose' && g.propose) return telecharger(g.propose, g.nomPropose);
+  telecharger(g.blob, g.nom);
 }
 
 function telechargerGeneration(id){
@@ -2843,6 +3192,7 @@ async function demarrer(){
   majReglages();
   majTraitement();
   majNettoyage();
+  majAvance();
   majCompteur();
 
   try{
@@ -2872,6 +3222,18 @@ async function demarrer(){
 
       const avant = await bdLire('config','fournisseurAvant');
       if(avant && avant.valeur) etat.fournisseurAvant = avant.valeur;
+
+      const av = await bdLire('config','avance');
+      if(av && av.valeur){
+        const v = av.valeur;
+        CURSEURS_AVANCE.forEach(id => { if(typeof v[id] === 'number') $(id).value = v[id]; });
+        if(v.decoupage) $('decoupage').value = v.decoupage;
+        if(v.graine) $('graine').value = v.graine;
+        $('avanceActif').checked = !!v.actif;
+        /* Sans ce rappel, les valeurs affichées resteraient celles du départ
+           alors que les curseurs portent déjà les valeurs restaurées. */
+        majAvance();
+      }
 
       const deb = await bdLire('config','debruitage');
       if(deb && deb.valeur && $('debruitage').querySelector('option[value="'+deb.valeur+'"]'))
