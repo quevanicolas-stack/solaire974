@@ -1,0 +1,24 @@
+# Socle du serveur — suffisant pour le moteur de test
+fastapi>=0.110
+uvicorn[standard]>=0.27
+python-multipart>=0.0.9
+
+# ffmpeg autonome : évite d'avoir à installer Homebrew.
+# Un ffmpeg déjà présent sur le système reste prioritaire.
+imageio-ffmpeg>=0.5
+
+# Assistant conversationnel réel — à installer séparément, voir NOTICE.md
+#   pip install anthropic
+# La clé est lue dans ANTHROPIC_API_KEY et reste côté serveur.
+# Sans ce paquet, seul le moteur de conversation « test » est disponible.
+
+# Moteur de clonage réel — à installer séparément, voir NOTICE.md
+#   pip install torch torchaudio "coqui-tts[codec]" "transformers>=4.57,<5"
+#
+# Deux points vérifiés sur Mac Apple Silicon, Python 3.14 :
+#   - la borne sur transformers est indispensable : la version 5 a supprimé
+#     isin_mps_friendly, que XTTS importe encore ;
+#   - l'extra [codec] installe torchcodec, exigé pour la lecture audio depuis
+#     PyTorch 2.9. Sans lui, le chargement échoue au premier import.
+#
+# Attention : XTTS-v2 est diffusé sous une licence excluant l'usage commercial.
