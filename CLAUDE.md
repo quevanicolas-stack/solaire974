@@ -55,6 +55,8 @@ Serveur local optionnel : `voix_locale/serveur.py` (FastAPI), qui expose les mê
 ## Notes techniques
 - Suppression du bruit de fond : traitement spectral côté serveur (`NIVEAUX_DEBRUITAGE`), cinq niveaux, « moyen » par défaut. Ne jamais ajouter `tn=1` à `afftdn` : le suivi de bruit annule la réduction.
 - Régularité du débit : le serveur découpe le texte sur les retours à la ligne, prononce chaque morceau avec la même graine, puis recolle avec des silences (`PAUSE_COURTE`, `PAUSE_LONGUE`). Ne pas laisser le modèle redécouper : `split_sentences` reste faux sous `PASSAGE_UNIQUE_MAX`.
+- Lexique de prononciation appliqué dans `preparerTexte`, avant la mise en forme du style : le texte saisi et celui conservé en bibliothèque restent intacts. Bornes de mot posées à la main (`\p{L}`), les bornes `\b` ignorant les accents.
+- Tout morceau recollé par `assembler_audio` passe par `adoucir_extremites` : sans ce fondu, la jonction contre le silence forme une marche qui s'entend comme un clic.
 - Égaliseur paramétrique à cinq bandes : gain, fréquence et largeur réglables, plateau ou cloche aux extrêmes. `BANDES_ORIGINE` fige les fréquences d'avant pour que les préréglages historiques sonnent à l'identique.
 - Tout réglage passé à `appliquerTraitement` doit décrire ses bandes au complet : une fréquence absente devient NaN et le navigateur refuse le filtre, ce qui fait échouer la génération entière. `chaineProposee` les décrit toutes, et `bande()` retombe sur des valeurs sûres.
 - `messageReseau` distingue une panne réseau d'une erreur de traitement locale : confondre les deux fait chercher la panne du mauvais côté.

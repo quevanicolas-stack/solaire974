@@ -37,7 +37,7 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 
 RACINE = Path(__file__).resolve().parent
 DOSSIER_VOIX = RACINE / "donnees" / "voix"
-VERSION = "2026.09.09"     # affichée au démarrage et sur « / » : sert à vérifier
+VERSION = "2026.09.12"     # affichée au démarrage et sur « / » : sert à vérifier
                            # que le fichier en place est bien le dernier
 FREQUENCE = 24000          # fréquence d'échantillonnage de sortie, en hertz
 DUREE_REFERENCE_MAX = 120  # secondes de référence conservées par voix
@@ -245,6 +245,37 @@ def decouper_texte(texte: str) -> list[tuple[str, float]]:
     return [(s, p) for s, p in segments]
 
 
+MONTEE = 0.002   # secondes de fondu à l'entrée d'un morceau
+DESCENTE = 0.008  # secondes de fondu à sa sortie
+
+
+def adoucir_extremites(trame: bytes, frequence: int) -> bytes:
+    """
+    Ramène le début et la fin d'un morceau à zéro.
+
+    Un morceau se termine rarement sur un zéro : recollé tel quel contre un
+    silence, l'écart entre le dernier échantillon et le suivant produit une
+    marche, et une marche s'entend comme un clic. Quelques millisecondes de
+    fondu suffisent à l'effacer.
+
+    La montée est plus courte que la descente : une attaque de consonne perd
+    à être adoucie, une fin de voyelle non.
+    """
+    n = len(trame) // 2
+    if n < 8:
+        return trame
+    valeurs = list(struct.unpack(f"<{n}h", trame[: n * 2]))
+
+    montee = min(int(frequence * MONTEE), n // 2)
+    descente = min(int(frequence * DESCENTE), n // 2)
+    for i in range(montee):
+        valeurs[i] = int(valeurs[i] * (i / montee))
+    for i in range(descente):
+        valeurs[n - 1 - i] = int(valeurs[n - 1 - i] * (i / descente))
+
+    return struct.pack(f"<{n}h", *valeurs)
+
+
 def assembler_audio(morceaux: list[tuple[bytes, float]]) -> bytes:
     """Recolle des WAV mono en intercalant les silences demandés."""
     trames: list[bytes] = []
@@ -252,7 +283,8 @@ def assembler_audio(morceaux: list[tuple[bytes, float]]) -> bytes:
     for donnees, pause in morceaux:
         with wave.open(BytesIO(donnees), "rb") as w:
             frequence, largeur = w.getframerate(), w.getsampwidth()
-            trames.append(w.readframes(w.getnframes()))
+            trame = w.readframes(w.getnframes())
+        trames.append(adoucir_extremites(trame, frequence) if largeur == 2 else trame)
         if pause > 0:
             trames.append(b"\x00" * (int(frequence * pause) * largeur))
 

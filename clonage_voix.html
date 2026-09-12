@@ -657,9 +657,42 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
           <label class="lbl">Texte réellement transmis au moteur</label>
           <div class="phrase" id="apercuTexte" style="white-space:pre-wrap"></div>
           <div class="aide">
-            Le style découpe le texte pour guider les pauses. Rien n'est ajouté ni retiré aux mots :
-            seule la mise en forme change. Choisissez « Personnalisé » pour transmettre votre texte tel quel.
+            Le style découpe le texte pour guider les pauses, et le lexique remplace les mots
+            que vous y avez inscrits. Choisissez « Personnalisé » pour ne garder que le lexique.
           </div>
+        </div>
+      </div>
+
+      <div class="sec">Prononciation des noms propres
+        <button class="btn btn-g btn-sm" style="margin-left:8px;text-transform:none;letter-spacing:0"
+                id="btnLexique" onclick="basculerLexique()">Afficher</button></div>
+      <div class="card" id="blocLexique" style="display:none">
+        <div class="note n-blu">
+          Le moteur devine la prononciation d'après l'orthographe, ce qui échoue sur les noms
+          propres. Inscrivez ici comment le mot doit <em>sonner</em> : le texte affiché et
+          enregistré dans la bibliothèque reste le vôtre, seule la version transmise au moteur
+          est modifiée. L'aperçu ci-dessus montre le résultat.
+        </div>
+
+        <div class="grid2" style="margin-top:13px">
+          <div class="champ">
+            <label class="lbl" for="motEcrit">Mot écrit</label>
+            <input type="text" id="motEcrit" placeholder="Queva" onkeydown="if(event.key==='Enter'){event.preventDefault();ajouterAuLexique();}">
+          </div>
+          <div class="champ">
+            <label class="lbl" for="motDit">Prononcé comme</label>
+            <input type="text" id="motDit" placeholder="Kéva" onkeydown="if(event.key==='Enter'){event.preventDefault();ajouterAuLexique();}">
+          </div>
+        </div>
+        <button class="btn btn-g btn-sm" onclick="ajouterAuLexique()">Ajouter au lexique</button>
+
+        <div id="listeLexique" style="margin-top:14px"></div>
+
+        <div class="aide" style="margin-top:12px">
+          Écrivez la prononciation à la française, en séparant les syllabes par des traits d'union
+          si nécessaire. Quelques exemples : <em>Queva</em> devient <em>Kéva</em>,
+          <em>Ecologreen</em> devient <em>Écologrine</em>, <em>Wi-Fi</em> devient <em>Ouifi</em>.
+          Le remplacement ne touche que les mots entiers, quelle que soit la casse.
         </div>
       </div>
 
@@ -1095,6 +1128,7 @@ const etat = {
   fournisseur:'local',   // 'local' | 'distant' — le serveur local est le défaut
   typeVoix:'clonee',     // 'clonee' | 'catalogue'
   fournisseurAvant:null, // fournisseur à rétablir en quittant le catalogue
+  lexique:[],            // prononciations imposées : {ecrit, dit}
   voixAAmeliorer:null,   // voix dont on prépare une nouvelle version
   connexion:null,        // dernier résultat de vérification du service
   voixId:null,
@@ -2437,9 +2471,87 @@ function enregistrerElocution(){
 /* Met le texte en forme selon le style. Aucun mot n'est ajouté ni retiré :
    seuls des retours à la ligne sont introduits, que le moteur interprète
    comme des pauses. L'aperçu affiché permet de le vérifier. */
+/* ══════════════════════════════════════════════════════
+   LEXIQUE DE PRONONCIATION
+   ══════════════════════════════════════════════════════ */
+
+function basculerLexique(){ basculer('blocLexique', $('btnLexique')); }
+
+function echapperMotif(s){ return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+
+/* Remplace les mots du lexique, entiers seulement et sans égard à la casse.
+   Les bornes de mot de l'expression régulière ne connaissent que l'alphabet
+   anglais : « Aurélie » y serait coupé sur l'accent. On borne donc à la main,
+   sur tout ce qui n'est ni lettre ni chiffre, quel que soit l'alphabet. */
+function appliquerLexique(texte){
+  let sortie = String(texte);
+  for(const e of etat.lexique){
+    if(!e || !e.ecrit) continue;
+    const motif = echapperMotif(e.ecrit);
+    let regle;
+    try{
+      regle = new RegExp('(?<![\\p{L}\\p{N}])' + motif + '(?![\\p{L}\\p{N}])', 'giu');
+    }catch(err){
+      /* Un navigateur sans regard en arrière : on se rabat sur les bornes
+         classiques, moins fiables sur les accents mais jamais fautives. */
+      regle = new RegExp('\\b' + motif + '\\b', 'gi');
+    }
+    sortie = sortie.replace(regle, e.dit);
+  }
+  return sortie;
+}
+
+function afficherLexique(){
+  const zone = $('listeLexique');
+  if(!etat.lexique.length){
+    zone.innerHTML = '<div class="vide">Aucun mot dans le lexique. La prononciation reste celle du moteur.</div>';
+    return;
+  }
+  zone.innerHTML = etat.lexique.map((e, i) =>
+    '<div class="item">' +
+      '<div class="item-corps">' +
+        '<div class="item-nom">' + echapper(e.ecrit) + ' &rarr; ' + echapper(e.dit) + '</div>' +
+      '</div>' +
+      '<div class="item-btns">' +
+        '<button class="btn btn-r btn-sm" onclick="retirerDuLexique(' + i + ')">Retirer</button>' +
+      '</div>' +
+    '</div>').join('');
+}
+
+function ajouterAuLexique(){
+  const ecrit = $('motEcrit').value.trim();
+  const dit = $('motDit').value.trim();
+  if(!ecrit || !dit){ toast('Renseignez le mot écrit et sa prononciation.', 'err'); return; }
+  if(ecrit.toLowerCase() === dit.toLowerCase()){
+    toast('Les deux formes sont identiques : rien à corriger.', 'err');
+    return;
+  }
+  const existant = etat.lexique.findIndex(e => e.ecrit.toLowerCase() === ecrit.toLowerCase());
+  if(existant >= 0) etat.lexique[existant] = {ecrit, dit};
+  else etat.lexique.push({ecrit, dit});
+  $('motEcrit').value = ''; $('motDit').value = '';
+  enregistrerLexique();
+  afficherLexique();
+  majCompteur();
+  toast(existant >= 0 ? 'Prononciation mise à jour.' : 'Mot ajouté au lexique.', 'ok');
+}
+
+function retirerDuLexique(i){
+  etat.lexique.splice(i, 1);
+  enregistrerLexique();
+  afficherLexique();
+  majCompteur();
+}
+
+function enregistrerLexique(){
+  if(bd) bdEcrire('config', {cle:'lexique', valeur: etat.lexique});
+}
+
 function preparerTexte(brut, cle){
   const e = ELOCUTIONS[cle];
-  let t = String(brut).replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
+  /* Le lexique passe en premier : le style découpe ensuite le texte réellement
+     prononcé, et non celui que l'on a saisi. */
+  let t = appliquerLexique(String(brut)).replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
   if(!e) return t;
   if(e.segmenter)              t = t.replace(/,[ ]+/g, ',\n');
   if(e.pauses === 'moderees')  t = t.replace(/([.!?…])[ ]+/g, '$1\n');
@@ -3434,6 +3546,7 @@ async function demarrer(){
   majTraitement();
   majNettoyage();
   majAvance();
+  afficherLexique();
   majCompteur();
 
   try{
@@ -3460,6 +3573,14 @@ async function demarrer(){
 
       const type = await bdLire('config','typeVoix');
       if(type && type.valeur === 'catalogue') etat.typeVoix = 'catalogue';
+
+      const lex = await bdLire('config','lexique');
+      if(lex && Array.isArray(lex.valeur)){
+        etat.lexique = lex.valeur;
+        /* Sans ce rappel, la liste affichée resterait celle du démarrage,
+           c'est-à-dire vide, alors que le lexique est bien chargé. */
+        afficherLexique();
+      }
 
       const avant = await bdLire('config','fournisseurAvant');
       if(avant && avant.valeur) etat.fournisseurAvant = avant.valeur;
