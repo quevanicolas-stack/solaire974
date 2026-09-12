@@ -236,6 +236,30 @@ mesurée sur une conversion, la bande 13-23 kHz est 51 dB sous la bande utile,
 c'est-à-dire vide. Un dialogue de cinéma porte du contenu jusque vers 20 kHz.
 Pour franchir ce plafond il faut changer de modèle, pas de réglage.
 
+### La prononciation des noms propres
+
+Le moteur devine la prononciation d'après l'orthographe, ce qui échoue
+régulièrement sur les noms propres. L'étape Synthèse porte un **lexique** :
+vous y inscrivez le mot tel qu'il s'écrit et tel qu'il doit sonner.
+
+    Queva       ->  Kéva
+    Ecologreen  ->  Écologrine
+    Wi-Fi       ->  Ouifi
+
+Le texte affiché et celui conservé en bibliothèque restent les vôtres ; seule
+la version transmise au moteur est corrigée, et l'aperçu montre le résultat.
+Le remplacement ne touche que les mots entiers, sans égard à la casse, et les
+accents bornent correctement le mot : inscrire *Aurélie* ne touche pas
+*Aurélien*.
+
+### Les clics entre les phrases
+
+Le serveur prononce chaque morceau séparément puis les recolle. Un morceau se
+terminant rarement sur un zéro, la jonction contre le silence formait une
+marche — et une marche s'entend comme un clic. Quelques millisecondes de fondu
+l'effacent : mesuré sur un cas volontairement défavorable, l'écart entre deux
+échantillons voisins passe de 0,60 à 0,03, très en dessous du seuil audible.
+
 ### L'égaliseur
 
 Les cinq bandes de l'étape Synthèse sont réglables en **gain, fréquence et
