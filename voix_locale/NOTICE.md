@@ -236,6 +236,29 @@ mesurée sur une conversion, la bande 13-23 kHz est 51 dB sous la bande utile,
 c'est-à-dire vide. Un dialogue de cinéma porte du contenu jusque vers 20 kHz.
 Pour franchir ce plafond il faut changer de modèle, pas de réglage.
 
+### L'égaliseur
+
+Les cinq bandes de l'étape Synthèse sont réglables en **gain, fréquence et
+largeur**, et les deux extrêmes basculent entre plateau et cloche. Cette
+distinction compte : une résonance de pièce se loge vers 180 Hz, au-dessus du
+coupe-bas, et un plateau ne peut pas l'atteindre — seule une cloche le peut.
+
+Un préréglage **« Voix claire »** reprend une correction établie en mesurant une
+génération réelle : coupe-bas à 110 Hz, creux de 9 dB à 180 Hz, bas-médiums
+dégagés de 4 dB à 300 Hz, bande des consonnes remontée de 5 dB à 3,2 kHz. Sur
+la génération qui a servi de cas d'école, le bourdonnement passe de +10,9 à
++6,8 dB au-dessus de la voix et la présence de -26,6 à -16,9 dB.
+
+Les quatre préréglages d'origine portent désormais leurs fréquences en toutes
+lettres, aux valeurs qui étaient inscrites dans le code : ils sonnent comme
+avant.
+
+**Une limite à connaître.** L'égaliseur corrige un déséquilibre de timbre, pas
+une réverbération. Si l'enregistrement de référence a été fait dans une pièce
+vivante, la traîne est apprise par le modèle et ressort à chaque phrase ; tout
+réglage qui la réduit vraiment supprime aussi les consonnes, mesures à l'appui.
+Il faut alors refaire la référence dans une pièce mate.
+
 ### La régularité du débit
 
 Sur un texte de plusieurs phrases, le modèle reprenait chaque phrase de zéro :
