@@ -193,7 +193,11 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
 @keyframes entre{from{opacity:0;transform:translateX(14px)}to{opacity:1;transform:none}}
 
 .bandeau{position:sticky;top:-26px;z-index:50;margin:-26px -30px 20px;padding:8px 30px;
-  background:var(--amb-d);border-bottom:1px solid rgba(240,180,41,.28);font-size:11.5px;color:#F5D48A;
+  /* L'ambre est translucide : posé seul sur un bandeau collant, le contenu qui
+     défile le traverse et la mention devient illisible. On le compose donc sur
+     le fond de la page pour obtenir une bande opaque. */
+  background:linear-gradient(var(--amb-d),var(--amb-d)),var(--bg);
+  border-bottom:1px solid rgba(240,180,41,.28);font-size:11.5px;color:#F5D48A;
   display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 
 /* ─── RESPONSIVE ─── */
@@ -841,6 +845,7 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
               <option value="podcast">Podcast — naturel, dynamique préservée</option>
               <option value="annonce">Annonce — voix très en avant, forte compression</option>
               <option value="telephone">Téléphone — bande passante réduite</option>
+              <option value="clarte">Voix claire — dégage une voix sourde ou bourdonnante</option>
               <option value="perso">Personnalisé</option>
             </select>
             <div class="aide">Traitement appliqué dans le navigateur, après la génération.</div>
@@ -875,28 +880,62 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
           </div>
 
           <div class="sec" style="margin-top:16px">Égalisation</div>
-          <div class="grid3">
+          <div class="note n-blu">
+            Cinq bandes réglables en gain, en fréquence et en largeur. La largeur n'agit que sur
+            les cloches : un plateau relève ou abaisse tout ce qui se trouve au-delà de sa fréquence.
+          </div>
+          <div class="grid3" style="margin-top:12px">
             <div class="champ">
               <div class="curs-tete"><span>Graves</span><span class="curs-val" id="vGraves">0,0 dB</span></div>
-              <input type="range" id="graves" min="-12" max="12" step="0.5" value="0" oninput="majTraitement(true)">
-              <div class="aide">Corps de la voix, vers 120 Hz.</div>
+              <input type="range" id="graves" min="-15" max="12" step="0.5" value="0" oninput="majTraitement(true)">
+              <div class="curs-tete" style="margin-top:8px"><span>Fréquence</span><span class="curs-val" id="vFGraves">120 Hz</span></div>
+              <input type="range" id="fGraves" min="40" max="500" step="5" value="120" oninput="majTraitement(true)">
+              <div class="curs-tete" style="margin-top:8px"><span>Largeur</span><span class="curs-val" id="vQGraves">1,0</span></div>
+              <input type="range" id="qGraves" min="0.3" max="6" step="0.1" value="1.0" oninput="majTraitement(true)">
+              <label class="lbl" style="margin-top:8px" for="typeGraves">Forme</label>
+              <select id="typeGraves" onchange="majTraitement(true)"><option value="lowshelf" selected>Plateau</option><option value="peaking">Cloche</option></select>
+              <div class="aide">Corps de la voix. En cloche vers 180 Hz, c'est le réglage qui retire un bourdonnement de pièce.</div>
+            </div>
+            <div class="champ">
+              <div class="curs-tete"><span>Bas-médiums</span><span class="curs-val" id="vBasMed">0,0 dB</span></div>
+              <input type="range" id="basMed" min="-15" max="12" step="0.5" value="0" oninput="majTraitement(true)">
+              <div class="curs-tete" style="margin-top:8px"><span>Fréquence</span><span class="curs-val" id="vFBasMed">300 Hz</span></div>
+              <input type="range" id="fBasMed" min="100" max="1200" step="5" value="300" oninput="majTraitement(true)">
+              <div class="curs-tete" style="margin-top:8px"><span>Largeur</span><span class="curs-val" id="vQBasMed">1,2</span></div>
+              <input type="range" id="qBasMed" min="0.3" max="6" step="0.1" value="1.2" oninput="majTraitement(true)">
+              <div class="aide">Zone de la boue vocale. La creuser dégage la voix sans la rendre maigre.</div>
             </div>
             <div class="champ">
               <div class="curs-tete"><span>Médiums</span><span class="curs-val" id="vMediums">0,0 dB</span></div>
               <input type="range" id="mediums" min="-12" max="12" step="0.5" value="0" oninput="majTraitement(true)">
-              <div class="aide">Présence et intelligibilité, vers 1,8 kHz.</div>
+              <div class="curs-tete" style="margin-top:8px"><span>Fréquence</span><span class="curs-val" id="vFMediums">1800 Hz</span></div>
+              <input type="range" id="fMediums" min="300" max="6000" step="5" value="1800" oninput="majTraitement(true)">
+              <div class="curs-tete" style="margin-top:8px"><span>Largeur</span><span class="curs-val" id="vQMediums">0,9</span></div>
+              <input type="range" id="qMediums" min="0.3" max="6" step="0.1" value="0.9" oninput="majTraitement(true)">
+              <div class="aide">Présence et intelligibilité. Vers 3 kHz, c'est la bande des consonnes.</div>
             </div>
+          </div>
+          <div class="grid2" style="margin-top:12px">
             <div class="champ">
               <div class="curs-tete"><span>Aigus</span><span class="curs-val" id="vAigus">0,0 dB</span></div>
               <input type="range" id="aigus" min="-12" max="12" step="0.5" value="0" oninput="majTraitement(true)">
-              <div class="aide">Air et clarté, au-dessus de 6 kHz.</div>
+              <div class="curs-tete" style="margin-top:8px"><span>Fréquence</span><span class="curs-val" id="vFAigus">6000 Hz</span></div>
+              <input type="range" id="fAigus" min="2000" max="12000" step="5" value="6000" oninput="majTraitement(true)">
+              <div class="curs-tete" style="margin-top:8px"><span>Largeur</span><span class="curs-val" id="vQAigus">1,0</span></div>
+              <input type="range" id="qAigus" min="0.3" max="6" step="0.1" value="1.0" oninput="majTraitement(true)">
+              <label class="lbl" style="margin-top:8px" for="typeAigus">Forme</label>
+              <select id="typeAigus" onchange="majTraitement(true)"><option value="highshelf" selected>Plateau</option><option value="peaking">Cloche</option></select>
+              <div class="aide">Air et clarté. Le moteur ne produisant rien au-delà de 12 kHz, inutile de monter plus haut.</div>
             </div>
-          </div>
-
-          <div class="champ" style="margin-top:12px">
-            <div class="curs-tete"><span>Anti-sifflantes</span><span class="curs-val" id="vDeess">0,0 dB</span></div>
-            <input type="range" id="deess" min="-15" max="0" step="0.5" value="0" oninput="majTraitement(true)">
-            <div class="aide">Atténue les S trop marqués, vers 7 kHz. À doser : trop fort, la voix devient sourde.</div>
+            <div class="champ">
+              <div class="curs-tete"><span>Anti-sifflantes</span><span class="curs-val" id="vDeess">0,0 dB</span></div>
+              <input type="range" id="deess" min="-15" max="0" step="0.5" value="0" oninput="majTraitement(true)">
+              <div class="curs-tete" style="margin-top:8px"><span>Fréquence</span><span class="curs-val" id="vFDeess">7000 Hz</span></div>
+              <input type="range" id="fDeess" min="3000" max="12000" step="5" value="7000" oninput="majTraitement(true)">
+              <div class="curs-tete" style="margin-top:8px"><span>Largeur</span><span class="curs-val" id="vQDeess">3,5</span></div>
+              <input type="range" id="qDeess" min="0.3" max="6" step="0.1" value="3.5" oninput="majTraitement(true)">
+              <div class="aide">Atténue les S trop marqués. À doser : trop fort, la voix devient sourde.</div>
+            </div>
           </div>
 
           <div class="sec" style="margin-top:16px">Dynamique</div>
@@ -1851,8 +1890,22 @@ async function messageErreur(reponse){
   return brut || ('Erreur ' + reponse.status + '.');
 }
 
+/* Une requête qui n'aboutit pas lève une TypeError ; toute autre exception vient
+   du traitement local. Les confondre fait chercher la panne à l'extérieur alors
+   qu'elle est dans la page : le message doit donc dire lequel des deux c'est. */
+function pannePossibleDuReseau(e){
+  if(!e) return true;
+  if(e.name !== 'TypeError') return false;
+  const m = String(e.message || '').toLowerCase();
+  return m.indexOf('fetch') >= 0 || m.indexOf('load failed') >= 0 ||
+         m.indexOf('network') >= 0 || m.indexOf('réseau') >= 0;
+}
+
 function messageReseau(e){
   const detail = ' (' + (e && e.message ? e.message : 'échec réseau') + ')';
+  if(!pannePossibleDuReseau(e)){
+    return "Le traitement de l'audio a échoué dans la page, le serveur n'est pas en cause." + detail;
+  }
   if(etat.fournisseur === 'local'){
     return "Le serveur local ne répond pas sur " + urlLocale() + ". Vérifiez qu'il est bien lancé " +
            "(python serveur.py --moteur test dans le dossier voix_locale) et que l'adresse correspond " +
@@ -2413,14 +2466,44 @@ function majReglages(perso){
    ══════════════════════════════════════════════════════ */
 
 /* Chaînes toutes faites, dans l'esprit d'une console de diffusion. */
-const PRESETS = {
-  radio:     {passeHaut:90,  passeBas:12000, graves:2.5, mediums:2,   aigus:3.5, deess:-4, seuil:-22, ratio:5,  cible:-3, normaliser:true},
-  podcast:   {passeHaut:75,  passeBas:12000, graves:1,   mediums:1.5, aigus:2,   deess:-3, seuil:-18, ratio:3,  cible:-6, normaliser:true},
-  annonce:   {passeHaut:100, passeBas:12000, graves:4,   mediums:3,   aigus:4,   deess:-5, seuil:-30, ratio:9,  cible:-2, normaliser:true},
-  telephone: {passeHaut:300, passeBas:3400,  graves:-6,  mediums:6,   aigus:-6,  deess:-2, seuil:-20, ratio:6,  cible:-4, normaliser:true}
+/* Réglages communs aux préréglages d'origine : ce sont les fréquences qui
+   étaient inscrites en dur dans la chaîne. Les reprendre telles quelles garantit
+   que « radio », « podcast », « annonce » et « téléphone » sonnent comme avant. */
+const BANDES_ORIGINE = {
+  typeGraves:'lowshelf', fGraves:120,  qGraves:1,
+  basMed:0,              fBasMed:300,  qBasMed:1.2,
+  fMediums:1800,         qMediums:0.9,
+  typeAigus:'highshelf', fAigus:6000,  qAigus:1,
+  fDeess:7000,           qDeess:3.5
 };
 
-const CURSEURS_TRAITEMENT = ['passeHaut','passeBas','graves','mediums','aigus','deess','seuil','ratio','cible'];
+const PRESETS = {
+  radio:     {...BANDES_ORIGINE, passeHaut:90,  passeBas:12000, graves:2.5, mediums:2,   aigus:3.5, deess:-4, seuil:-22, ratio:5,  cible:-3, normaliser:true},
+  podcast:   {...BANDES_ORIGINE, passeHaut:75,  passeBas:12000, graves:1,   mediums:1.5, aigus:2,   deess:-3, seuil:-18, ratio:3,  cible:-6, normaliser:true},
+  annonce:   {...BANDES_ORIGINE, passeHaut:100, passeBas:12000, graves:4,   mediums:3,   aigus:4,   deess:-5, seuil:-30, ratio:9,  cible:-2, normaliser:true},
+  telephone: {...BANDES_ORIGINE, passeHaut:300, passeBas:3400,  graves:-6,  mediums:6,   aigus:-6,  deess:-2, seuil:-20, ratio:6,  cible:-4, normaliser:true},
+  /* Correction d'une voix sourde et bourdonnante : creuser la résonance de
+     pièce vers 180 Hz, dégager les bas-médiums, remonter la bande des
+     consonnes. Valeurs établies en mesurant une génération réelle. */
+  clarte:    {passeHaut:110, passeBas:12000,
+              typeGraves:'peaking', graves:-9, fGraves:180,  qGraves:1.4,
+              basMed:-4,            fBasMed:300,  qBasMed:1.2,
+              mediums:5,            fMediums:3200, qMediums:0.8,
+              typeAigus:'peaking',  aigus:2,   fAigus:6500,  qAigus:1,
+              deess:-3,             fDeess:7000,  qDeess:3.5,
+              seuil:-18, ratio:3, cible:-3, normaliser:true}
+};
+
+const CURSEURS_TRAITEMENT = [
+  'passeHaut','passeBas',
+  'graves','fGraves','qGraves',
+  'basMed','fBasMed','qBasMed',
+  'mediums','fMediums','qMediums',
+  'aigus','fAigus','qAigus',
+  'deess','fDeess','qDeess',
+  'seuil','ratio','cible'
+];
+const CHOIX_TRAITEMENT = ['typeGraves','typeAigus'];
 
 function traitementActif(){
   const c = $('traitementActif');
@@ -2430,6 +2513,7 @@ function traitementActif(){
 function reglagesTraitement(){
   const v = {};
   CURSEURS_TRAITEMENT.forEach(id => v[id] = parseFloat($(id).value));
+  CHOIX_TRAITEMENT.forEach(id => v[id] = $(id).value);
   v.normaliser = $('normaliser').checked;
   return v;
 }
@@ -2447,6 +2531,7 @@ function appliquerPreset(){
   const p = PRESETS[choix];
   if(!p) return;
   CURSEURS_TRAITEMENT.forEach(id => { if(id in p) $(id).value = p[id]; });
+  CHOIX_TRAITEMENT.forEach(id => { if(id in p) $(id).value = p[id]; });
   $('normaliser').checked = p.normaliser;
   $('traitementActif').checked = true;
   majTraitement();
@@ -2466,10 +2551,23 @@ function majTraitement(perso){
   const dec = (n, u) => n.toFixed(1).replace('.', ',') + ' ' + u;
   $('vPasseHaut').textContent = Math.round(r.passeHaut) + ' Hz';
   $('vPasseBas').textContent  = Math.round(r.passeBas) + ' Hz';
-  $('vGraves').textContent    = dec(r.graves, 'dB');
-  $('vMediums').textContent   = dec(r.mediums, 'dB');
-  $('vAigus').textContent     = dec(r.aigus, 'dB');
-  $('vDeess').textContent     = dec(r.deess, 'dB');
+  [['Graves','graves'],['BasMed','basMed'],['Mediums','mediums'],
+   ['Aigus','aigus'],['Deess','deess']].forEach(([maj, cle]) => {
+    $('v' + maj).textContent  = dec(r[cle], 'dB');
+    $('vF' + maj).textContent = Math.round(r['f' + maj]) + ' Hz';
+    const q = $('vQ' + maj);
+    if(q) q.textContent = r['q' + maj].toFixed(1).replace('.', ',');
+  });
+  /* La largeur ne veut rien dire sur un plateau : on l'estompe plutôt que de
+     la masquer, pour qu'elle reste trouvable quand on repasse en cloche. */
+  [['Graves','typeGraves'],['Aigus','typeAigus']].forEach(([maj, type]) => {
+    const cloche = (r[type] === 'peaking');
+    const curseur = $('q' + maj);
+    if(curseur){
+      curseur.disabled = !cloche;
+      curseur.parentNode.style.opacity = cloche ? '1' : '.45';
+    }
+  });
   $('vSeuil').textContent     = Math.round(r.seuil) + ' dB';
   $('vRatio').textContent     = r.ratio.toFixed(1).replace('.', ',') + ' : 1';
   $('vCible').textContent     = dec(r.cible, 'dB');
@@ -2669,13 +2767,29 @@ async function appliquerTraitement(blob, chaineDemandee){
   const nyquist = source.sampleRate / 2 - 100;
   const chaine = [];
   if(chaineActive){
+    /* Chaque bande porte sa propre fréquence et sa propre largeur. Un plateau
+       ignore la largeur : le paramètre Q d'un shelf ne fait pas ce qu'on croit
+       dans l'API audio du navigateur, on ne le lui passe donc pas. */
+    const bande = (type, freq, gain, q) => {
+      /* Un réglage venu d'ailleurs peut être incomplet : sans ce garde-fou, une
+         fréquence manquante devient NaN et le filtre est refusé par le
+         navigateur, ce qui fait échouer toute la génération. */
+      const nombre = (v, defaut) => (typeof v === 'number' && isFinite(v)) ? v : defaut;
+      const f = Math.min(Math.max(nombre(freq, 1000), 20), nyquist);
+      gain = nombre(gain, 0);
+      q = nombre(q, 1);
+      return (type === 'peaking')
+        ? filtre('peaking', f, Math.max(0.1, q), gain)
+        : filtre(type, f, null, gain);
+    };
     chaine.push(
-      filtre('highpass',  Math.min(r.passeHaut, nyquist), 0.7, null),
-      filtre('lowpass',   Math.min(r.passeBas, nyquist),  0.7, null),
-      filtre('lowshelf',  120,  null, r.graves),
-      filtre('peaking',   1800, 0.9,  r.mediums),
-      filtre('highshelf', 6000, null, r.aigus),
-      filtre('peaking',   7000, 3.5,  r.deess)
+      filtre('highpass', Math.min(r.passeHaut, nyquist), 0.7, null),
+      filtre('lowpass',  Math.min(r.passeBas, nyquist),  0.7, null),
+      bande(r.typeGraves || 'lowshelf', r.fGraves, r.graves, r.qGraves),
+      bande('peaking',                  r.fBasMed, r.basMed, r.qBasMed),
+      bande('peaking',                  r.fMediums, r.mediums, r.qMediums),
+      bande(r.typeAigus || 'highshelf', r.fAigus, r.aigus, r.qAigus),
+      bande('peaking',                  r.fDeess, r.deess, r.qDeess)
     );
     const compresseur = off.createDynamicsCompressor();
     compresseur.threshold.value = r.seuil;
@@ -2873,15 +2987,34 @@ function chaineProposee(m){
   const d1 = v => v.toFixed(1).replace('.', ',');
   if(!m) return {chaine: chaineCourante(), raisons: ["Mesure impossible : réglages actuels conservés."]};
 
-  const t = {passeHaut:75, passeBas:12000, graves:0, mediums:1, aigus:1.5,
-             deess:-2, seuil:-18, ratio:3, cible:-3, normaliser:true};
+  /* Toutes les bandes sont décrites, fréquences comprises : une bande laissée
+     sans fréquence donnerait un réglage vide, et un filtre invalide. */
+  const t = {passeHaut:75, passeBas:12000,
+             typeGraves:'lowshelf', graves:0,  fGraves:120,  qGraves:1,
+             basMed:0,  fBasMed:300,  qBasMed:1.2,
+             mediums:1, fMediums:1800, qMediums:0.9,
+             typeAigus:'highshelf', aigus:1.5, fAigus:6000, qAigus:1,
+             deess:-2,  fDeess:7000,  qDeess:3.5,
+             seuil:-18, ratio:3, cible:-3, normaliser:true};
 
   if(m.graves > -14){
-    t.passeHaut = 110; t.graves = -2;
+    /* Le grondement d'une pièce se loge au-dessus du coupe-bas : un plateau ne
+       l'atteindrait pas, il faut une cloche placée sur la résonance. */
+    t.passeHaut = 110;
+    t.typeGraves = 'peaking'; t.graves = -7; t.fGraves = 180; t.qGraves = 1.4;
+    t.basMed = -3;
     raisons.push('Grondement dans le bas du spectre (' + d1(m.graves) +
-                 ' dB sous la voix) : coupe-bas remonté à 110 Hz.');
+                 ' dB sous la voix) : coupe-bas à 110 Hz et creux de 7 dB à 180 Hz.');
   }else{
     raisons.push('Bas du spectre sain (' + d1(m.graves) + ' dB) : coupe-bas laissé à 75 Hz.');
+  }
+
+  /* La présence porte l'intelligibilité : si la bande des consonnes est très
+     en retrait, la remonter fait davantage pour la clarté que tout le reste. */
+  if(m.aigus < -22){
+    t.mediums = 5; t.fMediums = 3200; t.qMediums = 0.8;
+    raisons.push('Bande des consonnes très en retrait (' + d1(m.aigus) +
+                 ' dB) : remontée de 5 dB à 3,2 kHz.');
   }
 
   if(m.aigus > -16){
@@ -3373,6 +3506,7 @@ async function demarrer(){
       if(trait && trait.valeur){
         const t = trait.valeur;
         CURSEURS_TRAITEMENT.forEach(id => { if(typeof t[id] === 'number') $(id).value = t[id]; });
+        CHOIX_TRAITEMENT.forEach(id => { if(typeof t[id] === 'string') $(id).value = t[id]; });
         if(typeof t.normaliser === 'boolean') $('normaliser').checked = t.normaliser;
         if(t.preset) $('preset').value = t.preset;
         $('traitementActif').checked = !!t.actif;
