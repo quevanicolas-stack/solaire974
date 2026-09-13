@@ -1,0 +1,108 @@
+# Texte de lecture pour l'affinage — Studio Voix
+#
+# Lisez une phrase par ligne, en marquant une pause nette d'une seconde entre
+# chacune : c'est sur ces silences que le programme découpe. Les lignes
+# commençant par un dièse sont ignorées.
+#
+# Ne lisez pas tout d'un ton égal. Un modèle affiné ne sait produire que ce
+# qu'il a entendu : trente minutes de lecture plate donnent une voix plate.
+# Les indications entre crochets sont là pour vous, ne les lisez pas.
+#
+# Comptez environ quatre minutes de parole pour ce texte. C'est un noyau, pas
+# un corpus complet : il garantit que tous les sons du français sont présents,
+# ainsi que les registres — question, exclamation, ton bas, phrase longue.
+#
+# Pour atteindre les vingt à trente minutes nécessaires, ajoutez quinze à
+# vingt minutes de matière à vous : un chapitre de livre lu à voix haute, un
+# argumentaire, une présentation. Ne relisez pas ce texte plusieurs fois : le
+# modèle apprendrait la répétition plutôt que la voix.
+#
+# Coupez en plusieurs prises si vous fatiguez, la fatigue s'entend et elle
+# serait apprise elle aussi.
+
+# ─── Phrases neutres, pour le timbre de base ───
+Le soleil se lève doucement sur la côte est de l'île.
+Nous avons reçu votre demande et nous y répondrons dans la semaine.
+Le calcul tient compte de la surface disponible et de l'orientation du toit.
+Chaque installation est étudiée séparément, selon la consommation réelle.
+La garantie couvre les panneaux pendant vingt-cinq ans.
+Il faudra prévoir une visite technique avant de signer quoi que ce soit.
+Le rendement varie selon la saison, avec un creux en juillet et en août.
+Votre facture actuelle sert de point de départ à toute l'étude.
+Nous intervenons sur l'ensemble du territoire, du nord au sud.
+Le raccordement au réseau demande un délai de plusieurs semaines.
+
+# ─── Nasales et voyelles ouvertes, souvent mal rendues ───
+Un bon vin blanc accompagne bien ce plat brun.
+Cinquante-cinq ans, quinze enfants, un long chemin.
+Ce matin, mon oncle raconte un moment important.
+Le pont s'enfonce lentement dans l'ombre.
+Jean prend son temps, en pensant à demain.
+
+# ─── Consonnes difficiles, groupes et liaisons ───
+Ces six chaises se ressemblent étrangement.
+Le psychologue explique sa méthode sans s'énerver.
+Strictement, cette structure abstraite reste stable.
+Les grandes armoires s'ouvrent difficilement.
+Un chasseur sachant chasser sait chasser sans son chien.
+Elle exige qu'exactement six exemplaires soient expédiés.
+
+# ─── Chiffres, dates, unités ───
+Trois mille quatre cent vingt-sept euros et quatre-vingts centimes.
+Le douze mars deux mille vingt-six, à neuf heures trente.
+Six kilowatts-crête, pour une production annuelle de huit mille kilowattheures.
+Quatre-vingt-dix-neuf virgule cinq pour cent.
+De zéro à cent en huit secondes.
+
+# ─── Noms propres et mots que le moteur devine mal ───
+Saint-Denis, Saint-Paul, Le Tampon et Sainte-Marie.
+Aurélie Queva vous rappellera dans l'après-midi.
+Ecologreen intervient à La Réunion depuis plusieurs années.
+Le siège se trouve à Saint-Pierre, avenue du Général de Gaulle.
+Wi-Fi, e-mail, smartphone : trois mots venus d'ailleurs.
+
+# ─── Questions [montez la voix en fin de phrase] ───
+Est-ce que vous avez reçu le devis que je vous ai envoyé ?
+Combien de panneaux faudrait-il, à votre avis ?
+Vous préférez lundi matin ou mardi après-midi ?
+Qu'est-ce qui vous ferait hésiter, exactement ?
+Puis-je vous rappeler demain, vers dix heures ?
+
+# ─── Exclamations [avec de l'élan, sans crier] ───
+C'est une excellente nouvelle !
+Attention, ne touchez pas à ça !
+Quel dommage, vraiment !
+Bravo, c'est exactement ce qu'il fallait faire !
+Incroyable, je ne m'y attendais pas du tout !
+
+# ─── Ton chaleureux [souriez en lisant, cela s'entend] ───
+Bonjour, je suis ravi de vous entendre.
+Merci beaucoup, c'est très aimable à vous.
+Prenez tout le temps qu'il vous faut, il n'y a aucune urgence.
+Je comprends parfaitement votre hésitation.
+Ce fut un plaisir, à très bientôt.
+
+# ─── Ton ferme [posé, sans agressivité] ───
+Ce point n'est pas négociable.
+Je dois vous arrêter tout de suite : ce n'est pas ce qui était prévu.
+Nous ne pourrons pas tenir ce délai.
+Il faut que les choses soient claires entre nous.
+Non, je maintiens ce que j'ai dit.
+
+# ─── Ton bas, confidentiel [baissez la voix, restez près du micro] ───
+Entre nous, ce n'était pas la meilleure idée.
+Je vais vous dire ce que j'en pense vraiment.
+Doucement, il dort encore.
+On en reparlera plus tard, si vous voulez bien.
+
+# ─── Phrases longues [pour la respiration et le débit] ───
+Lorsque l'installation est correctement dimensionnée, que l'orientation du toit s'y prête et que la consommation reste stable d'une année sur l'autre, le retour sur investissement se situe généralement entre sept et neuf ans.
+Il faut comprendre que la production ne suit pas la consommation : elle culmine au milieu de la journée, quand la maison est souvent vide, ce qui explique l'intérêt d'une batterie pour les foyers dont les habitudes ne peuvent pas être déplacées.
+Nous vous remercions de la confiance que vous nous accordez, et nous restons naturellement à votre disposition pour toute question, qu'elle porte sur le matériel, sur le financement ou sur les démarches administratives qui accompagnent ce type de projet.
+
+# ─── Hésitations et reprises [comme dans une vraie conversation] ───
+Alors... voyons voir.
+Euh, attendez, je reprends.
+Donc, si je comprends bien, vous voulez...
+C'est-à-dire que, comment dire, ce n'est pas si simple.
+Bon. Récapitulons.
