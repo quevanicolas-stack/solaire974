@@ -161,7 +161,64 @@ quota à autre chose qu'un identifiant fourni par le navigateur.
 
 ---
 
-## 6. Qualité de la sortie
+## 6. Entraîner le modèle sur une voix
+
+Le clonage instantané regarde quelques secondes de référence et improvise :
+le modèle n'a jamais appris la voix. **L'affinage** modifie ses poids sur des
+dizaines de minutes d'enregistrement. C'est le plus gros gain de ressemblance
+encore disponible, et c'est ce que l'on appelle proprement « entraîner ».
+
+### Le piège à connaître avant de commencer
+
+Un modèle affiné apprend tout ce qu'on lui donne, défauts compris. Aujourd'hui,
+une réverbération se trouve dans la référence et il suffit d'en changer. Après
+affinage, elle serait **dans les poids du modèle** : plus aucun réglage ne
+l'enlèverait, il faudrait tout recommencer.
+
+L'ordre n'est donc pas négociable : d'abord une prise de son propre, ensuite
+l'entraînement.
+
+### Préparer le corpus
+
+```
+python preparer_corpus.py --entree ~/Desktop/prises
+python preparer_corpus.py --entree ~/Desktop/prises --script texte_a_lire.txt
+```
+
+Le programme mesure chaque prise et **refuse** celles qui abîmeraient le
+modèle, en disant pourquoi :
+
+| Mesure | Accepté | Refusé |
+|--------|---------|--------|
+| Traîne de la pièce | jusqu'à 250 ms | au-delà |
+| Fond sonore | jusqu'à -50 dB | au-delà |
+| Saturation | aucun échantillon | dès le premier |
+
+Les prises retenues sont découpées en phrases sur les silences, rognées avec
+une marge, adoucies aux extrémités, et rassemblées dans `corpus/` avec un
+fichier `metadata.csv` au format attendu par l'entraînement.
+
+Le fichier `texte_a_lire.txt` couvre tous les sons du français et plusieurs
+registres — question, exclamation, ton bas, phrase longue. Lisez une phrase par
+ligne, avec une pause nette entre chacune : c'est sur ces silences que le
+découpage se fait, et les lignes servent alors de transcription.
+
+Il ne dure que quatre minutes : complétez avec quinze à vingt minutes de
+matière à vous. Ne le relisez pas plusieurs fois, le modèle apprendrait la
+répétition.
+
+### Ce qui manque encore
+
+L'entraînement lui-même demande une carte graphique, que l'Apple Silicon ne
+fournit pas pour cet usage : il faut louer une machine quelques heures. Le
+résultat est un fichier de modèle, à déposer à côté de `serveur.py`.
+
+Cette étape n'est pas encore outillée ici : il n'y avait aucun intérêt à
+l'écrire avant d'avoir un corpus qui la mérite.
+
+---
+
+## 7. Qualité de la sortie
 
 ### Le grain de fond
 
@@ -294,7 +351,7 @@ puis recolle avec des silences de durée choisie — 0,28 s entre propositions,
 
 ---
 
-## 7. Options utiles
+## 8. Options utiles
 
 ```
 python serveur.py --moteur test --port 8771     # changer de port
@@ -308,7 +365,7 @@ authentification.
 
 ---
 
-## 8. Où sont les données
+## 9. Où sont les données
 
 ```
 voix_locale/donnees/voix/<identifiant>/
@@ -322,7 +379,7 @@ correspondant.
 
 ---
 
-## 9. En cas de problème
+## 10. En cas de problème
 
 **« Le serveur local ne répond pas »** — vérifiez que la fenêtre de Terminal du serveur
 est toujours ouverte, et que l'adresse de l'étape 03 correspond à celle affichée au
@@ -362,7 +419,7 @@ celle demandée n'existe pas. Créez-la dans le studio, page Voix, puis rouvrez 
 
 ---
 
-## 10. Rappel sur le consentement
+## 11. Rappel sur le consentement
 
 Le verrou de l'étape 01 reste la seule protection en mode local : les garde-fous du
 fournisseur distant n'existent plus ici. Le consentement de la personne dont la voix est

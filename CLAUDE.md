@@ -53,6 +53,9 @@ Serveur local optionnel : `voix_locale/serveur.py` (FastAPI), qui expose les mê
 - Stockage local des échantillons et des audios générés en IndexedDB (base `studio_voix`).
 
 ## Notes techniques
+- `voix_locale/preparer_corpus.py` prépare un corpus d'affinage : il mesure chaque prise et refuse celles qui abîmeraient le modèle (traîne > 250 ms, fond > -50 dB, moindre saturation). Ne jamais assouplir ces seuils sans demande : un défaut appris par les poids devient irréversible, là où un défaut de référence se corrige en changeant de référence.
+- `voix_locale/texte_a_lire.txt` couvre les sons du français et plusieurs registres. Il ne dure que quatre minutes : c'est un noyau, pas un corpus.
+- L'affinage lui-même n'est pas outillé : il demande un GPU loué, et il n'y a aucun intérêt à l'écrire avant d'avoir un corpus qui le mérite.
 - Suppression du bruit de fond : traitement spectral côté serveur (`NIVEAUX_DEBRUITAGE`), cinq niveaux, « moyen » par défaut. Ne jamais ajouter `tn=1` à `afftdn` : le suivi de bruit annule la réduction.
 - Régularité du débit : le serveur découpe le texte sur les retours à la ligne, prononce chaque morceau avec la même graine, puis recolle avec des silences (`PAUSE_COURTE`, `PAUSE_LONGUE`). Ne pas laisser le modèle redécouper : `split_sentences` reste faux sous `PASSAGE_UNIQUE_MAX`.
 - Lexique de prononciation appliqué dans `preparerTexte`, avant la mise en forme du style : le texte saisi et celui conservé en bibliothèque restent intacts. Bornes de mot posées à la main (`\p{L}`), les bornes `\b` ignorant les accents.
