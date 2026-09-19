@@ -428,6 +428,44 @@ synthèses.
 
 ---
 
+## 8 ter. Mettre à jour les fichiers
+
+Depuis le dossier qui contient `serveur.py` :
+
+```
+cd ~/Desktop/Studio-voix/voix_locale
+sh mettre_a_jour.sh
+```
+
+Le script télécharge `serveur.py`, `clonage_voix.html` et les outils, puis affiche la
+version obtenue. Cette version doit correspondre à celle qu'affiche le serveur au
+démarrage : c'est le seul moyen de savoir quel fichier tourne réellement.
+
+Deux garde-fous, qui viennent chacun d'une mise à jour ratée :
+
+- **Rien n'est remplacé avant vérification.** Un téléchargement interrompu, une panne de
+  GitHub ou un fichier Python incomplet laissent l'ancienne version en place. Le script
+  le dit et rend un code d'erreur, au lieu de casser un serveur qui fonctionnait.
+- **Rien n'est cherché.** Le script ne travaille que dans le dossier courant et refuse de
+  s'exécuter si `serveur.py` n'y est pas. Une recherche automatique avait déjà écrit la
+  mise à jour dans le dossier de sauvegarde, où elle ne servait à rien.
+
+Pour récupérer une version en préparation, avant qu'elle ne soit versée dans la branche
+principale, passez son nom en argument :
+
+```
+sh mettre_a_jour.sh claude/voice-reproduction-app-1d81ke
+```
+
+Après une mise à jour qui touche au clonage, **recréez vos voix** à l'étape 02 : leur
+empreinte a été calculée par l'ancien code et n'est pas recalculée toute seule.
+
+Dans le navigateur, rechargez la page avec **Commande + R**. Le serveur envoie les
+en-têtes qu'il faut, cela suffit. Dans Safari, Commande + Majuscule + R ouvre le mode
+Lecture ; le rechargement forcé y est Option + Commande + R.
+
+---
+
 ## 8 bis. Vérifier que tout fonctionne
 
 ```
