@@ -22,6 +22,7 @@ const CHEMIN_PLAYWRIGHT = process.env.PLAYWRIGHT ||
 const { chromium } = require(CHEMIN_PLAYWRIGHT);
 
 const HTTPS = process.argv.includes('--https');
+function mixte_origine_attendue(){ return BASE; }
 const BASE = HTTPS ? 'https://127.0.0.1:8771' : 'http://127.0.0.1:8770';
 
 const verifs = [];
@@ -366,6 +367,42 @@ async function creerVoix(page, nom) {
   verifier('La fiche de voix indique la matière réellement exploitée',
     !!fiche && fiche.nb_tranches > 0 && fiche.duree_utilisee > 0,
     fiche ? fiche.nb_tranches + ' tranche(s), ' + fiche.duree_utilisee + ' s utilisées' : 'aucune fiche');
+
+  console.log('\n--- Adresse du serveur ---');
+
+  // Le serveur sert lui-meme la page. Une adresse par defaut ecrite en dur
+  // produisait, des que le serveur passait en https, des appels en http
+  // bloques par le navigateur — et signales comme un serveur eteint.
+  const adresse = await page.evaluate(() => ({
+    defaut: urlParDefaut(),
+    courante: urlLocale(),
+    origine: location.origin,
+    melange: melangeInterdit()
+  }));
+  verifier('L\'adresse par défaut suit l\'origine de la page',
+    adresse.defaut === adresse.origine, adresse.defaut);
+  verifier('L\'adresse employée est appelable depuis la page',
+    adresse.melange === false, adresse.courante);
+
+  const mixte = await page.evaluate(() => {
+    const champ = document.getElementById('urlLocale');
+    const avant = champ.value;
+    champ.value = 'http://127.0.0.1:8770';
+    const bloque = melangeInterdit();
+    const propose = bloque ? urlCorrigee() : null;
+    const message = bloque ? messageReseau(new TypeError('Load failed')) : '';
+    champ.value = avant;
+    return { bloque, propose, message, https: location.protocol === 'https:' };
+  });
+  if (mixte.https) {
+    verifier('Une adresse en http est reconnue comme inappelable', mixte.bloque);
+    verifier('Le message ne met pas la panne sur le dos du serveur',
+      mixte.message.indexOf('serveur n\'est pas en cause') >= 0, mixte.message.slice(0, 90));
+    verifier('Une adresse corrigée est proposée',
+      mixte.propose === mixte_origine_attendue(), mixte.propose);
+  } else {
+    verifier('En http, aucune adresse n\'est déclarée inappelable', mixte.bloque === false);
+  }
 
   console.log('\n--- Pièges connus ---');
 

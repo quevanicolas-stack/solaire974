@@ -432,7 +432,7 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
               </div>
               <div class="champ" id="champUrlLocale" style="display:none;margin-top:13px">
                 <label class="lbl">Adresse du serveur local</label>
-                <input type="text" id="urlLocale" value="http://127.0.0.1:8770" oninput="majEtat()" onchange="enregistrerFournisseur()">
+                <input type="text" id="urlLocale" value="" placeholder="http://127.0.0.1:8770" oninput="majEtat()" onchange="enregistrerFournisseur()">
                 <div class="aide">
                   Lancez le serveur avec <span class="kv-v">python serveur.py --moteur xtts</span>
                   depuis le dossier <span class="kv-v">voix_locale</span>, puis vérifiez la connexion.
@@ -1908,10 +1908,48 @@ function enregistrerFournisseur(){
   if(bd) bdEcrire('config', {cle:'fournisseur', valeur:{nom:etat.fournisseur, url:urlLocale()}});
 }
 
+/* Adresse du serveur local, par défaut celle d'où vient la page.
+
+   Le serveur sert lui-même l'application. Prendre son origine comme adresse
+   par défaut évite trois ennuis d'un coup : le protocole ne peut plus être
+   différent de celui de la page, le port non plus, et l'exception de
+   certificat déjà acceptée pour ouvrir la page vaut aussi pour les appels.
+
+   Une adresse fixe écrite en dur produisait l'inverse : page ouverte en https
+   sur l'adresse du réseau, appels en http vers 127.0.0.1, donc bloqués par le
+   navigateur comme contenu mixte — et signalés comme un serveur éteint. */
+function urlParDefaut(){
+  if(location.protocol === 'http:' || location.protocol === 'https:'){
+    return location.origin;
+  }
+  return 'http://127.0.0.1:8770';
+}
+
 function urlLocale(){
   const champ = $('urlLocale');
   const v = champ ? champ.value.trim() : '';
-  return (v || 'http://127.0.0.1:8770').replace(/\/+$/, '');
+  return (v || urlParDefaut()).replace(/\/+$/, '');
+}
+
+/* Vrai si l'adresse saisie ne peut pas être appelée depuis cette page : une
+   page en https ne peut pas appeler du http, le navigateur refuse avant même
+   d'essayer. Le dire précisément évite de chercher la panne côté serveur. */
+function melangeInterdit(){
+  if(location.protocol !== 'https:') return false;
+  return urlLocale().indexOf('http://') === 0;
+}
+
+/* Adresse corrigée, proposée à l'utilisateur : même protocole et même port
+   que la page, en gardant l'hôte qu'il avait saisi s'il est encore joignable. */
+function urlCorrigee(){
+  try{
+    const u = new URL(urlLocale());
+    u.protocol = location.protocol;
+    if(u.port === location.port || !location.port) return u.origin;
+    return location.origin;
+  }catch(e){
+    return location.origin;
+  }
 }
 
 /* Adresse de base du service, selon le fournisseur retenu. Les deux exposent
@@ -2034,6 +2072,13 @@ function messageReseau(e){
     return "Le traitement de l'audio a échoué dans la page, le serveur n'est pas en cause." + detail;
   }
   if(etat.fournisseur === 'local'){
+    /* Contenu mixte : le navigateur refuse l'appel avant même de l'émettre.
+       Le serveur peut très bien tourner — le dire évite de le chercher. */
+    if(melangeInterdit()){
+      return "Cette page est ouverte en https, mais l'adresse du serveur est en http : le navigateur " +
+             "bloque l'appel avant de l'émettre. Le serveur n'est pas en cause. " +
+             "Corrigez l'adresse en " + urlCorrigee() + " dans les réglages ci-dessus.";
+    }
     return "Le serveur local ne répond pas sur " + urlLocale() + ". Vérifiez qu'il est bien lancé " +
            "(python serveur.py --moteur test dans le dossier voix_locale) et que l'adresse correspond " +
            "au port affiché à son démarrage." + detail;
@@ -3907,6 +3952,20 @@ async function demarrer(){
         if(fourn.valeur.url) $('urlLocale').value = fourn.valeur.url;
         choisirFournisseur(fourn.valeur.nom === 'local' ? 'local' : 'distant');
       }
+      /* Une adresse enregistrée peut être devenue inappelable : le serveur est
+         passé en https, l'adresse gardée est restée en http. Le navigateur
+         bloquerait chaque appel sans qu'aucun réglage ne le laisse deviner.
+         On la corrige, et on le dit — un silence ici ferait chercher la panne
+         du côté du serveur, qui fonctionne. */
+      if($('urlLocale').value.trim() === ''){
+        $('urlLocale').value = urlParDefaut();
+      }else if(melangeInterdit()){
+        const ancienne = urlLocale();
+        $('urlLocale').value = urlCorrigee();
+        enregistrerFournisseur();
+        toast('Adresse du serveur corrigée : ' + ancienne + ' devenait inappelable depuis une page en https.', 'ok');
+      }
+      majEtat();
 
       etat.echantillons = await bdTout('echantillons');
       etat.generations  = (await bdTout('generations')).sort((a,b)=>b.date.localeCompare(a.date));
