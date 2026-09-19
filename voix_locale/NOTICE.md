@@ -430,11 +430,27 @@ synthèses.
 
 ## 8 ter. Mettre à jour les fichiers
 
-Depuis le dossier qui contient `serveur.py` :
+**La toute première fois**, le script n'est pas encore sur la machine : il faut le
+télécharger avant de pouvoir l'exécuter. Depuis le dossier qui contient `serveur.py` :
+
+```
+cd ~/Desktop/Studio-voix/voix_locale
+curl -fsSL -o mettre_a_jour.sh https://raw.githubusercontent.com/quevanicolas-stack/solaire974/main/voix_locale/mettre_a_jour.sh
+sh mettre_a_jour.sh
+```
+
+**Les fois suivantes**, le script se met à jour lui-même avec le reste :
 
 ```
 cd ~/Desktop/Studio-voix/voix_locale
 sh mettre_a_jour.sh
+```
+
+Si le script répond que `serveur.py` est introuvable, c'est que le dossier n'est pas le
+bon. Pour le retrouver sans se tromper de copie :
+
+```
+find ~/Desktop -name serveur.py -not -path "*/sauvegarde/*"
 ```
 
 Le script télécharge `serveur.py`, `clonage_voix.html` et les outils, puis affiche la
