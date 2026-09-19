@@ -5,3 +5,6 @@ donnees/
 venv/
 __pycache__/
 *.pyc
+
+# Certificat auto-signé, propre à chaque machine
+certificat/

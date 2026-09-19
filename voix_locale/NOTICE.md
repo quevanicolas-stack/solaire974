@@ -357,11 +357,57 @@ puis recolle avec des silences de durée choisie — 0,28 s entre propositions,
 python serveur.py --moteur test --port 8771     # changer de port
 python serveur.py --moteur xtts --peripherique cpu
 python serveur.py --hote 0.0.0.0                # exposer sur le réseau local
+python serveur.py --hote 0.0.0.0 --https        # + micro depuis un téléphone
 ```
 
 `--hote 0.0.0.0` rend le serveur accessible aux autres appareils du réseau, y compris un
 téléphone. À n'utiliser que sur un réseau de confiance : le serveur n'a aucune
 authentification.
+
+### Enregistrer depuis un téléphone
+
+`--hote 0.0.0.0` seul ne suffit pas. Les navigateurs n'ouvrent le microphone que sur une
+adresse en `https`, ou sur la machine elle-même. Un téléphone arrive forcément par le
+réseau : sans `https`, il verra les voix déjà créées mais ne pourra pas enregistrer.
+
+`--https` produit un certificat auto-signé au premier lancement, dans `certificat/`, et
+y inscrit l'adresse du Mac sur le réseau. Le certificat est refait automatiquement si
+cette adresse change.
+
+Le navigateur du téléphone affichera un avertissement à la première visite : aucune
+autorité ne garantit ce certificat. C'est attendu, et sans danger sur votre propre
+réseau — la machine en face est la vôtre. Acceptez l'exception une fois, le microphone
+fonctionne ensuite. L'adresse à saisir sur le téléphone est celle qu'affiche le serveur
+au démarrage.
+
+Si `openssl` est introuvable, le serveur le dit et se rabat sur `http` plutôt que de
+refuser de démarrer : les voix restent utilisables, seul l'enregistrement à distance est
+perdu.
+
+---
+
+## 8 bis. Vérifier que tout fonctionne
+
+```
+python serveur.py --moteur test --chat test          # dans un terminal
+node verifier.js                                      # dans un autre
+```
+
+`verifier.js` pilote un vrai navigateur et contrôle les règles verrouillées (verrou de
+consentement, bandeaux, préfixe des fichiers, aucune clé en dur), la chaîne complète
+d'enregistrement et de génération, les réglages, l'assistant, et les pièges déjà
+rencontrés une fois — chacun d'eux a coûté un bogue, aucun ne doit revenir.
+
+Pour contrôler aussi l'accès au micro à distance :
+
+```
+python serveur.py --moteur test --chat test --port 8771 --https
+node verifier.js --https
+```
+
+Ces contrôles ont longtemps vécu en dehors du dépôt, et un redémarrage de machine les a
+effacés d'un coup. Une suite qui ne survit pas à un redémarrage ne protège rien : elle
+est désormais versionnée avec le reste.
 
 ---
 

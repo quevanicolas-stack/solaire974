@@ -71,6 +71,9 @@ Serveur local optionnel : `voix_locale/serveur.py` (FastAPI), qui expose les mê
 - `VERSION` dans `serveur.py` est exposée sur `/` et `/v1/user` : c'est le moyen de vérifier quel fichier tourne réellement chez l'utilisateur.
 - Le clonage instantané exige un abonnement payant chez le fournisseur ; les offres gratuites le refusent.
 - Ouvert en `file://`, le navigateur bloque les appels distants : servir la page par un serveur local (`npx http-server`) pour tester le clonage réel.
+- Micro depuis un téléphone : `--hote 0.0.0.0` ne suffit pas, les navigateurs n'ouvrent `getUserMedia` que sur un contexte sûr. `--https` émet un certificat auto-signé portant l'adresse du Mac en `subjectAltName` — sans cette extension, le navigateur le rejette même après acceptation de l'exception.
+- `voix_locale/verifier.js` est la suite de vérification : elle pilote un navigateur réel et couvre d'abord les règles verrouillées, puis la chaîne complète et les pièges déjà rencontrés. La lancer avant tout commit sur le Studio Voix ou l'assistant. Les anciennes suites vivaient hors du dépôt et un redémarrage les a perdues : ne jamais en écrire une ailleurs qu'ici.
+- Conversion de fréquence à l'export : `reechantillonner()` fait jouer le tampon à travers un `OfflineAudioContext`, et l'interpolation du navigateur laisse passer des images au-dessus de la demi-fréquence du moteur. Mesuré sur une génération en 44,1 kHz : bande 13–16 kHz à −14/−20 dB sous la référence, miroir du contenu sous 12 kHz (corrélation 0,993 après suppression de la tendance). « Celle du moteur — aucune conversion » reste le choix sain tant qu'un passe-bas n'a pas été ajouté après conversion.
 - Le mode démonstration (voix du navigateur) fonctionne sans clé ni réseau.
 
 ---

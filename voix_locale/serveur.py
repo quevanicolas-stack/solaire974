@@ -37,7 +37,7 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 
 RACINE = Path(__file__).resolve().parent
 DOSSIER_VOIX = RACINE / "donnees" / "voix"
-VERSION = "2026.09.12"     # affichée au démarrage et sur « / » : sert à vérifier
+VERSION = "2026.09.19"     # affichée au démarrage et sur « / » : sert à vérifier
                            # que le fichier en place est bien le dernier
 FREQUENCE = 24000          # fréquence d'échantillonnage de sortie, en hertz
 DUREE_REFERENCE_MAX = 120  # secondes de référence conservées par voix
@@ -1163,6 +1163,80 @@ async def conversation(requete: Request):
     }
 
 
+# ══════════════════════════════════════════════════════════════
+#   CERTIFICAT POUR LE MICRO DES TÉLÉPHONES
+# ══════════════════════════════════════════════════════════════
+
+"""
+Pourquoi un certificat.
+
+Les navigateurs refusent l'accès au microphone sur une adresse en http : ils
+l'exigent en https, ou sur la machine elle-même. Depuis un téléphone, qui
+arrive forcément par le réseau, l'enregistrement est donc impossible tant que
+le serveur parle en clair.
+
+Le certificat produit ici est auto-signé : aucune autorité ne le garantit, et
+le navigateur affichera un avertissement à la première visite. C'est normal et
+sans danger sur votre propre réseau — vous savez qui est en face, c'est votre
+Mac. Une fois l'exception acceptée, le microphone fonctionne.
+
+L'adresse du Mac est inscrite dans le certificat : sans cela, le navigateur le
+rejetterait même après acceptation.
+"""
+
+DOSSIER_CERT = RACINE / "certificat"
+
+
+def adresse_locale() -> str:
+    """Adresse du Mac sur le réseau, telle qu'un téléphone la verra."""
+    import socket
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        # Aucune donnée n'est envoyée : on demande seulement au système par
+        # quelle interface il sortirait, ce qui donne l'adresse utile.
+        s.connect(("192.0.2.1", 80))
+        return s.getsockname()[0]
+    except Exception:
+        return "127.0.0.1"
+    finally:
+        s.close()
+
+
+def preparer_certificat(adresse: str) -> tuple[Path, Path] | None:
+    """Rend (certificat, clé), en les créant au besoin. None si impossible."""
+    DOSSIER_CERT.mkdir(parents=True, exist_ok=True)
+    cert = DOSSIER_CERT / "certificat.pem"
+    cle = DOSSIER_CERT / "cle.pem"
+
+    # Un certificat déjà émis pour une autre adresse ne servirait à rien.
+    marque = DOSSIER_CERT / "adresse.txt"
+    if cert.exists() and cle.exists() and marque.exists():
+        if marque.read_text(encoding="utf-8").strip() == adresse:
+            return cert, cle
+
+    binaire = shutil.which("openssl")
+    if not binaire:
+        print("  openssl est introuvable : impossible de produire un certificat.",
+              file=sys.stderr)
+        return None
+
+    resultat = subprocess.run(
+        [binaire, "req", "-x509", "-newkey", "rsa:2048", "-sha256",
+         "-days", "825", "-nodes",
+         "-keyout", str(cle), "-out", str(cert),
+         "-subj", "/CN=Studio Voix",
+         "-addext", f"subjectAltName=IP:{adresse},IP:127.0.0.1,DNS:localhost"],
+        capture_output=True, text=True,
+    )
+    if resultat.returncode != 0:
+        print("  Certificat impossible : " + resultat.stderr.strip()[:300], file=sys.stderr)
+        return None
+
+    marque.write_text(adresse, encoding="utf-8")
+    print(f"  Certificat créé pour {adresse}, valable 825 jours.")
+    return cert, cle
+
+
 def page_application() -> Path | None:
     """Localise clonage_voix.html, à côté du serveur ou dans le dossier parent."""
     for candidat in (RACINE.parent / "clonage_voix.html", RACINE / "clonage_voix.html"):
@@ -1240,6 +1314,9 @@ def principal():
     analyseur.add_argument("--personnalite", default=None,
                            help="Fichier texte décrivant l'assistant. À défaut, la "
                                 "personnalité par défaut est utilisée.")
+    analyseur.add_argument("--https", action="store_true",
+                           help="Sert en https avec un certificat auto-signé. "
+                                "Indispensable pour enregistrer au micro depuis un téléphone.")
     analyseur.add_argument("--voix-assistant", default=None,
                            help="Nom ou identifiant de la voix que prend l'assistant. "
                                 "À défaut, la première voix enregistrée.")
@@ -1263,7 +1340,9 @@ def principal():
     print("" if etat["moteur"].clone_reellement else "   (signal de contrôle, ne clone pas)")
     print(f"  Conversation: {args.chat}", end="")
     print("" if etat["chat"].repond_reellement else "   (réponses fabriquées)")
-    print(f"  Adresse     : http://{args.hote}:{args.port}")
+    protocole = "https" if args.https else "http"
+    affichee = adresse_locale() if args.hote == "0.0.0.0" else args.hote
+    print(f"  Adresse     : {protocole}://{affichee}:{args.port}")
     print(f"  Voix        : {len(lister_fiches())} enregistrée(s)")
     binaire = chemin_ffmpeg()
     print(f"  ffmpeg      : {binaire if binaire else 'ABSENT — pip install imageio-ffmpeg'}")
@@ -1273,9 +1352,16 @@ def principal():
         print("  « modèle prêt » avant d'ouvrir l'application.")
         print()
     if page_application():
-        print(f"  Ouvrez l'application ici : http://{args.hote}:{args.port}/app")
+        print(f"  Ouvrez l'application ici : {protocole}://{affichee}:{args.port}/app")
         if page_chatbot():
-            print(f"  Assistant conversationnel : http://{args.hote}:{args.port}/chat")
+            print(f"  Assistant conversationnel : {protocole}://{affichee}:{args.port}/chat")
+        if args.https:
+            print()
+            print("  Le navigateur signalera un certificat non vérifié : c'est attendu.")
+            print("  Acceptez l'exception une fois, le microphone fonctionnera ensuite.")
+        elif args.hote == "0.0.0.0":
+            print()
+            print("  Sans --https, les navigateurs refuseront le micro depuis un téléphone.")
         print(f"  Aucun autre serveur n'est nécessaire.")
     else:
         print(f"  clonage_voix.html est introuvable : servez-le de votre côté, puis")
@@ -1297,6 +1383,17 @@ def principal():
             sys.exit(1)
 
     import uvicorn
+    if args.https:
+        certificat = preparer_certificat(adresse_locale())
+        if not certificat:
+            print("  Lancement en http : le micro restera inaccessible depuis un téléphone.\n",
+                  file=sys.stderr)
+        else:
+            cert, cle = certificat
+            uvicorn.run(app, host=args.hote, port=args.port, log_level="warning",
+                        ssl_certfile=str(cert), ssl_keyfile=str(cle))
+            return
+
     uvicorn.run(app, host=args.hote, port=args.port, log_level="warning")
 
 
