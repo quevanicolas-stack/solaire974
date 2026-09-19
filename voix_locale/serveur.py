@@ -37,10 +37,33 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 
 RACINE = Path(__file__).resolve().parent
 DOSSIER_VOIX = RACINE / "donnees" / "voix"
-VERSION = "2026.09.19"     # affichée au démarrage et sur « / » : sert à vérifier
+VERSION = "2026.09.20"     # affichée au démarrage et sur « / » : sert à vérifier
                            # que le fichier en place est bien le dernier
 FREQUENCE = 24000          # fréquence d'échantillonnage de sortie, en hertz
-DUREE_REFERENCE_MAX = 120  # secondes de référence conservées par voix
+"""
+Durées de référence, et pourquoi elles sont ce qu'elles sont.
+
+XTTS ne lit pas la référence comme un apprentissage. Il calcule une empreinte
+de locuteur par fichier fourni, puis fait leur moyenne ; et il ne calcule cette
+empreinte que sur les premières secondes de chaque fichier. Les valeurs par
+défaut de la bibliothèque sont sévères : max_ref_len = 10 secondes pour
+l'empreinte, gpt_cond_len = 12 secondes pour les latents de prosodie.
+
+Conséquence, avant ce changement : la référence était concaténée en UN seul
+fichier tronqué à 120 secondes, dont le moteur n'utilisait ensuite que les dix
+premières. Trente minutes d'enregistrement se réduisaient à dix secondes.
+
+D'où le découpage en tranches. Chaque tranche est un fichier, donc une
+empreinte de plus dans la moyenne : la matière fournie est réellement
+utilisée. Les trois valeurs ci-dessous sont transmises explicitement au moteur,
+jamais laissées aux valeurs par défaut.
+"""
+
+DUREE_REFERENCE_MAX = 1800   # secondes de matière conservées par voix (30 min)
+DUREE_TRANCHE = 30           # secondes par tranche de référence
+TRANCHES_MAX = 20            # tranches passées au moteur, soit 10 minutes utiles
+REF_EMPREINTE = 30           # secondes lues par tranche pour l'empreinte
+REF_PROSODIE = 30            # secondes lues au total pour les latents de prosodie
 
 
 # ══════════════════════════════════════════════════════════════
@@ -195,6 +218,71 @@ def assembler_references(fichiers: list[Path], destination: Path, debruiter: boo
 
     if debruiter:
         debruiter_wav(destination)
+
+
+def decouper_reference(reference: Path, dossier: Path) -> list[Path]:
+    """
+    Découpe la référence en tranches, et rend leurs chemins.
+
+    Chaque tranche devient une empreinte de plus dans la moyenne calculée par
+    le moteur. C'est la seule façon d'exploiter plus que les dix premières
+    secondes : concaténer davantage dans un fichier unique n'y changerait rien,
+    le moteur tronque chaque fichier.
+
+    Les tranches trop courtes sont écartées : une fin de référence d'une
+    seconde donnerait une empreinte bruitée, qui abîmerait la moyenne au lieu
+    de l'affermir.
+    """
+    tranches_dir = dossier / "tranches"
+    shutil.rmtree(tranches_dir, ignore_errors=True)
+    tranches_dir.mkdir(parents=True, exist_ok=True)
+
+    binaire = chemin_ffmpeg()
+    if not binaire:
+        return []
+
+    modele = str(tranches_dir / "tranche%03d.wav")
+    resultat = subprocess.run(
+        [binaire, "-y", "-loglevel", "error", "-i", str(reference),
+         "-f", "segment", "-segment_time", str(DUREE_TRANCHE),
+         "-ac", "1", "-ar", str(FREQUENCE), "-c:a", "pcm_s16le", modele],
+        capture_output=True, text=True,
+    )
+    if resultat.returncode != 0:
+        print("[voix] découpage impossible, référence utilisée d'un bloc", flush=True)
+        return []
+
+    # Trois secondes est le plancher pratique d'une empreinte de locuteur.
+    # En demander davantage écarterait la seule tranche d'une référence courte,
+    # et une référence de trente secondes est parfaitement légitime.
+    minimum = 3.0
+    tranches = []
+    for t in sorted(tranches_dir.glob("tranche*.wav")):
+        if duree_wav(t) >= minimum:
+            tranches.append(t)
+        else:
+            t.unlink(missing_ok=True)
+
+    # Au-delà du plafond, on prélève régulièrement plutôt que de garder le
+    # début : des tranches réparties sur toute la matière couvrent davantage
+    # de registres qu'une suite prise au même moment.
+    if len(tranches) > TRANCHES_MAX:
+        pas = len(tranches) / TRANCHES_MAX
+        gardees = [tranches[int(i * pas)] for i in range(TRANCHES_MAX)]
+        for t in tranches:
+            if t not in gardees:
+                t.unlink(missing_ok=True)
+        tranches = gardees
+
+    return tranches
+
+
+def tranches_reference(dossier: Path) -> list[Path]:
+    """Tranches d'une voix déjà créée, ou liste vide si elle n'en a pas."""
+    tranches_dir = dossier / "tranches"
+    if not tranches_dir.is_dir():
+        return []
+    return sorted(tranches_dir.glob("tranche*.wav"))
 
 
 def debruiter_wav(chemin: Path) -> None:
@@ -608,6 +696,51 @@ class MoteurXTTS(Moteur):
         self.modele = TTS("tts_models/multilingual/multi-dataset/xtts_v2").to(peripherique)
         print(f"[moteur] modèle prêt en {time.time() - debut:.0f} s", flush=True)
 
+    """
+    Empreinte de la voix, calculée une fois puis relue.
+
+    La bibliothèque sait mettre une voix en cache : « clone_voice » écrit un
+    fichier .pth dans le dossier indiqué, et la synthèse le relit ensuite au
+    lieu de tout recalculer. C'est ce qui rend les tranches abordables — sans
+    ce cache, chaque morceau de texte relirait les vingt tranches.
+
+    Rien n'est bloquant ici : si le calcul échoue, la synthèse repassera par
+    les tranches, plus lentement mais sans erreur pour l'utilisateur.
+    """
+
+    NOM_CACHE = "empreinte"
+
+    def voix_en_cache(self, dossier: Path) -> str | None:
+        """Nom de la voix en cache si son fichier existe, sinon None."""
+        if (dossier / f"{self.NOM_CACHE}.pth").exists():
+            return self.NOM_CACHE
+        return None
+
+    def preparer_voix(self, dossier: Path, tranches: list[Path]) -> bool:
+        """Calcule et range l'empreinte. Rend vrai si elle est utilisable."""
+        if not tranches:
+            return False
+        try:
+            self.preparer()
+            modele = self.modele.synthesizer.tts_model
+            modele.clone_voice(
+                speaker_wav=[str(t) for t in tranches],
+                speaker_id=self.NOM_CACHE,
+                voice_dir=str(dossier),
+                gpt_cond_len=REF_PROSODIE,
+                gpt_cond_chunk_len=min(REF_PROSODIE, 6),
+                max_ref_len=REF_EMPREINTE,
+            )
+        except Exception as e:
+            print(f"[voix] empreinte non mise en cache ({e}) : "
+                  "la synthèse repassera par les tranches", flush=True)
+            return False
+        utile = (dossier / f"{self.NOM_CACHE}.pth").exists()
+        if utile:
+            print(f"[voix] empreinte calculée sur {len(tranches)} tranche(s), "
+                  f"soit {len(tranches) * DUREE_TRANCHE} s de référence", flush=True)
+        return utile
+
     def synthetiser(self, texte: str, reference: Path, reglages: dict) -> tuple[bytes, str]:
         self.preparer()
         if not reference.exists():
@@ -649,9 +782,23 @@ class MoteurXTTS(Moteur):
                 return int(round(v)) if entier else v
 
             decoupe = reglages.get("split_sentences")
+            # Latents en cache si la voix en a : le moteur les recalcule sinon
+            # à chaque morceau de texte, sur toutes les tranches, ce qui coûte
+            # bien plus cher que la synthèse elle-même.
+            voix = self.voix_en_cache(reference.parent)
+            if voix:
+                conditionnement = {"speaker": voix, "voice_dir": str(reference.parent)}
+            else:
+                tranches = tranches_reference(reference.parent)
+                conditionnement = {
+                    "speaker_wav": [str(t) for t in tranches] if tranches else str(reference),
+                    "gpt_cond_len": REF_PROSODIE,
+                    "gpt_cond_chunk_len": min(REF_PROSODIE, 6),
+                    "max_ref_len": REF_EMPREINTE,
+                }
             self.modele.tts_to_file(
                 text=texte,
-                speaker_wav=str(reference),
+                **conditionnement,
                 language="fr",
                 file_path=str(sortie),
                 temperature=choix("temperature", max(0.01, 0.85 - 0.55 * stabilite), 0.01, 1.5),
@@ -903,6 +1050,12 @@ def voix():
             "name": f["name"],
             "category": "cloned",
             "description": f.get("description", ""),
+            # Ces trois-là répondent à une question légitime : « ma matière
+            # est-elle vraiment utilisée ? ». Sans elles, l'utilisateur ne peut
+            # que supposer.
+            "duree_reference": f.get("duree_reference"),
+            "nb_tranches": f.get("nb_tranches", 0),
+            "duree_utilisee": f.get("duree_utilisee"),
         }
         for f in lister_fiches()
     ]}
@@ -950,11 +1103,21 @@ async def ajouter_voix(
             shutil.rmtree(dossier, ignore_errors=True)
             return erreur(422, f"Référence trop courte ({secondes:.0f} s). Enregistrez au moins quelques secondes.")
 
+        # Le découpage en tranches est ce qui rend la matière réellement
+        # utilisable : sans lui, le moteur ne lit que le début de la référence.
+        tranches = decouper_reference(reference, dossier)
+        empreinte = False
+        if tranches and hasattr(etat["moteur"], "preparer_voix"):
+            empreinte = etat["moteur"].preparer_voix(dossier, tranches)
+
         fiche = {
             "voice_id": voix_id,
             "name": name,
             "description": description,
             "duree_reference": round(secondes, 1),
+            "nb_tranches": len(tranches),
+            "duree_utilisee": round(min(len(tranches) * DUREE_TRANCHE, secondes), 1),
+            "empreinte_en_cache": empreinte,
             "nb_echantillons": len(chemins),
             "debruitee": debruiter,
             "cree_le": time.strftime("%Y-%m-%dT%H:%M:%S"),
@@ -966,7 +1129,8 @@ async def ajouter_voix(
         # Les fichiers d'origine ne servent plus une fois la référence produite.
         shutil.rmtree(brut, ignore_errors=True)
 
-        print(f"[voix] « {name} » créée : {secondes:.0f} s de référence", flush=True)
+        print(f"[voix] « {name} » créée : {secondes:.0f} s de matière, "
+              f"{len(tranches)} tranche(s) exploitées", flush=True)
         return {"voice_id": voix_id, "requires_verification": False}
 
     except RuntimeError as e:

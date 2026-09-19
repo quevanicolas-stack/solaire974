@@ -386,6 +386,48 @@ perdu.
 
 ---
 
+## 7 bis. Ce que le moteur fait vraiment de vos enregistrements
+
+XTTS ne s'entraîne pas sur la matière que vous lui donnez : il en tire une empreinte. Et il
+calcule cette empreinte **par fichier**, sur les premières secondes de chacun seulement —
+dix secondes par défaut. Une référence concaténée en un seul bloc se réduisait donc à dix
+secondes, que vous ayez enregistré deux minutes ou trente.
+
+C'est corrigé. La référence est maintenant découpée en tranches de trente secondes, et
+chaque tranche donne une empreinte de plus dans la moyenne. La fiche de chaque voix
+indique ce qui a réellement été exploité, et l'étape 02 l'affiche à côté du nom :
+
+```
+Aurélie
+a1b2c3… — 12:30 de matière, 20 tranches exploitées (10:00)
+```
+
+Trois plafonds encadrent l'ensemble :
+
+| Plafond | Valeur | Raison |
+|---|---|---|
+| Une prise | 5 minutes | Arrêt automatique. Au-delà, la fatigue s'entend. |
+| Cumul conservé | 30 minutes | C'est ce que réclame un affinage. |
+| Matière exploitée pour le clonage | 10 minutes | Vingt tranches : la moyenne ne bouge plus. |
+
+La moyenne des empreintes cesse d'évoluer vers cinq minutes cumulées : c'est la cible de la
+jauge. Au-delà, rien n'est jeté — le surplus sert à l'affinage du modèle, qui lui réclame
+vingt à trente minutes. C'est le même enregistrement qui sert aux deux usages.
+
+Conséquence pratique : **plusieurs prises valent mieux qu'une seule longue.** Dix prises de
+trente secondes donnent dix empreintes à moyenner, là où une prise de cinq minutes n'en
+donne qu'une.
+
+### Récupérer vos prises
+
+Chaque prise porte un bouton « Télécharger », et « Télécharger les prises » les récupère
+toutes. C'est ce qui permet de comparer l'enregistrement d'origine et la voix produite :
+sans l'original sous la main, on ne peut pas dire si un défaut vient du micro ou du moteur.
+Ces fichiers ne portent pas le préfixe `voix-synthetique_` — ce ne sont pas des
+synthèses.
+
+---
+
 ## 8 bis. Vérifier que tout fonctionne
 
 ```
@@ -403,6 +445,14 @@ Pour contrôler aussi l'accès au micro à distance :
 ```
 python serveur.py --moteur test --chat test --port 8771 --https
 node verifier.js --https
+```
+
+Le chemin du moteur XTTS se contrôle à part, avec un modèle factice — XTTS réclame
+plusieurs gigaoctets et ne peut pas tourner à chaque vérification, alors que c'est là
+qu'une erreur ne se manifeste qu'au moment de générer :
+
+```
+python verifier_moteur.py
 ```
 
 Ces contrôles ont longtemps vécu en dehors du dépôt, et un redémarrage de machine les a

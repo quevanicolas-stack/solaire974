@@ -538,10 +538,12 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
 
         <div class="note n-blu">
           <div class="note-t">Conditions d'un bon clonage</div>
-          Une à deux minutes d'audio propre suffisent, et au-delà de trois minutes le gain devient négligeable.
-          Ce qui compte : une seule voix, aucun bruit de fond, aucune musique, pas d'écho, un débit naturel,
-          un micro à quinze centimètres de la bouche. Un enregistrement saturé ou lointain dégrade davantage
-          le résultat qu'un enregistrement court.
+          Le moteur calcule une empreinte par prise, puis en fait la moyenne. Plusieurs prises valent donc
+          mieux qu'une seule longue, et la moyenne cesse de bouger vers cinq minutes cumulées. Au-delà, la
+          matière reste conservée : elle sert à l'affinage du modèle, qui réclame vingt à trente minutes.
+          Ce qui compte avant la durée : une seule voix, aucun bruit de fond, aucune musique, pas d'écho,
+          un débit naturel, un micro à quinze centimètres de la bouche. Un enregistrement saturé ou lointain
+          dégrade davantage le résultat qu'un enregistrement court.
         </div>
 
         <div class="card">
@@ -565,12 +567,14 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
               <span class="curs-val" id="dureeTotale">0 s</span>
             </div>
             <div class="jauge-piste"><div class="jauge-plein" id="jaugePlein" style="width:0%"></div></div>
-            <div class="jauge-reperes"><span>0</span><span>60 s — minimum conseillé</span><span>180 s</span></div>
+            <div class="jauge-reperes"><span>0</span><span>60 s — minimum conseillé</span><span>5 min — cible</span></div>
+            <div id="jaugeSuite" style="font-size:11px;color:var(--txt2);margin-top:6px"></div>
           </div>
 
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
             <input type="file" id="fichiers" accept="audio/*" multiple style="display:none" onchange="importerFichiers(event)">
             <button class="btn btn-g btn-sm" onclick="document.getElementById('fichiers').click()">Importer des fichiers audio</button>
+            <button class="btn btn-g btn-sm" id="btnToutesPrises" onclick="telechargerToutesLesPrises()">Télécharger les prises</button>
             <button class="btn btn-g btn-sm" onclick="basculerOptionsMicro()">Options du micro</button>
             <button class="btn btn-g btn-sm" onclick="basculerPhrases()">Texte à lire</button>
           </div>
@@ -1116,8 +1120,23 @@ const PAGES = [
 ];
 
 const API_DISTANTE = 'https://api.elevenlabs.io/v1';
-const DUREE_CIBLE = 180;   // secondes affichées en pleine jauge
-const DUREE_MINI  = 60;    // secondes en dessous desquelles on avertit
+/* Durées, et pourquoi celles-ci.
+
+   Le clonage instantané ne lit pas la matière comme un apprentissage. Le moteur
+   calcule une empreinte par prise, puis fait leur moyenne : ce sont donc les
+   prises qui comptent, pas la longueur d'un bloc. Une moyenne sur dix prises
+   vaut mieux qu'une moyenne sur une seule, aussi longue soit-elle. D'où le
+   découpage en prises plutôt qu'une prise unique sans fin.
+
+   La moyenne cesse de bouger vers cinq minutes cumulées : c'est la cible de la
+   jauge. Au-delà, la matière n'est pas perdue pour autant — elle sert à
+   l'affinage, qui lui réclame vingt à trente minutes. Le plafond conservé est
+   donc de trente minutes, et la page le dit au lieu de laisser croire que le
+   surplus est ignoré. */
+const DUREE_CIBLE = 300;       // secondes : la jauge est pleine ici
+const DUREE_MINI  = 60;        // secondes en dessous desquelles on avertit
+const DUREE_PRISE_MAX = 300;   // secondes : une prise s'arrête d'elle-même ici
+const DUREE_MAXI = 1800;       // secondes cumulées conservées au total
 
 const etat = {
   page:0,
@@ -1550,7 +1569,20 @@ async function demarrerEnregistrement(){
   debutRec = Date.now();
   $('btnRec').classList.add('rec');
   $('recEtat').textContent = 'Enregistrement en cours — parlez normalement';
-  minuteur = setInterval(()=>{ $('chrono').textContent = fmtDuree((Date.now()-debutRec)/1000); }, 200);
+  /* Le chronomètre ne se contente plus d'afficher : il arrête la prise à son
+     plafond. Laisser tourner une capture que rien ne borne remplissait la
+     mémoire du navigateur sans que la jauge, déjà pleine, ne le montre. */
+  minuteur = setInterval(()=>{
+    const ecoule = (Date.now()-debutRec)/1000;
+    $('chrono').textContent = fmtDuree(ecoule);
+    const reste = DUREE_PRISE_MAX - ecoule;
+    if(reste <= 0){
+      $('recEtat').textContent = 'Plafond de la prise atteint, arrêt automatique.';
+      arreterEnregistrement();
+    }else if(reste <= 30){
+      $('recEtat').textContent = 'Arrêt automatique dans ' + Math.ceil(reste) + ' s';
+    }
+  }, 200);
 
   dessinerVumetre();
 }
@@ -1643,11 +1675,31 @@ function dessinerVumetre(){
 
 /* ─── Échantillons ─── */
 
+/* Rend faux, et le dit, si la prise ferait dépasser le plafond cumulé. Refuser
+   au moment de l'ajout vaut mieux que tronquer plus tard : l'utilisateur sait
+   tout de suite ce qui est conservé. */
+function placeDisponible(duree){
+  const total = dureeCumulee();
+  if(total >= DUREE_MAXI){
+    toast('Plafond de ' + Math.round(DUREE_MAXI/60) + ' minutes atteint : prise refusée. ' +
+          'Supprimez une prise pour en ajouter une autre.', 'err');
+    return false;
+  }
+  if(total + duree > DUREE_MAXI){
+    toast('Cette prise dépasserait le plafond de ' + Math.round(DUREE_MAXI/60) +
+          ' minutes : elle est refusée.', 'err');
+    return false;
+  }
+  return true;
+}
+
 async function ajouterEchantillon(ech){
+  if(!placeDisponible(ech.duree || 0)) return false;
   etat.echantillons.push(ech);
   await bdEcrire('echantillons', ech);
   afficherEchantillons();
   majEtat();
+  return true;
 }
 
 async function importerFichiers(evt){
@@ -1683,10 +1735,36 @@ function afficherEchantillons(){
       '</div>' +
       '<audio controls preload="none" src="'+URL.createObjectURL(e.blob)+'"></audio>' +
       '<div class="item-btns">' +
+        '<button class="btn btn-g btn-sm" title="Récupérer la prise telle qu\'elle a été captée" ' +
+          'onclick="telechargerEchantillon(\''+e.id+'\')">Télécharger</button>' +
         '<button class="btn btn-r btn-sm" onclick="supprimerEchantillon(\''+e.id+'\')">Supprimer</button>' +
       '</div>' +
     '</div>').join('');
   majJauge();
+}
+
+/* Récupérer les prises telles qu'elles ont été captées. C'est ce qui permet de
+   comparer l'enregistrement et la voix produite : sans l'original sous la main,
+   on ne peut dire si un défaut vient du micro ou du moteur. Le nom ne porte pas
+   le préfixe des fichiers synthétiques — ces prises-là ne le sont pas. */
+function nomEchantillon(e){
+  const base = 'prise_' + slug(e.nom.replace(/\.[^.]+$/, '') || 'echantillon');
+  return base + '.' + extensionDe(e.blob.type || e.type || 'audio/wav');
+}
+
+function telechargerEchantillon(id){
+  const e = etat.echantillons.find(x=>x.id === id);
+  if(!e) return;
+  telecharger(e.blob, nomEchantillon(e));
+}
+
+function telechargerToutesLesPrises(){
+  if(!etat.echantillons.length){ toast('Aucune prise à télécharger.', 'err'); return; }
+  /* Un fichier par prise, espacés : plusieurs téléchargements simultanés sont
+     refusés par certains navigateurs. */
+  etat.echantillons.forEach((e,i)=>
+    setTimeout(()=>telecharger(e.blob, nomEchantillon(e)), i * 350));
+  toast(etat.echantillons.length + ' prise(s) en cours de téléchargement.', 'ok');
 }
 
 async function supprimerEchantillon(id){
@@ -1710,6 +1788,21 @@ function majJauge(){
   $('dureeTotale').textContent = total >= 60
     ? fmtDuree(total) + ' (' + Math.round(total) + ' s)'
     : Math.round(total) + ' s';
+  /* Passé la cible, la jauge resterait pleine sans rien dire : elle donnerait
+     l'impression que le surplus se perd. Le texte prend alors le relais. */
+  const suite = $('jaugeSuite');
+  if(suite){
+    if(total >= DUREE_MAXI){
+      suite.textContent = 'Plafond de ' + Math.round(DUREE_MAXI/60) +
+        ' minutes atteint : les prises suivantes seront refusées.';
+    }else if(total > DUREE_CIBLE){
+      suite.textContent = 'Cible du clonage dépassée. Les ' +
+        fmtDuree(total - DUREE_CIBLE) + ' en plus sont conservées : elles servent ' +
+        'à l’affinage, pas au clonage instantané.';
+    }else{
+      suite.textContent = '';
+    }
+  }
 }
 
 /* ══════════════════════════════════════════════════════
@@ -2023,9 +2116,22 @@ function majRecapEnvoi(){
   if(total < DUREE_MINI){
     avis = '<div class="note n-amb" style="margin-top:10px"><div class="note-t">Matière insuffisante</div>' +
            'Moins d\u2019une minute d\u2019audio : la ressemblance sera approximative. Ajoutez des prises pour un meilleur résultat.</div>';
-  } else if(total > 300){
-    avis = '<div class="note n-blu" style="margin-top:10px">Au-delà de cinq minutes, le surplus n\u2019améliore plus le résultat. ' +
-           'Mieux vaut garder les meilleures prises.</div>';
+  } else if(total > DUREE_CIBLE){
+    /* L’ancienne formulation disait que le surplus « n’améliore plus le
+       résultat », ce qui laissait croire qu’il était jeté. Il ne l’est
+       pas : il ne sert simplement pas au même usage. */
+    avis = '<div class="note n-blu" style="margin-top:10px"><div class="note-t">Matière au-delà de la cible</div>' +
+           'Le clonage instantané moyenne une empreinte par prise, et cette moyenne ne bouge plus ' +
+           'guère au-delà de cinq minutes cumulées. Tout est envoyé et conservé pour autant : ' +
+           'le surplus sert à l’affinage du modèle, qui réclame vingt à trente minutes. ' +
+           'Pour le clonage seul, des prises variées valent mieux que des prises longues.</div>';
+  }
+  /* Cumulatif et non exclusif : une prise unique très longue mérite les deux
+     remarques, celle sur la durée et celle sur le nombre de prises. */
+  if(etat.echantillons.length === 1 && total > 90){
+    avis += '<div class="note n-blu" style="margin-top:10px">Une seule prise : le moteur ne peut ' +
+            'moyenner qu’une empreinte. Deux ou trois prises, pour la même durée totale, ' +
+            'donnent une référence plus stable.</div>';
   }
   $('recapEnvoi').innerHTML =
     ligneKv('Personne concernée', etat.consentement ? etat.consentement.nom : '—') +
@@ -2189,7 +2295,7 @@ async function listerVoix(){
         '<div class="item-corps">' +
           '<div class="item-nom">'+echapper(v.name)+
             (v.voice_id === etat.voixId ? ' <span class="badge b-grn">active</span>' : '')+'</div>' +
-          '<div class="item-meta">'+echapper(v.voice_id)+'</div>' +
+          '<div class="item-meta">'+echapper(v.voice_id)+matiereVoix(v)+'</div>' +
         '</div>' +
         '<div class="item-btns">' +
           '<button class="btn ' + (v.voice_id === etat.voixId ? 'btn-g' : 'btn-v') +
@@ -2201,6 +2307,23 @@ async function listerVoix(){
   }catch(e){
     $('listeVoix').innerHTML = '<div class="note n-red">' + echapper(messageReseau(e)) + '</div>';
   }
+}
+
+/* Dit ce que le moteur a réellement exploité de la matière fournie.
+
+   Sans cette ligne, rien ne distingue une voix construite sur trente secondes
+   d'une voix construite sur dix minutes : l'utilisateur ne peut que supposer
+   que son enregistrement a servi. Le serveur distant ne renvoie pas ces
+   champs, la mention disparaît alors d'elle-même. */
+function matiereVoix(v){
+  if(v.duree_reference === undefined || v.duree_reference === null) return '';
+  let texte = ' — ' + fmtDuree(v.duree_reference) + ' de matière';
+  if(v.nb_tranches){
+    texte += ', ' + v.nb_tranches + ' tranche' + (v.nb_tranches > 1 ? 's' : '') +
+             ' exploitée' + (v.nb_tranches > 1 ? 's' : '');
+    if(v.duree_utilisee) texte += ' (' + fmtDuree(v.duree_utilisee) + ')';
+  }
+  return echapper(texte);
 }
 
 /* ─── Catalogue du service distant ─── */
@@ -3039,6 +3162,40 @@ async function mesurerLoudness(donnees, frequence){
    MESURE ET PROPOSITION
    ══════════════════════════════════════════════════════ */
 
+/* Transformée de Fourier en place, sur des tableaux de taille puissance de
+   deux. Elle sert à mesurer une bande sans pente qui déborde : un filtre du
+   premier ordre, employé pour la même chose, laissait passer la voix dans la
+   mesure censée détecter ce qui se trouve sous elle. */
+function fftSurPlace(re, im){
+  const n = re.length;
+  for(let i = 1, j = 0; i < n; i++){
+    let bit = n >> 1;
+    for(; j & bit; bit >>= 1) j ^= bit;
+    j ^= bit;
+    if(i < j){
+      let t = re[i]; re[i] = re[j]; re[j] = t;
+      t = im[i]; im[i] = im[j]; im[j] = t;
+    }
+  }
+  for(let pas = 2; pas <= n; pas <<= 1){
+    const angle = -2 * Math.PI / pas;
+    const cosPas = Math.cos(angle), sinPas = Math.sin(angle);
+    for(let deb = 0; deb < n; deb += pas){
+      let cos = 1, sin = 0;
+      for(let k = 0; k < pas/2; k++){
+        const a = deb + k, b = a + pas/2;
+        const tr = re[b]*cos - im[b]*sin;
+        const ti = re[b]*sin + im[b]*cos;
+        re[b] = re[a] - tr; im[b] = im[a] - ti;
+        re[a] += tr;        im[a] += ti;
+        const c = cos;
+        cos = c*cosPas - sin*sinPas;
+        sin = c*sinPas + sin*cosPas;
+      }
+    }
+  }
+}
+
 /* Mesure l'audio produit, côté navigateur : le service distant ne renvoie
    aucune mesure, et la proposition doit rester possible dans les deux cas. */
 async function mesurerAudio(blob){
@@ -3077,6 +3234,76 @@ async function mesurerAudio(blob){
     return Math.sqrt(cumul/d.length);
   };
 
+  /* Fondamentale de la voix, par autocorrélation sur les trames sonores.
+     Elle est indispensable : sans elle, « ce qui est sous la voix » ne peut
+     pas être distingué de la voix elle-même. Une voix féminine tourne autour
+     de 200 Hz, une voix masculine autour de 110 Hz — un seuil fixe se
+     tromperait forcément sur l'une des deux. */
+  const fondamentale = (() => {
+    const T = Math.round(fe * 0.04);
+    const bas = Math.max(2, Math.round(fe / 400)), haut = Math.round(fe / 70);
+    if(haut <= bas || d.length < T) return 0;
+    const releves = [];
+    for(let deb = 0; deb + T < d.length; deb += Math.round(fe * 0.05)){
+      let s = 0;
+      for(let i = deb; i < deb + T; i++) s += d[i]*d[i];
+      if(Math.sqrt(s/T) < rms * 0.5) continue;      // trame trop faible
+      let moy = 0;
+      for(let i = deb; i < deb + T; i++) moy += d[i];
+      moy /= T;
+      let r0 = 0;
+      for(let i = deb; i < deb + T; i++){ const v = d[i]-moy; r0 += v*v; }
+      if(r0 <= 0) continue;
+      let meilleur = 0, valeur = 0;
+      for(let k = bas; k < haut && deb + T + k < d.length; k++){
+        let c = 0;
+        for(let i = deb; i < deb + T; i++) c += (d[i]-moy)*(d[i+k]-moy);
+        if(c > valeur){ valeur = c; meilleur = k; }
+      }
+      /* Un pic faible signale une trame non voisée : la retenir ferait dériver
+         la médiane vers le bruit. */
+      if(meilleur && valeur > 0.3 * r0) releves.push(fe / meilleur);
+    }
+    if(!releves.length) return 0;
+    releves.sort((a,b)=>a-b);
+    return releves[Math.floor(releves.length/2)];
+  })();
+
+  /* Énergie réellement sous la voix.
+
+     La mesure d'avant employait un filtre du premier ordre à 120 Hz. Une pente
+     de 6 dB par octave n'atténue une fondamentale à 200 Hz que de six
+     décibels : ce que la mesure appelait « grondement » était, pour une voix
+     aiguë, la voix elle-même. Vérifié sur une génération réelle — en effaçant
+     tout ce qui se trouvait sous 150 Hz, la valeur bougeait de 0,02 dB.
+
+     On somme donc le spectre sous une coupure posée par rapport à la
+     fondamentale mesurée, sans pente qui déborde. */
+  const bandeSousLaVoix = (() => {
+    if(!fondamentale) return null;
+    const coupure = Math.max(60, Math.min(160, fondamentale * 0.72));
+    const N = 4096;
+    if(d.length < N) return null;
+    const pas = N >> 1;
+    let dedans = 0, total = 0, trames = 0;
+    const re = new Float64Array(N), im = new Float64Array(N);
+    for(let deb = 0; deb + N <= d.length; deb += pas * 4){
+      for(let i = 0; i < N; i++){
+        re[i] = d[deb+i] * (0.5 - 0.5*Math.cos(2*Math.PI*i/(N-1)));
+        im[i] = 0;
+      }
+      fftSurPlace(re, im);
+      for(let k = 1; k < N/2; k++){
+        const p = re[k]*re[k] + im[k]*im[k];
+        total += p;
+        if(k * fe / N < coupure) dedans += p;
+      }
+      trames++;
+    }
+    if(!trames || total <= 0) return null;
+    return {coupure, rapport: 10*Math.log10(Math.max(dedans/total, 1e-12))};
+  })();
+
   const db = v => v > 1e-9 ? 20*Math.log10(v) : -99;
   return {
     duree: source.duration,
@@ -3087,7 +3314,13 @@ async function mesurerAudio(blob){
     rapport: db(rms) - db(plancher),
     crest: db(crete) - db(rms),
     graves: db(energie(120, false)) - db(rms),
-    aigus: db(energie(5000, true)) - db(rms)
+    aigus: db(energie(5000, true)) - db(rms),
+    /* Hauteur de la voix, et ce qui se trouve réellement en dessous. Ces deux
+       mesures remplacent « graves » dans la décision : « graves » reste publié
+       parce qu'il est affiché, mais il ne décide plus rien. */
+    fondamentale: fondamentale,
+    coupureGrave: bandeSousLaVoix ? bandeSousLaVoix.coupure : null,
+    sousLaVoix: bandeSousLaVoix ? bandeSousLaVoix.rapport : null
   };
 }
 
@@ -3109,14 +3342,49 @@ function chaineProposee(m){
              deess:-2,  fDeess:7000,  qDeess:3.5,
              seuil:-18, ratio:3, cible:-3, normaliser:true};
 
-  if(m.graves > -14){
-    /* Le grondement d'une pièce se loge au-dessus du coupe-bas : un plateau ne
-       l'atteindrait pas, il faut une cloche placée sur la résonance. */
-    t.passeHaut = 110;
-    t.typeGraves = 'peaking'; t.graves = -7; t.fGraves = 180; t.qGraves = 1.4;
-    t.basMed = -3;
-    raisons.push('Grondement dans le bas du spectre (' + d1(m.graves) +
-                 ' dB sous la voix) : coupe-bas à 110 Hz et creux de 7 dB à 180 Hz.');
+  /* Ce qui se trouve SOUS la voix, et non « dans les graves ».
+
+     L'ancienne règle comparait l'énergie sous 120 Hz au niveau général, à
+     travers un filtre du premier ordre. Pour une voix féminine à 200 Hz, ce
+     filtre laissait passer la fondamentale presque entière : la règle se
+     déclenchait sur la voix, et plaçait alors un creux de 7 dB à 180 Hz,
+     c'est-à-dire sur la fondamentale elle-même. Elle amincissait la voix en
+     croyant nettoyer la pièce. Constaté sur une génération réelle : effacer
+     tout ce qui se trouvait sous 150 Hz ne changeait la mesure que de
+     0,02 dB — il n'y avait rien à retirer.
+
+     La règle s'appuie désormais sur la hauteur mesurée de la voix. Le
+     coupe-bas est posé sous la fondamentale, jamais dessus, et aucun creux
+     n'est placé dans la bande où la voix se tient. */
+  if(m.sousLaVoix !== null && m.sousLaVoix !== undefined && m.fondamentale){
+    const sousF = Math.round(m.coupureGrave);
+    if(m.sousLaVoix > -20){
+      /* Le coupe-bas reste sous la fondamentale : au-dessus, il mangerait la
+         voix. La cloche vise le tiers inférieur de cette bande, là où une
+         pièce résonne, et jamais la fondamentale. */
+      t.passeHaut = Math.min(sousF, Math.round(m.fondamentale * 0.75));
+      t.typeGraves = 'peaking'; t.graves = -6;
+      t.fGraves = Math.max(50, Math.round(sousF * 0.7)); t.qGraves = 1.2;
+      raisons.push('Voix mesurée à ' + Math.round(m.fondamentale) + ' Hz. Sous elle, ' +
+                   'la bande en dessous de ' + sousF + ' Hz porte ' + d1(m.sousLaVoix) +
+                   ' dB de l\u2019énergie totale, ce qui est un grondement de pièce : ' +
+                   'coupe-bas à ' + t.passeHaut + ' Hz et creux de 6 dB à ' + t.fGraves + ' Hz. ' +
+                   'La fondamentale n\u2019est pas touchée.');
+    }else{
+      t.passeHaut = Math.min(90, Math.round(m.fondamentale * 0.55));
+      raisons.push('Voix mesurée à ' + Math.round(m.fondamentale) + ' Hz. Sous elle, ' +
+                   'la bande en dessous de ' + sousF + ' Hz ne porte que ' + d1(m.sousLaVoix) +
+                   ' dB de l\u2019énergie totale : rien à retirer, coupe-bas posé à ' +
+                   t.passeHaut + ' Hz.');
+    }
+  }else if(m.graves > -14){
+    /* Repli quand la hauteur n'a pas pu être mesurée — un extrait sans voisement,
+       par exemple. Le creux est alors placé bas et resserré, pour ne pas risquer
+       la fondamentale d'une voix qu'on n'a pas su situer. */
+    t.passeHaut = 90;
+    t.typeGraves = 'peaking'; t.graves = -5; t.fGraves = 90; t.qGraves = 1.2;
+    raisons.push('Hauteur de la voix non mesurable : correction prudente du bas ' +
+                 'du spectre (' + d1(m.graves) + ' dB), coupe-bas à 90 Hz.');
   }else{
     raisons.push('Bas du spectre sain (' + d1(m.graves) + ' dB) : coupe-bas laissé à 75 Hz.');
   }

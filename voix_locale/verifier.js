@@ -222,10 +222,151 @@ async function creerVoix(page, nom) {
     const b = await mesurerLoudness(fort, fe);
     return { a, b, ecart: b - a };
   });
+  // La regle du grondement a longtemps vise le fondamental de la voix.
+  // Sur une voix feminine a 198 Hz, elle posait un creux de 7 dB a 180 Hz :
+  // elle amincissait la voix en croyant nettoyer la piece. Ces controles
+  // interdisent le retour de ce defaut.
+  const grave = await page.evaluate(async () => {
+    const fe = 24000, n = fe * 4;
+    // Voix synthetique : fondamentale a 198 Hz et ses harmoniques, comme une
+    // voix feminine reelle. Le souffle evite un signal trop pur.
+    const voix = f0 => {
+      const d = new Float32Array(n);
+      for (let i = 0; i < n; i++) {
+        const t = i / fe;
+        const enveloppe = 0.5 + 0.5 * Math.sin(2 * Math.PI * 3 * t);
+        let v = 0;
+        for (let h = 1; h <= 12; h++) v += Math.sin(2 * Math.PI * f0 * h * t) / (h * h);
+        d[i] = 0.35 * enveloppe * v + 0.002 * (Math.random() - 0.5);
+      }
+      return d;
+    };
+    const avecGrondement = d => {
+      const s = new Float32Array(d.length);
+      for (let i = 0; i < d.length; i++) {
+        s[i] = d[i] + 0.25 * Math.sin(2 * Math.PI * 55 * i / fe);
+      }
+      return s;
+    };
+    const mesurer = async d => await mesurerAudio(encoderWav(d, fe, 16));
+    const propre = voix(198);
+    const mPropre = await mesurer(propre);
+    const mSale = await mesurer(avecGrondement(propre));
+    const mHomme = await mesurer(voix(105));
+    return {
+      f0Propre: mPropre && mPropre.fondamentale,
+      f0Homme: mHomme && mHomme.fondamentale,
+      sousPropre: mPropre && mPropre.sousLaVoix,
+      sousSale: mSale && mSale.sousLaVoix,
+      chainePropre: chaineProposee(mPropre).chaine.traitement,
+      chaineSale: chaineProposee(mSale).chaine.traitement,
+      chaineHomme: chaineProposee(mHomme).chaine.traitement,
+      raisonsPropre: chaineProposee(mPropre).raisons.map(r => r.replace(/<[^>]*>/g, ''))
+    };
+  });
+  verifier('Hauteur de la voix mesurée, voix aiguë',
+    grave.f0Propre > 185 && grave.f0Propre < 212,
+    Math.round(grave.f0Propre) + ' Hz pour 198 Hz attendus');
+  verifier('Hauteur de la voix mesurée, voix grave',
+    grave.f0Homme > 98 && grave.f0Homme < 113,
+    Math.round(grave.f0Homme) + ' Hz pour 105 Hz attendus');
+  verifier('Un grondement réel est bien détecté',
+    grave.sousSale > grave.sousPropre + 10,
+    'sous la voix : ' + grave.sousPropre.toFixed(1) + ' dB propre, ' +
+    grave.sousSale.toFixed(1) + ' dB avec grondement');
+  verifier('Voix saine : aucun creux posé dans le bas',
+    grave.chainePropre.graves >= 0,
+    'gain grave ' + grave.chainePropre.graves + ' dB');
+  verifier('Voix saine : le coupe-bas reste sous la fondamentale',
+    grave.chainePropre.passeHaut < grave.f0Propre * 0.8,
+    grave.chainePropre.passeHaut + ' Hz pour une voix à ' + Math.round(grave.f0Propre) + ' Hz');
+  verifier('Grondement traité sans toucher à la fondamentale',
+    grave.chaineSale.graves < 0 && grave.chaineSale.fGraves < grave.f0Propre * 0.8,
+    'creux de ' + grave.chaineSale.graves + ' dB à ' + grave.chaineSale.fGraves +
+    ' Hz, fondamentale à ' + Math.round(grave.f0Propre) + ' Hz');
+  verifier('Le coupe-bas ne monte jamais sur la fondamentale',
+    grave.chaineSale.passeHaut < grave.f0Propre * 0.8,
+    grave.chaineSale.passeHaut + ' Hz');
+  verifier('Voix grave : le coupe-bas s\'abaisse aussi',
+    grave.chaineHomme.passeHaut < grave.f0Homme * 0.8,
+    grave.chaineHomme.passeHaut + ' Hz pour une voix à ' + Math.round(grave.f0Homme) + ' Hz');
+
   verifier('Mesure de niveau : six décibels donnent six décibels',
     Math.abs(lufs.ecart - 6) < 0.15, 'écart mesuré ' + lufs.ecart.toFixed(2) + ' LU');
 
   // ════════ RETOUR DEPUIS LE CATALOGUE ════════
+  console.log('\n--- Matière d\'entrée ---');
+
+  // Recuperer la prise telle qu'elle a ete captee : sans l'original, on ne
+  // peut pas dire si un defaut vient du micro ou du moteur.
+  const prise = await page.evaluate(() => {
+    const e = etat.echantillons[0];
+    return e ? { nom: nomEchantillon(e), taille: e.blob.size } : null;
+  });
+  verifier('Une prise enregistrée peut être récupérée',
+    !!prise && prise.taille > 1000, prise ? prise.nom + ', ' + prise.taille + ' octets' : 'aucune');
+  verifier('Le nom d\'une prise ne porte pas le préfixe des fichiers synthétiques',
+    !!prise && prise.nom.indexOf('voix-synthetique') < 0, prise ? prise.nom : '');
+  verifier('Le bouton de récupération est présent pour chaque prise',
+    (await page.locator('#listeEch button:has-text("Télécharger")').count())
+      === (await page.evaluate(() => etat.echantillons.length)));
+  verifier('Le bouton « Télécharger les prises » existe',
+    await page.locator('#btnToutesPrises').count() > 0);
+
+  // Les plafonds : une prise bornee, un cumul borne, et une jauge qui dit ce
+  // qu'elle fait au lieu de rester pleine en silence.
+  const plafonds = await page.evaluate(() => ({
+    prise: typeof DUREE_PRISE_MAX === 'number' ? DUREE_PRISE_MAX : null,
+    cumul: typeof DUREE_MAXI === 'number' ? DUREE_MAXI : null,
+    cible: typeof DUREE_CIBLE === 'number' ? DUREE_CIBLE : null
+  }));
+  verifier('Plafond par prise défini', plafonds.prise > 0, plafonds.prise + ' s');
+  verifier('Plafond cumulé à trente minutes', plafonds.cumul === 1800, plafonds.cumul + ' s');
+  verifier('La cible de la jauge est au-dessus de l\'ancienne valeur de 180 s',
+    plafonds.cible > 180, plafonds.cible + ' s');
+
+  const jauge = await page.evaluate(() => {
+    const vrais = etat.echantillons;
+    const faux = d => ({ id: 'faux' + d, nom: 'x', duree: d, blob: new Blob(['x']), type: 'audio/wav' });
+    etat.echantillons = [faux(DUREE_CIBLE + 120)];
+    majJauge();
+    const depasse = document.getElementById('jaugeSuite').textContent;
+    const largeurDepasse = document.getElementById('jaugePlein').style.width;
+    etat.echantillons = [faux(DUREE_MAXI)];
+    majJauge();
+    const plein = document.getElementById('jaugeSuite').textContent;
+    etat.echantillons = [faux(120)];
+    majJauge();
+    const normal = document.getElementById('jaugeSuite').textContent;
+    // Le plafond doit refuser, pas tronquer en silence.
+    etat.echantillons = [faux(DUREE_MAXI - 10)];
+    const refus = placeDisponible(60);
+    etat.echantillons = vrais;
+    majJauge();
+    return { depasse, plein, normal, refus, largeurDepasse };
+  });
+  verifier('Sous la cible, la jauge n\'ajoute aucun commentaire',
+    jauge.normal === '', JSON.stringify(jauge.normal));
+  verifier('Au-delà de la cible, la jauge dit où va le surplus',
+    jauge.depasse.length > 0 && jauge.depasse.indexOf('affinage') >= 0, jauge.depasse);
+  verifier('Au plafond, la jauge annonce le refus des prises suivantes',
+    jauge.plein.indexOf('refus') >= 0, jauge.plein);
+  verifier('Une prise qui dépasserait le plafond est refusée',
+    jauge.refus === false);
+
+  // Le serveur doit exploiter la matiere, pas seulement la stocker.
+  const fiche = await page.evaluate(async () => {
+    const r = await fetch(baseApi() + '/voices', { headers: entetes() });
+    const d = await r.json();
+    const v = (d.voices || []).find(v => v.name === 'controle') || (d.voices || [])[0];
+    return v || null;
+  });
+  // Exiger un compte non nul : une fiche annoncant zero tranche signifie que
+  // le decoupage n'a rien donne, donc que la matiere n'est pas exploitee.
+  verifier('La fiche de voix indique la matière réellement exploitée',
+    !!fiche && fiche.nb_tranches > 0 && fiche.duree_utilisee > 0,
+    fiche ? fiche.nb_tranches + ' tranche(s), ' + fiche.duree_utilisee + ' s utilisées' : 'aucune fiche');
+
   console.log('\n--- Pièges connus ---');
 
   await page.evaluate(() => go(1));
