@@ -488,6 +488,87 @@ async function creerVoix(page, nom) {
     !!fiche && fiche.nb_tranches > 0 && fiche.duree_utilisee > 0,
     fiche ? fiche.nb_tranches + ' tranche(s), ' + fiche.duree_utilisee + ' s utilisées' : 'aucune fiche');
 
+  console.log('\n--- Montage ---');
+
+  const mont = await page.evaluate(async () => {
+    const g = etat.generations[0];
+    etat.montage = [];
+    // Le meme audio deux fois : suffisant pour verifier l'ordre, le rognage,
+    // les silences et la longueur du rendu.
+    await ajouterAuMontage(g.id);
+    await ajouterAuMontage(g.id);
+    const cles = etat.montage.map(m => m.cle);
+    // Rogner le premier, silence d'une seconde apres lui ; rien apres le second.
+    await majChampMontage(cles[0], 'debut', '0.2');
+    await majChampMontage(cles[0], 'fin', '0.3');
+    await majChampMontage(cles[0], 'pause', '1');
+    await majChampMontage(cles[1], 'pause', '0');
+    const rendu = await construireMontage();
+    const source = await decoderAudio(versionRetenue(g).blob);
+    const attendu = (source.duration - 0.5) + 1 + source.duration;
+    // Le deplacement doit marcher sans glisser-deposer aussi.
+    await montageDeplacer(cles[1], -1);
+    const ordre = etat.montage.map(m => m.cle);
+    // Les silences inseres doivent etre du vrai silence.
+    const d = rendu.donnees, fe = rendu.frequence;
+    const debutSilence = Math.round((source.duration - 0.5) * fe) + Math.round(0.1 * fe);
+    let creux = 0;
+    for (let i = debutSilence; i < debutSilence + Math.round(0.5 * fe); i++) creux = Math.max(creux, Math.abs(d[i]));
+    // Aucun saut brutal : un raccord mal fondu s'entend comme un clic.
+    let saut = 0;
+    for (let i = 1; i < d.length; i++) saut = Math.max(saut, Math.abs(d[i] - d[i-1]));
+    const persiste = await bdLire('config', 'montage');
+    return {
+      duree: d.length / fe, attendu, ordre0: ordre[0], cle1: cles[1],
+      creux, saut, nb: etat.montage.length,
+      persiste: persiste && persiste.valeur ? persiste.valeur.length : 0,
+      frequence: fe
+    };
+  });
+  verifier('Le montage assemble les extraits bout à bout',
+    Math.abs(mont.duree - mont.attendu) < 0.05,
+    mont.duree.toFixed(2) + ' s pour ' + mont.attendu.toFixed(2) + ' s attendues');
+  verifier('Le silence demandé est réellement silencieux',
+    mont.creux < 1e-6, 'crête dans le silence : ' + mont.creux.toExponential(1));
+  verifier('Aucune marche brutale aux raccords',
+    mont.saut < 0.5, 'saut maximal ' + mont.saut.toFixed(3));
+  verifier('L\'ordre se change sans glisser-déposer',
+    mont.ordre0 === mont.cle1);
+  // Les valeurs doivent etre LISIBLES dans les champs : un input « number »
+  // rejette « 0,6 » et s'affiche vide, ce qu'une verification passant par les
+  // fonctions internes ne voit pas.
+  const champs = await page.evaluate(async () => {
+    const g = etat.generations[0];
+    etat.montage = [];
+    await ajouterAuMontage(g.id);
+    await majChampMontage(etat.montage[0].cle, 'debut', '0.25');
+    afficherMontage();
+    const vals = [...document.querySelectorAll('#listeMontage input[type=number]')]
+      .map(i => i.value);
+    return { vals, pause: etat.montage[0].pause, debut: etat.montage[0].debut };
+  });
+  verifier('Les champs du montage affichent leur valeur',
+    champs.vals.length === 3 && champs.vals.every(v => v !== ''),
+    'valeurs affichées : ' + JSON.stringify(champs.vals));
+  verifier('Le silence par défaut est visible et non nul',
+    Number(champs.vals[2]) === champs.pause && champs.pause > 0,
+    champs.vals[2] + ' s');
+  verifier('Le rognage saisi est relu correctement',
+    Number(champs.vals[0]) === 0.25, champs.vals[0]);
+
+  verifier('Le montage est conservé d\'une session à l\'autre',
+    mont.persiste === mont.nb, mont.persiste + ' extrait(s) en base');
+
+  const vide = await page.evaluate(async () => {
+    await viderMontage();
+    let erreur = null;
+    try { await construireMontage(); } catch (e) { erreur = e.message; }
+    return { nb: etat.montage.length, erreur };
+  });
+  verifier('Vider le montage le vide vraiment', vide.nb === 0);
+  verifier('Un montage vide est refusé proprement',
+    !!vide.erreur && vide.erreur.indexOf('vide') >= 0, vide.erreur);
+
   console.log('\n--- Adresse du serveur ---');
 
   // Le serveur sert lui-meme la page. Une adresse par defaut ecrite en dur

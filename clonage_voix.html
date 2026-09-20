@@ -1093,6 +1093,26 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
       <div class="sec">Audios générés</div>
       <div class="card"><div id="listeGen"></div></div>
 
+      <div class="sec">Montage
+        <button class="btn btn-g btn-sm" style="margin-left:8px;text-transform:none;letter-spacing:0"
+                id="btnMontage" onclick="basculerMontage()">Afficher</button></div>
+      <div class="card" id="blocMontage" style="display:none">
+        <div class="aide" style="margin-bottom:12px">
+          Assemblez plusieurs audios en une seule écoute. Faites glisser les lignes pour les
+          ordonner, rognez le début et la fin de chaque extrait, et réglez le silence qui le suit.
+          Un fondu de quelques millisecondes est posé à chaque jonction : sans lui, le raccord
+          contre un silence s'entend comme un clic.
+        </div>
+        <div id="listeMontage"></div>
+        <div id="resumeMontage" class="aide" style="margin-top:12px"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+          <button class="btn btn-p btn-sm" id="btnAssembler" onclick="assemblerMontage()">Assembler et écouter</button>
+          <button class="btn btn-g btn-sm" onclick="telechargerMontage()">Télécharger le montage</button>
+          <button class="btn btn-g btn-sm" onclick="viderMontage()">Vider</button>
+        </div>
+        <div id="resultatMontage" style="margin-top:12px"></div>
+      </div>
+
       <div class="sec">Trace du consentement</div>
       <div class="card">
         <div id="traceConsentement"></div>
@@ -1172,6 +1192,8 @@ const etat = {
   baseSigles:true,       // sigles lus lettre par lettre
   baseAnglicismes:true,  // mots anglais réécrits à la française
   baseEcartees:[],       // entrées de base désactivées une à une
+  montage:[],            // extraits assemblés : {cle, source, debut, fin, pause}
+  montageRendu:null,     // dernier assemblage produit : {blob, nom}
   voixAAmeliorer:null,   // voix dont on prépare une nouvelle version
   connexion:null,        // dernier résultat de vérification du service
   voixId:null,
@@ -1357,7 +1379,7 @@ function go(n){
     }
   }
   if(n === 2){ majVoixActive(); majCompteur(); }
-  if(n === 3){ afficherGenerations(); afficherTraceConsentement(); }
+  if(n === 3){ afficherGenerations(); afficherMontage(); afficherTraceConsentement(); }
 
   majEtat();
 }
@@ -3946,6 +3968,8 @@ function afficherGenerations(){
         bouton('brut', 'Non traitée', 'Telle que le moteur l\'a produite') +
         bouton('votre', 'Vos réglages', 'Avec les réglages de la page') +
         bouton('propose', 'Proposition', 'Réglages déduits des mesures') +
+        '<button class="btn btn-g btn-sm" title="Ajouter cet audio au montage" ' +
+          'onclick="ajouterAuMontage(\''+g.id+'\')">Au montage</button>' +
         '<button class="btn btn-r btn-sm" onclick="supprimerGeneration(\''+g.id+'\')">Supprimer</button>' +
       '</div>' +
     '</div>';
@@ -4007,6 +4031,260 @@ async function chargerVersion(id, quelle){
   }
   afficherGenerations();
   toast('Version « ' + v[quelle].titre + ' » chargée dans la bibliothèque, où elle peut être téléchargée.', 'ok');
+}
+
+/* ══════════════════════════════════════════════════════
+   MONTAGE — assembler plusieurs audios en une écoute
+   ══════════════════════════════════════════════════════ */
+
+/* Fondus posés à chaque jonction. Mêmes valeurs que côté serveur : un morceau
+   se termine rarement sur un zéro, et recollé tel quel contre un silence
+   l'écart forme une marche, qui s'entend comme un clic. */
+const MONTAGE_MONTEE = 0.002;
+const MONTAGE_DESCENTE = 0.008;
+const MONTAGE_PAUSE_DEFAUT = 0.6;
+
+function basculerMontage(){
+  const bloc = $('blocMontage');
+  const ouvert = bloc.style.display !== 'none';
+  bloc.style.display = ouvert ? 'none' : 'block';
+  $('btnMontage').textContent = ouvert ? 'Afficher' : 'Masquer';
+  if(!ouvert) afficherMontage();
+}
+
+async function ajouterAuMontage(id){
+  const g = etat.generations.find(x => x.id === id);
+  if(!g) return;
+  etat.montage.push({
+    cle: ident(), source: id,
+    debut: 0, fin: 0,                 // secondes rognées de chaque côté
+    pause: MONTAGE_PAUSE_DEFAUT
+  });
+  await enregistrerMontage();
+  $('blocMontage').style.display = 'block';
+  $('btnMontage').textContent = 'Masquer';
+  afficherMontage();
+  toast('Extrait ajouté au montage.', 'ok');
+}
+
+async function retirerDuMontage(cle){
+  etat.montage = etat.montage.filter(m => m.cle !== cle);
+  await enregistrerMontage();
+  afficherMontage();
+}
+
+async function viderMontage(){
+  if(!etat.montage.length) return;
+  etat.montage = [];
+  await enregistrerMontage();
+  $('resultatMontage').innerHTML = '';
+  afficherMontage();
+  toast('Montage vidé.');
+}
+
+async function majChampMontage(cle, champ, valeur){
+  const m = etat.montage.find(x => x.cle === cle);
+  if(!m) return;
+  const v = parseFloat(String(valeur).replace(',', '.'));
+  m[champ] = (isFinite(v) && v >= 0) ? v : 0;
+  await enregistrerMontage();
+  majResumeMontage();
+}
+
+function enregistrerMontage(){
+  return bd ? bdEcrire('config', {cle:'montage', valeur: etat.montage}) : Promise.resolve();
+}
+
+/* Déplacement par glisser-déposer. Le presse-papiers de l'événement ne sert
+   qu'à satisfaire les navigateurs qui refusent un glisser sans données. */
+let montageTire = null;
+
+function montageDebutTirage(evt, cle){
+  montageTire = cle;
+  evt.dataTransfer.effectAllowed = 'move';
+  try{ evt.dataTransfer.setData('text/plain', cle); }catch(e){}
+}
+
+function montageSurvol(evt){
+  evt.preventDefault();
+  evt.dataTransfer.dropEffect = 'move';
+}
+
+async function montageDepot(evt, cible){
+  evt.preventDefault();
+  const tire = montageTire || (evt.dataTransfer ? evt.dataTransfer.getData('text/plain') : null);
+  montageTire = null;
+  if(!tire || tire === cible) return;
+  const depart = etat.montage.findIndex(m => m.cle === tire);
+  const arrivee = etat.montage.findIndex(m => m.cle === cible);
+  if(depart < 0 || arrivee < 0) return;
+  const [deplace] = etat.montage.splice(depart, 1);
+  etat.montage.splice(arrivee, 0, deplace);
+  await enregistrerMontage();
+  afficherMontage();
+}
+
+/* Déplacement au clavier et au doigt : le glisser-déposer n'existe ni sur
+   téléphone ni au clavier, et le montage doit rester utilisable. */
+async function montageDeplacer(cle, sens){
+  const i = etat.montage.findIndex(m => m.cle === cle);
+  const j = i + sens;
+  if(i < 0 || j < 0 || j >= etat.montage.length) return;
+  const t = etat.montage[i]; etat.montage[i] = etat.montage[j]; etat.montage[j] = t;
+  await enregistrerMontage();
+  afficherMontage();
+}
+
+function sourceMontage(m){
+  return etat.generations.find(g => g.id === m.source) || null;
+}
+
+function afficherMontage(){
+  const zone = $('listeMontage');
+  if(!zone) return;
+  if(!etat.montage.length){
+    zone.innerHTML = '<div class="vide">Aucun extrait. Ajoutez-en depuis la liste des audios générés.</div>';
+    majResumeMontage();
+    return;
+  }
+  zone.innerHTML = etat.montage.map((m, i) => {
+    const g = sourceMontage(m);
+    const titre = g ? g.texte.slice(0, 54) + (g.texte.length > 54 ? '…' : '')
+                    : 'Extrait supprimé de la bibliothèque';
+    /* Pas de virgule décimale ici : un input de type « number » rejette
+       « 0,6 » et s'affiche vide. La saisie accepte les deux, la valeur
+       affichée doit rester au format que le navigateur reconnaît. */
+    const nb = (v) => String(v);
+    return '<div class="item" draggable="true" style="align-items:flex-start;cursor:grab"' +
+      ' ondragstart="montageDebutTirage(event,\''+m.cle+'\')"' +
+      ' ondragover="montageSurvol(event)"' +
+      ' ondrop="montageDepot(event,\''+m.cle+'\')">' +
+      '<div class="item-corps">' +
+        '<div class="item-nom">' + (i+1) + '. ' + echapper(titre) + '</div>' +
+        (g ? '<div class="item-meta">' + echapper(g.voix) + ' — ' +
+             echapper(versionRetenue(g).titre) + '</div>'
+           : '<div class="item-meta" style="color:var(--rou-l)">source absente, extrait ignoré</div>') +
+        '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">' +
+          champMontage(m.cle, 'debut', 'Rogner au début (s)', nb(m.debut)) +
+          champMontage(m.cle, 'fin', 'Rogner à la fin (s)', nb(m.fin)) +
+          champMontage(m.cle, 'pause', 'Silence après (s)', nb(m.pause)) +
+        '</div>' +
+      '</div>' +
+      '<div class="item-btns">' +
+        '<button class="btn btn-g btn-sm" title="Monter" onclick="montageDeplacer(\''+m.cle+'\',-1)">↑</button>' +
+        '<button class="btn btn-g btn-sm" title="Descendre" onclick="montageDeplacer(\''+m.cle+'\',1)">↓</button>' +
+        '<button class="btn btn-r btn-sm" onclick="retirerDuMontage(\''+m.cle+'\')">Retirer</button>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+  majResumeMontage();
+}
+
+function champMontage(cle, champ, libelle, valeur){
+  return '<label style="font-size:11px;color:var(--txt2)">' + echapper(libelle) +
+    '<input type="number" min="0" step="0.1" value="' + echapper(valeur) + '"' +
+    ' style="width:92px;display:block;margin-top:3px"' +
+    ' onchange="majChampMontage(\''+cle+'\',\''+champ+'\',this.value)"></label>';
+}
+
+function majResumeMontage(){
+  const zone = $('resumeMontage');
+  if(!zone) return;
+  let total = 0, manquants = 0;
+  for(const m of etat.montage){
+    const g = sourceMontage(m);
+    if(!g){ manquants++; continue; }
+    const brute = (g.mesures && g.mesures.duree) ? g.mesures.duree : 0;
+    /* La durée mesurée porte sur la version non traitée : elle suffit à
+       l'estimation affichée, le calcul exact se fait à l'assemblage. */
+    total += Math.max(0, brute - m.debut - m.fin) + m.pause;
+  }
+  zone.textContent = etat.montage.length
+    ? etat.montage.length + ' extrait(s), environ ' + fmtDuree(total) + ' au total' +
+      (manquants ? ' — ' + manquants + ' source(s) absente(s), ignorée(s)' : '')
+    : '';
+}
+
+/* Assemble les extraits en un seul signal.
+
+   Toutes les sources ne partagent pas la même fréquence : on ramène chacune à
+   la plus haute du lot, pour ne rien perdre au passage. */
+async function construireMontage(){
+  if(!etat.montage.length) throw new Error('Le montage est vide.');
+  const pieces = [];
+  let frequence = 0;
+  for(const m of etat.montage){
+    const g = sourceMontage(m);
+    if(!g) continue;
+    const source = await decoderAudio(versionRetenue(g).blob);
+    frequence = Math.max(frequence, source.sampleRate);
+    pieces.push({m, source});
+  }
+  if(!pieces.length) throw new Error('Aucune source disponible pour ce montage.');
+
+  const morceaux = [];
+  let longueur = 0;
+  for(const p of pieces){
+    let donnees = p.source.getChannelData(0);
+    if(p.source.sampleRate !== frequence){
+      const r = await reechantillonner(donnees, p.source.sampleRate, frequence);
+      donnees = r.donnees;
+    }
+    const debut = Math.min(donnees.length, Math.round(p.m.debut * frequence));
+    const fin = Math.max(debut, donnees.length - Math.round(p.m.fin * frequence));
+    const extrait = donnees.slice(debut, fin);
+    const silence = Math.max(0, Math.round(p.m.pause * frequence));
+    morceaux.push({extrait, silence});
+    longueur += extrait.length + silence;
+  }
+
+  const sortie = new Float32Array(longueur);
+  let curseur = 0;
+  const montee = Math.round(frequence * MONTAGE_MONTEE);
+  const descente = Math.round(frequence * MONTAGE_DESCENTE);
+  for(const morceau of morceaux){
+    const e = morceau.extrait;
+    sortie.set(e, curseur);
+    /* Fondus aux deux bouts : le rognage tombe rarement sur un zéro, et une
+       coupure franche s'entend autant qu'un mauvais raccord. */
+    const m1 = Math.min(montee, e.length >> 1);
+    for(let i = 0; i < m1; i++) sortie[curseur + i] *= i / m1;
+    const d1 = Math.min(descente, e.length >> 1);
+    for(let i = 0; i < d1; i++) sortie[curseur + e.length - 1 - i] *= i / d1;
+    curseur += e.length + morceau.silence;
+  }
+  return {donnees: sortie, frequence};
+}
+
+async function assemblerMontage(){
+  const bouton = $('btnAssembler');
+  occupe(bouton, true, 'Assemblage…');
+  try{
+    const {donnees, frequence} = await construireMontage();
+    const blob = encoderWav(donnees, frequence, 16);
+    etat.montageRendu = {blob, nom: nomMontage()};
+    $('resultatMontage').innerHTML =
+      '<div class="note n-grn"><div class="note-t">Montage assemblé — ' +
+      fmtDuree(donnees.length / frequence) + '</div>' +
+      '<audio controls style="margin-top:8px" src="' + URL.createObjectURL(blob) + '"></audio></div>';
+    toast('Montage assemblé.', 'ok');
+  }catch(e){
+    $('resultatMontage').innerHTML = '<div class="note n-red">' + echapper(messageReseau(e)) + '</div>';
+  }finally{
+    occupe(bouton, false);
+  }
+}
+
+function nomMontage(){
+  return 'voix-synthetique_montage_' + horodatage() + '.wav';
+}
+
+async function telechargerMontage(){
+  if(!etat.montageRendu){
+    await assemblerMontage();
+    if(!etat.montageRendu) return;
+  }
+  telecharger(etat.montageRendu.blob, etat.montageRendu.nom);
 }
 
 function telechargerVersion(id, quelle){
@@ -4134,6 +4412,9 @@ async function demarrer(){
 
       const type = await bdLire('config','typeVoix');
       if(type && type.valeur === 'catalogue') etat.typeVoix = 'catalogue';
+
+      const mont = await bdLire('config','montage');
+      if(mont && Array.isArray(mont.valeur)) etat.montage = mont.valeur;
 
       const socle = await bdLire('config','lexiqueBase');
       if(socle && socle.valeur){
