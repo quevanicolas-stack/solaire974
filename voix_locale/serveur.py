@@ -37,7 +37,7 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 
 RACINE = Path(__file__).resolve().parent
 DOSSIER_VOIX = RACINE / "donnees" / "voix"
-VERSION = "2026.09.20"     # affichée au démarrage et sur « / » : sert à vérifier
+VERSION = "2026.09.20b"     # affichée au démarrage et sur « / » : sert à vérifier
                            # que le fichier en place est bien le dernier
 FREQUENCE = 24000          # fréquence d'échantillonnage de sortie, en hertz
 """
@@ -319,15 +319,146 @@ PAUSE_COURTE = 0.28        # secondes, entre propositions
 PAUSE_LONGUE = 0.55        # secondes, entre phrases
 PASSAGE_UNIQUE_MAX = 220   # au-delà, le modèle découpe lui-même le morceau
 
+"""
+La limite de caractères du moteur.
+
+XTTS refuse de prononcer plus de 273 caractères en français : au-delà, il
+tronque et se contente d'un avertissement dans ses journaux. Rien ne remonte
+jusqu'à l'application, qui rend donc un audio incomplet sans le signaler.
+
+Le découpage ne connaissait que les retours à la ligne. Un texte collé depuis
+un traitement de texte arrive en un seul bloc : il partait entier au moteur, et
+tout ce qui dépassait disparaissait. C'est la cause des générations qu'il
+fallait refaire plusieurs fois.
+
+LONGUEUR_MAX est posée sous la limite avec de la marge : le nettoyage interne
+du moteur développe certaines abréviations et les nombres en toutes lettres,
+ce qui rallonge le texte après notre mesure.
+"""
+LONGUEUR_MAX = 230
+
+# Un point derrière l'une de ces abréviations ne termine pas une phrase.
+ABREVIATIONS = {
+    "m", "mm", "mme", "mmes", "mlle", "dr", "pr", "me", "mgr",
+    "st", "ste", "etc", "cf", "ex", "av", "bd", "no", "nos", "art", "fig",
+}
+
+
+def _phrases(ligne: str) -> list[str]:
+    """
+    Découpe une ligne en phrases.
+
+    Le point suivi d'une majuscule compte même sans espace : « toutes.Regardez »
+    s'écrit couramment et formerait sinon une phrase à rallonge.
+    """
+    morceaux, debut = [], 0
+    for marque in re.finditer(r"[.!?…]+", ligne):
+        fin = marque.end()
+        avant = ligne[:marque.start()]
+        dernier = re.split(r"[\s(«\"\']", avant)[-1].strip().lower() if avant else ""
+        if dernier.rstrip(".") in ABREVIATIONS:
+            continue
+        # Ni entre deux chiffres — 3.14, 1.500 — ni sur une initiale isolée.
+        if len(dernier) == 1 and dernier.isalpha():
+            continue
+        if (marque.start() > 0 and ligne[marque.start() - 1].isdigit()
+                and fin < len(ligne) and ligne[fin].isdigit()):
+            continue
+        if fin >= len(ligne):
+            morceaux.append(ligne[debut:fin])
+            debut = fin
+            continue
+        suivant = ligne[fin]
+        if suivant.isspace() or suivant.isupper() or suivant in "«\"'":
+            morceaux.append(ligne[debut:fin])
+            debut = fin
+    reste = ligne[debut:]
+    if reste.strip():
+        morceaux.append(reste)
+    return [m.strip() for m in morceaux if m.strip()]
+
+
+def _tronconner(phrase: str) -> list[str]:
+    """Ramène une phrase trop longue sous la limite, sans couper au hasard."""
+    if len(phrase) <= LONGUEUR_MAX:
+        return [phrase]
+
+    # D'abord aux articulations : virgule, point-virgule, deux-points. Une
+    # coupure y passe inaperçue, là où une coupure au milieu d'un groupe
+    # s'entend.
+    parties = re.split(r"(?<=[,;:])\s+", phrase)
+    groupes, courant = [], ""
+    for partie in parties:
+        if not courant:
+            courant = partie
+        elif len(courant) + 1 + len(partie) <= LONGUEUR_MAX:
+            courant += " " + partie
+        else:
+            groupes.append(courant)
+            courant = partie
+    if courant:
+        groupes.append(courant)
+
+    # S'il subsiste des groupes trop longs — une phrase sans aucune ponctuation
+    # interne — on coupe aux espaces, jamais au milieu d'un mot.
+    sortie = []
+    for groupe in groupes:
+        while len(groupe) > LONGUEUR_MAX:
+            coupe = groupe.rfind(" ", 0, LONGUEUR_MAX)
+            if coupe <= 0:
+                coupe = LONGUEUR_MAX
+            sortie.append(groupe[:coupe].strip())
+            groupe = groupe[coupe:].strip()
+        if groupe:
+            sortie.append(groupe)
+    return sortie
+
+
+def _lignes_utiles(bloc: str) -> list[str]:
+    """
+    Recolle les lignes coupées par la mise en page.
+
+    Un retour à la ligne volontaire marque une respiration, et cela reste vrai.
+    Mais un texte collé depuis un traitement de texte est replié à la largeur de
+    la page : la coupure y tombe au milieu d'une phrase, et la prononcer comme
+    une respiration s'entend. On ne recolle que le cas non ambigu — la ligne
+    précédente ne se termine par aucune ponctuation, et la suivante commence par
+    une minuscule.
+    """
+    lignes = [l.strip() for l in bloc.split("\n") if l.strip()]
+    sorties: list[str] = []
+    for ligne in lignes:
+        if (sorties and not re.search(r"[.!?…,;:»\"]$", sorties[-1])
+                and ligne[:1].islower()):
+            sorties[-1] += " " + ligne
+        else:
+            sorties.append(ligne)
+    return sorties
+
 
 def decouper_texte(texte: str) -> list[tuple[str, float]]:
     """Rend une suite de morceaux à prononcer, chacun suivi d'un silence."""
     segments: list[list] = []
     for bloc in re.split(r"\n{2,}", texte):
-        lignes = [l.strip() for l in bloc.split("\n") if l.strip()]
+        lignes = _lignes_utiles(bloc)
         for i, ligne in enumerate(lignes):
-            derniere = (i == len(lignes) - 1)
-            segments.append([ligne, PAUSE_LONGUE if derniere else PAUSE_COURTE])
+            derniere_ligne = (i == len(lignes) - 1)
+            phrases = _phrases(ligne) or [ligne]
+            for j, phrase in enumerate(phrases):
+                derniere_phrase = (j == len(phrases) - 1)
+                troncons = _tronconner(phrase)
+                for k, troncon in enumerate(troncons):
+                    dernier = (k == len(troncons) - 1)
+                    # Silence long entre deux phrases, court à l'intérieur de
+                    # l'une : une phrase tronçonnée ne doit pas s'entendre
+                    # comme plusieurs phrases.
+                    if not dernier:
+                        pause = PAUSE_COURTE
+                    elif derniere_phrase and not derniere_ligne:
+                        pause = PAUSE_COURTE
+                    else:
+                        pause = PAUSE_LONGUE
+                    segments.append([troncon, pause])
     if segments:
         segments[-1][1] = 0.0        # aucun silence à la toute fin
     return [(s, p) for s, p in segments]
@@ -808,8 +939,11 @@ class MoteurXTTS(Moteur):
                 length_penalty=choix("length_penalty", 1.0, 0.2, 3.0),
                 speed=vitesse,
                 # Le découpage est fait en amont : le modèle ne doit pas le refaire.
+                # Le découpage est fait en amont, et chaque morceau tient
+                # désormais sous la limite du moteur : le laisser redécouper
+                # relancerait un tirage par phrase, donc un débit inégal.
                 split_sentences=(bool(decoupe) if decoupe is not None
-                                 else len(texte) > PASSAGE_UNIQUE_MAX),
+                                 else len(texte) > LONGUEUR_MAX),
             )
             return sortie.read_bytes(), "audio/wav"
         finally:

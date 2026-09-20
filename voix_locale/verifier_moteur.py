@@ -147,6 +147,78 @@ with tempfile.TemporaryDirectory() as tmp:
     verifier("Une voix créée avant ce changement fonctionne encore",
              c.get("speaker_wav") == str(ref2), c.get("speaker_wav"))
 
+print("\n--- Découpage du texte ---")
+
+# XTTS refuse plus de 273 caracteres en francais : au-dela il tronque, sans
+# rien dire a l'application. Un texte colle depuis un traitement de texte
+# partait en un seul bloc et perdait tout ce qui depassait.
+
+def sans_espaces(t):
+    return "".join(t.split())
+
+
+def controler(nom, texte, attendu_min=None):
+    morceaux = serveur.decouper_texte(texte)
+    trop = [m for m, _ in morceaux if len(m) > 273]
+    verifier(f"{nom} : aucun morceau au-dessus de la limite du moteur",
+             not trop, f"{len(morceaux)} morceau(x), plus long {max((len(m) for m,_ in morceaux), default=0)} car.")
+    # Invariant : le decoupage repartit le texte, il n'en retire rien.
+    verifier(f"{nom} : aucun caractère perdu",
+             sans_espaces("".join(m for m, _ in morceaux)) == sans_espaces(texte))
+    if attendu_min is not None:
+        verifier(f"{nom} : découpé en morceaux distincts",
+                 len(morceaux) >= attendu_min, f"{len(morceaux)} morceau(x)")
+    return morceaux
+
+
+LONG = ("Il y a une croyance qui bloque énormément de francophones : l'idée qu'il faut parler anglais sans\n"
+        "accent pour être pris au sérieux. C'est faux, et il est temps de le déconstruire une bonne fois "
+        "pour toutes.Regardez les leaders les plus respectés du monde des affaires aujourd'hui, ELON MUSK, "
+        "avec son accent sud-africain très marqué, SUNDAR PICHAI, PDG de Google, avec un accent indien "
+        "clairement audible, aucun des deux n'a jamais cherché à gommé son accent, et ça ne les a jamais "
+        "empêchés de dirigé certaines des entreprises les plus influentes de la planète")
+
+morceaux = controler("Texte long", LONG, attendu_min=4)
+verifier("Une ligne repliée par la mise en page est recollée",
+         "anglais sans accent" in morceaux[0][0],
+         morceaux[0][0][-40:])
+verifier("Un point collé au mot suivant sépare bien deux phrases",
+         any(m.startswith("Regardez") for m, _ in morceaux))
+
+# Une phrase sans la moindre ponctuation interne : il faut couper aux espaces,
+# jamais au milieu d'un mot.
+sans_ponctuation = "alpha " * 90
+m2 = controler("Phrase sans ponctuation", sans_ponctuation.strip(), attendu_min=2)
+verifier("Aucun mot n'est coupé en deux",
+         all(mot == "alpha" for m, _ in m2 for mot in m.split()))
+
+# Les abreviations et les nombres ne terminent pas une phrase.
+abrege = "M. Dupont arrive à 14 h. Le tarif est de 3.14 euros par art. 5 du contrat."
+m3 = serveur.decouper_texte(abrege)
+verifier("Une abréviation ne coupe pas la phrase",
+         not any(m.strip().startswith("Dupont") for m, _ in m3),
+         " | ".join(m for m, _ in m3))
+verifier("Un nombre décimal ne coupe pas la phrase",
+         not any(m.strip().startswith("14 euros") for m, _ in m3))
+
+# Une respiration voulue reste une respiration.
+voulu = "Bonjour à tous.\nNous commençons maintenant."
+m4 = serveur.decouper_texte(voulu)
+verifier("Un retour à la ligne après ponctuation reste une respiration",
+         len(m4) == 2 and m4[0][0] == "Bonjour à tous.", f"{len(m4)} morceau(x)")
+
+# Cas limites : rien ne doit lever d'erreur.
+for vide in ("", "   ", "\n\n", "."):
+    serveur.decouper_texte(vide)
+verifier("Les textes vides ou minimaux ne font pas échouer le découpage", True)
+
+court = "Bonjour, comment allez-vous ?"
+m5 = serveur.decouper_texte(court)
+verifier("Un texte court reste en un seul morceau",
+         len(m5) == 1 and m5[0][0] == court, f"{len(m5)} morceau(x)")
+verifier("Le dernier morceau n'est jamais suivi d'un silence",
+         serveur.decouper_texte(LONG)[-1][1] == 0.0)
+
 print("\n--- Découpage de la référence ---")
 
 if not serveur.ffmpeg_disponible():
