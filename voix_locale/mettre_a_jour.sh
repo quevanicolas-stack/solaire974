@@ -99,8 +99,7 @@ else
   echo "Au moins un fichier n'a pas été mis à jour. Relancez le script."
   echo "Ensuite, pour démarrer :"
 fi
-echo "    source venv/bin/activate"
-echo "    COQUI_TOS_AGREED=1 python serveur.py --moteur xtts --hote 0.0.0.0 --https"
+echo "    sh lancer.sh"
 echo
 echo "La version affichée au démarrage doit être $VERSION."
 

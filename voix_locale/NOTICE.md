@@ -43,6 +43,48 @@ retaper `source venv/bin/activate` à chaque nouveau Terminal.**
 
 ---
 
+## 2 bis. Lancer le serveur
+
+Une seule commande, depuis n'importe où :
+
+```
+sh ~/Desktop/Studio-voix/voix_locale/lancer.sh
+```
+
+Le script se place lui-même dans le bon dossier, emploie l'interpréteur du `venv` sans
+qu'il faille l'activer, accepte la licence de XTTS et démarre le serveur en https sur le
+réseau local. Laissez la fenêtre ouverte ; Ctrl+C arrête le serveur.
+
+C'est ce qui remplace les deux lignes d'avant — `source venv/bin/activate` puis `python
+serveur.py …`. Séparées, elles échouent dès qu'on ouvre une nouvelle fenêtre de Terminal :
+celle-ci s'ouvre dans le dossier personnel, où il n'y a ni `venv` ni `serveur.py`, et
+répond « no such file or directory » puis « command not found: python ».
+
+Deux raccourcis :
+
+```
+sh lancer.sh test               moteur de contrôle, aucun téléchargement
+sh lancer.sh --port 8771        toute option est transmise au serveur
+```
+
+### Arrêter le serveur
+
+**Ctrl+C** dans la fenêtre où il tourne. Le serveur s'arrête, la fenêtre reste ouverte et
+reste dans le bon dossier : la flèche du haut rappelle la commande de lancement, et
+Entrée le relance.
+
+Fermer la fenêtre l'arrête aussi, mais c'est le mauvais réflexe : la fenêtre suivante
+s'ouvre dans le dossier personnel, où `venv` et `serveur.py` n'existent pas. C'est de là
+que viennent les messages « no such file or directory » et « command not found: python ».
+
+Si le serveur semble encore occuper le port après une fermeture brutale :
+
+```
+lsof -ti tcp:8770 | xargs kill
+```
+
+---
+
 ## 3. Premier lancement — moteur de test
 
 Commencez toujours par là. Ce moteur ne télécharge rien et produit un signal sonore
