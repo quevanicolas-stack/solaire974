@@ -156,6 +156,28 @@ select{cursor:pointer;appearance:none;background-image:linear-gradient(45deg,tra
 .item-btns{display:flex;gap:6px;flex-shrink:0}
 audio{height:32px;max-width:190px;flex-shrink:0}
 .vide{text-align:center;padding:26px 16px;color:var(--txt3);font-size:12.5px;border:1px dashed var(--bdr2);border-radius:var(--r)}
+/* Modale du consentement : elle occupe l'écran parce qu'elle conditionne la
+   création du profil. Rien derrière elle n'est utilisable tant qu'elle est
+   ouverte, et elle ne se ferme que par Annuler ou par la création. */
+.modale{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.72);
+  display:flex;align-items:center;justify-content:center;padding:18px}
+.modale-boite{background:var(--bg2);border:1px solid var(--bdr);border-radius:var(--r);
+  width:100%;max-width:760px;max-height:92vh;display:flex;flex-direction:column;overflow:hidden}
+.modale-tete{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:16px 18px;border-bottom:1px solid var(--bdr)}
+.modale-titre{font-size:15px;font-weight:600}
+.modale-desc{font-size:12px;color:var(--txt2);margin-top:2px}
+.modale-corps{padding:16px 18px;overflow-y:auto}
+.modale-pied{display:flex;gap:10px;justify-content:flex-end;padding:14px 18px;
+  border-top:1px solid var(--bdr)}
+/* Fiche de profil : le profil actif se distingue au premier coup d'oeil. */
+.profil{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 14px;
+  border:1px solid var(--bdr2);border-radius:var(--r);margin-bottom:8px}
+.profil.actif{border-color:var(--vio);background:rgba(139,109,246,.07)}
+.profil-nom{font-size:13.5px;font-weight:600}
+.profil-det{font-size:11.5px;color:var(--txt2);margin-top:3px}
+.profil-act{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+@media(max-width:860px){.modale{padding:0}.modale-boite{max-width:none;max-height:100vh;border-radius:0}}
 
 .phrase{padding:11px 13px;background:var(--bg3);border-left:2px solid var(--vio);border-radius:0 var(--r) var(--r) 0;font-size:13px;line-height:1.6;color:var(--txt)}
 .phrase+.phrase{margin-top:7px}
@@ -257,68 +279,25 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
       <div class="ph">
         <div>
           <div class="ph-tag">Étape 01 / 04</div>
-          <div class="ph-title">Consentement</div>
-          <div class="ph-desc">Identifier la personne dont la voix va être reproduite</div>
+          <div class="ph-title">Profils</div>
+          <div class="ph-desc">Choisir la voix sur laquelle travailler, ou en déclarer une nouvelle</div>
         </div>
       </div>
 
       <div class="note n-blu">
-        <div class="note-t">Pourquoi cette étape</div>
-        Reproduire la voix d'une personne permet de lui faire dire des choses qu'elle n'a jamais dites.
-        En France, la voix est un attribut de la personnalité protégé par l'article 9 du Code civil : sa reproduction
-        exige l'accord de l'intéressé. Cette page enregistre cet accord et conditionne l'accès au reste de l'application.
+        <div class="note-t">Un profil par personne</div>
+        Un profil rassemble tout ce qui concerne une voix : l'accord de la personne, ses prises, la voix
+        créée à partir d'elles, et les réglages mis au point une fois pour toutes. Une fois ces réglages
+        verrouillés, chaque texte se génère directement, sans avoir à les refaire.
+        Créer un profil exige l'accord de la personne concernée : c'est la première chose demandée, et
+        rien ne se fait sans elle.
       </div>
 
-      <div class="sec">Origine de la voix</div>
+      <div class="sec">Vos profils</div>
       <div class="card">
-        <div class="radios" id="zoneOrigine">
-          <label class="radio" onclick="choisirOrigine('moi')">
-            <input type="radio" name="origine" id="origMoi">
-            <div>
-              <div class="radio-t">C'est ma propre voix</div>
-              <div class="radio-d">J'enregistre et je clone ma voix, pour mon propre usage.</div>
-            </div>
-          </label>
-          <label class="radio" onclick="choisirOrigine('autre')">
-            <input type="radio" name="origine" id="origAutre">
-            <div>
-              <div class="radio-t">C'est la voix d'une autre personne</div>
-              <div class="radio-d">Son accord explicite et préalable est obligatoire.</div>
-            </div>
-          </label>
-        </div>
-      </div>
-
-      <div id="zoneIdentite" style="display:none">
-        <div class="sec">Identité et accord</div>
-        <div class="card">
-          <div class="grid2">
-            <div class="champ">
-              <label class="lbl">Nom de la personne concernée<span class="obl">*</span></label>
-              <input type="text" id="consNom" placeholder="Nom et prénom" oninput="majEtat()">
-            </div>
-            <div class="champ">
-              <label class="lbl">Date de recueil de l'accord<span class="obl">*</span></label>
-              <input type="date" id="consDate" oninput="majEtat()">
-            </div>
-          </div>
-          <div class="champ">
-            <label class="lbl">Usage prévu de la voix reproduite<span class="obl">*</span></label>
-            <input type="text" id="consUsage" placeholder="Exemple : narration de la vidéo de présentation interne" oninput="majEtat()">
-            <div class="aide">Décrire précisément l'usage. L'accord porte sur cet usage et non sur un usage illimité.</div>
-          </div>
-        </div>
-
-        <div class="card" style="margin-top:10px">
-          <label class="check" id="chk1"><input type="checkbox" id="cons1" onchange="majEtat()">
-            <span id="lblCons1">La personne concernée a donné son accord explicite et préalable à la reproduction de sa voix pour l'usage décrit ci-dessus.</span></label>
-          <label class="check" id="chk2"><input type="checkbox" id="cons2" onchange="majEtat()">
-            <span>Les enregistrements produits seront présentés comme des voix de synthèse et jamais comme des enregistrements authentiques de la personne.</span></label>
-          <label class="check" id="chk3"><input type="checkbox" id="cons3" onchange="majEtat()">
-            <span>Cette voix ne servira pas à usurper une identité, à obtenir un paiement ou une information, ni à contourner une authentification vocale.</span></label>
-          <label class="check" id="chk4"><input type="checkbox" id="cons4" onchange="majEtat()">
-            <span>La personne concernée peut retirer son accord à tout moment ; la voix et les enregistrements seront alors supprimés.</span></label>
-        </div>
+        <div id="listeProfils"></div>
+        <button class="btn btn-p" style="margin-top:12px" onclick="ouvrirConsentement()">
+          Créer un profil</button>
       </div>
 
       <div class="note n-red" style="margin-top:14px">
@@ -331,7 +310,96 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
 
       <div class="nav-btns">
         <span></span>
-        <button class="btn btn-p" onclick="go(1)">Voix →</button>
+        <button class="btn btn-p" onclick="go(1)">Voix et réglage →</button>
+      </div>
+    </div>
+
+    <!-- ─────────── CONSENTEMENT : OBLIGATOIRE POUR CRÉER UN PROFIL ───────────
+         Ce n'est plus une page permanente, mais le passage obligé de toute
+         création de profil : aucun profil ne peut exister sans son accord, et
+         sans profil actif aucune autre étape n'est accessible. Le verrou est
+         donc le même qu'avant, attaché à la personne plutôt qu'à la session. -->
+    <div class="modale" id="modaleConsentement" style="display:none">
+      <div class="modale-boite">
+        <div class="modale-tete">
+          <div>
+            <div class="modale-titre">Consentement</div>
+            <div class="modale-desc">Identifier la personne dont la voix va être reproduite</div>
+          </div>
+          <button class="btn btn-g btn-sm" onclick="fermerConsentement()">Annuler</button>
+        </div>
+        <div class="modale-corps">
+          <div class="note n-blu">
+            <div class="note-t">Pourquoi cette étape</div>
+            Reproduire la voix d'une personne permet de lui faire dire des choses qu'elle n'a jamais dites.
+            En France, la voix est un attribut de la personnalité protégé par l'article 9 du Code civil : sa
+            reproduction exige l'accord de l'intéressé. Ce formulaire enregistre cet accord et conditionne
+            la création du profil.
+          </div>
+
+          <div class="sec">Origine de la voix</div>
+          <div class="card">
+            <div class="radios" id="zoneOrigine">
+              <label class="radio" onclick="choisirOrigine('moi')">
+                <input type="radio" name="origine" id="origMoi">
+                <div>
+                  <div class="radio-t">C'est ma propre voix</div>
+                  <div class="radio-d">J'enregistre et je clone ma voix, pour mon propre usage.</div>
+                </div>
+              </label>
+              <label class="radio" onclick="choisirOrigine('autre')">
+                <input type="radio" name="origine" id="origAutre">
+                <div>
+                  <div class="radio-t">C'est la voix d'une autre personne</div>
+                  <div class="radio-d">Son accord explicite et préalable est obligatoire.</div>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <div id="zoneIdentite" style="display:none">
+            <div class="sec">Identité et accord</div>
+            <div class="card">
+              <div class="grid2">
+                <div class="champ">
+                  <label class="lbl">Nom de la personne concernée<span class="obl">*</span></label>
+                  <input type="text" id="consNom" placeholder="Nom et prénom" oninput="majEtat()">
+                </div>
+                <div class="champ">
+                  <label class="lbl">Date de recueil de l'accord<span class="obl">*</span></label>
+                  <input type="date" id="consDate" oninput="majEtat()">
+                </div>
+              </div>
+              <div class="champ">
+                <label class="lbl">Usage prévu de la voix reproduite<span class="obl">*</span></label>
+                <input type="text" id="consUsage" placeholder="Exemple : narration de la vidéo de présentation interne" oninput="majEtat()">
+                <div class="aide">Décrire précisément l'usage. L'accord porte sur cet usage et non sur un usage illimité.</div>
+              </div>
+            </div>
+
+            <div class="card" style="margin-top:10px">
+              <label class="check" id="chk1"><input type="checkbox" id="cons1" onchange="majEtat()">
+                <span id="lblCons1">La personne concernée a donné son accord explicite et préalable à la reproduction de sa voix pour l'usage décrit ci-dessus.</span></label>
+              <label class="check" id="chk2"><input type="checkbox" id="cons2" onchange="majEtat()">
+                <span>Les enregistrements produits seront présentés comme des voix de synthèse et jamais comme des enregistrements authentiques de la personne.</span></label>
+              <label class="check" id="chk3"><input type="checkbox" id="cons3" onchange="majEtat()">
+                <span>Cette voix ne servira pas à usurper une identité, à obtenir un paiement ou une information, ni à contourner une authentification vocale.</span></label>
+              <label class="check" id="chk4"><input type="checkbox" id="cons4" onchange="majEtat()">
+                <span>La personne concernée peut retirer son accord à tout moment ; la voix et les enregistrements seront alors supprimés.</span></label>
+            </div>
+          </div>
+
+          <div class="note n-red" style="margin-top:14px">
+            <div class="note-t">Usages interdits</div>
+            Imiter la voix d'un tiers sans son accord, d'une personnalité publique, ou s'en servir pour
+            tromper un interlocuteur est illicite. L'usurpation d'identité est punie d'un an
+            d'emprisonnement et de 15 000 euros d'amende (article 226-4-1 du Code pénal).
+          </div>
+        </div>
+        <div class="modale-pied">
+          <button class="btn btn-g" onclick="fermerConsentement()">Annuler</button>
+          <button class="btn btn-p" onclick="creerProfil()">Créer le profil</button>
+        </div>
       </div>
     </div>
 
@@ -340,7 +408,7 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
       <div class="ph">
         <div>
           <div class="ph-tag">Étape 02 / 04</div>
-          <div class="ph-title" id="titreEtape4">Voix</div>
+          <div class="ph-title" id="titreEtape4">Voix et réglage</div>
           <div class="ph-desc" id="descEtape4">Reprendre une voix existante, ou en créer une à partir de vos enregistrements</div>
         </div>
         <div class="ph-btns">
@@ -528,46 +596,22 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
         </div>
       </div>
 
-      <div class="nav-btns">
-        <button class="btn btn-g" onclick="go(0)">← Retour</button>
-        <button class="btn btn-p" onclick="go(2)">Synthèse →</button>
-      </div>
-    </div>
-
-
-    <!-- ─────────── PAGE 5 : SYNTHÈSE ─────────── -->
-    <div class="page" id="p2">
-      <div class="ph">
-        <div>
-          <div class="ph-tag">Étape 03 / 04</div>
-          <div class="ph-title">Synthèse</div>
-          <div class="ph-desc">Écrire un texte et l'entendre dans la voix reproduite</div>
-        </div>
-        <div class="ph-btns">
-          <button class="btn btn-g" onclick="go(1)">← Retour</button>
-          <button class="btn btn-p" onclick="go(3)">Bibliothèque →</button>
-        </div>
-      </div>
-
-      <div class="card" id="voixActive"></div>
-
-      <div class="sec">Texte à prononcer</div>
+      <div class="sec">Texte d'essai</div>
       <div class="card">
-        <textarea id="texte" placeholder="Saisissez ici le texte que la voix doit prononcer." oninput="majCompteur()"></textarea>
-        <div class="compteur" id="compteur">0 caractère</div>
-        <div class="aide">
-          La ponctuation guide l'intonation : un point marque une pause franche, les virgules aèrent le débit,
-          les points de suspension créent une hésitation. Écrire les nombres en toutes lettres améliore la prononciation.
+        <div class="note n-blu" style="margin-bottom:12px">
+          <div class="note-t">Régler une fois, puis ne plus y revenir</div>
+          Ce texte sert à caler la voix : il est assez long pour porter des phrases, des nombres et
+          des respirations, assez court pour ne pas faire attendre. Générez-le, réglez l'élocution
+          jusqu'à ce qu'elle vous convienne, puis réglez le son sans regénérer — le bouton
+          « Rejouer les réglages » rejoue tout ce qui suit le moteur sur le même audio.
+          Quand tout est bon, verrouillez.
         </div>
-
-        <div id="blocApercu" style="display:none;margin-top:14px">
-          <label class="lbl">Texte réellement transmis au moteur</label>
-          <div class="phrase" id="apercuTexte" style="white-space:pre-wrap"></div>
-          <div class="aide">
-            Le style découpe le texte pour guider les pauses, et le lexique remplace les mots
-            que vous y avez inscrits. Choisissez « Personnalisé » pour ne garder que le lexique.
-          </div>
+        <textarea id="texteEssai" rows="5"></textarea>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+          <button class="btn btn-p" id="btnEssai" onclick="genererEssai()">Générer le texte d'essai</button>
+          <button class="btn btn-g" onclick="reinitialiserEssai()">Rétablir le texte proposé</button>
         </div>
+        <div id="resEssai" style="margin-top:12px"></div>
       </div>
 
       <div class="sec">Prononciation des mots et des noms propres
@@ -978,6 +1022,60 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
         <div id="infoFormat" class="item-meta" style="margin-top:10px"></div>
       </div>
 
+      <div class="sec">Verrouillage</div>
+      <div class="card">
+        <div id="etatVerrou"></div>
+        <div class="aide" style="margin-top:10px">
+          Le verrouillage fige les réglages ci-dessus pour ce profil : élocution, moteur, nettoyage,
+          égaliseur, dynamique, niveau et format. L'étape suivante n'aura plus qu'à recevoir le texte.
+          Ils restent modifiables à tout moment en les rouvrant.
+        </div>
+      </div>
+
+      <div class="nav-btns">
+        <button class="btn btn-g" onclick="go(0)">← Retour</button>
+        <button class="btn btn-p" onclick="go(2)">Synthèse →</button>
+      </div>
+    </div>
+
+
+    <!-- ─────────── PAGE 5 : SYNTHÈSE ─────────── -->
+    <div class="page" id="p2">
+      <div class="ph">
+        <div>
+          <div class="ph-tag">Étape 03 / 04</div>
+          <div class="ph-title">Synthèse</div>
+          <div class="ph-desc">Écrire un texte et l'entendre, avec les réglages du profil</div>
+        </div>
+        <div class="ph-btns">
+          <button class="btn btn-g" onclick="go(1)">← Retour</button>
+          <button class="btn btn-p" onclick="go(3)">Bibliothèque →</button>
+        </div>
+      </div>
+
+      <div class="card" id="voixActive"></div>
+
+      <div style="margin-top:12px" id="rappelProfil"></div>
+
+      <div class="sec">Texte à prononcer</div>
+      <div class="card">
+        <textarea id="texte" placeholder="Saisissez ici le texte que la voix doit prononcer." oninput="majCompteur()"></textarea>
+        <div class="compteur" id="compteur">0 caractère</div>
+        <div class="aide">
+          La ponctuation guide l'intonation : un point marque une pause franche, les virgules aèrent le débit,
+          les points de suspension créent une hésitation. Écrire les nombres en toutes lettres améliore la prononciation.
+        </div>
+
+        <div id="blocApercu" style="display:none;margin-top:14px">
+          <label class="lbl">Texte réellement transmis au moteur</label>
+          <div class="phrase" id="apercuTexte" style="white-space:pre-wrap"></div>
+          <div class="aide">
+            Le style découpe le texte pour guider les pauses, et le lexique remplace les mots
+            que vous y avez inscrits. Choisissez « Personnalisé » pour ne garder que le lexique.
+          </div>
+        </div>
+      </div>
+
       <button class="btn btn-p" id="btnSynth" style="width:100%;justify-content:center;margin-top:14px" onclick="synthetiser()">
         Générer l'audio
       </button>
@@ -1065,8 +1163,8 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
    ══════════════════════════════════════════════════════ */
 
 const PAGES = [
-  {t:'Consentement'},
-  {t:'Voix'},
+  {t:'Profils'},
+  {t:'Voix et réglage'},
   {t:'Synthèse'},
   {t:'Bibliothèque'}
 ];
@@ -1092,8 +1190,10 @@ const DUREE_MAXI = 1800;       // secondes cumulées conservées au total
 const etat = {
   page:0,
   origine:null,          // 'moi' | 'autre'
-  consentement:null,     // objet figé au moment de la validation
-  echantillons:[],       // {id, nom, blob, duree, type}
+  consentement:null,     // consentement du profil actif, figé à sa création
+  profils:[],            // {id, nom, consentement, voixId, voixNom, reglages, verrouille}
+  profilId:null,         // profil actif : c'est lui qui ouvre l'application
+  echantillons:[],       // {id, nom, blob, duree, type, profilId}
   mode:'reel',           // 'reel' | 'demo'
   lexique:[],            // prononciations imposées : {ecrit, dit}
   baseVerbes:true,       // infinitifs en -er dont le R final s'entend
@@ -1102,6 +1202,7 @@ const etat = {
   baseEcartees:[],       // entrées de base désactivées une à une
   miseEnForme:null,      // mise en forme du dernier style, conservée en personnalisé
   generationEnCours:null,// dernière génération produite, avant tout choix de version
+  zoneResultat:'resSynth',// où afficher le résultat : essai (étape 02) ou synthèse (étape 03)
   montage:[],            // extraits assemblés : {cle, source, debut, fin, pause}
   montageRendu:null,     // dernier assemblage produit : {blob, nom}
   voixAAmeliorer:null,   // voix dont on prépare une nouvelle version
@@ -1119,12 +1220,16 @@ let bd = null;
 
 function ouvrirBase(){
   return new Promise((resolve,reject)=>{
-    const req = indexedDB.open('studio_voix', 1);
+    /* Version 2 : ajout du magasin des profils. Les magasins existants sont
+       conservés tels quels — une montée de version ne doit rien détruire, les
+       prises et les audios déjà là appartiennent à l'utilisateur. */
+    const req = indexedDB.open('studio_voix', 2);
     req.onupgradeneeded = e=>{
       const b = e.target.result;
       if(!b.objectStoreNames.contains('echantillons')) b.createObjectStore('echantillons',{keyPath:'id'});
       if(!b.objectStoreNames.contains('generations'))  b.createObjectStore('generations',{keyPath:'id'});
       if(!b.objectStoreNames.contains('config'))       b.createObjectStore('config',{keyPath:'cle'});
+      if(!b.objectStoreNames.contains('profils'))      b.createObjectStore('profils',{keyPath:'id'});
     };
     req.onsuccess = ()=>resolve(req.result);
     req.onerror   = ()=>reject(req.error);
@@ -1256,17 +1361,20 @@ function construireNav(){
 }
 
 /* Renvoie un message si la page demandée est inaccessible, sinon null.
-   Seul le consentement bloque : les autres étapes signalent ce qui manque
-   sur place plutôt que d'interdire la navigation. */
+
+   Seul le profil bloque, et il bloque parce qu'un profil n'existe pas sans
+   son consentement : le verrou est le même qu'avant, attaché à la personne
+   plutôt qu'à la session. Les autres étapes signalent ce qui manque sur place
+   plutôt que d'interdire la navigation. */
 function verrou(n){
-  if(n > 0 && !etat.consentement)
-    return "Validez d'abord le consentement.";
+  if(n <= 0) return null;
+  const p = profilActif();
+  if(!p) return "Choisissez ou créez d'abord un profil.";
+  if(!p.consentement) return "Ce profil n'a pas de consentement : il ne peut pas être utilisé.";
   return null;
 }
 
 function go(n){
-  if(n > 0 && !etat.consentement && !validerConsentement()) return;
-
   const message = verrou(n);
   if(message){ toast(message, 'err'); return; }
 
@@ -1279,6 +1387,7 @@ function go(n){
   if(zone) zone.scrollTop = 0;
   window.scrollTo(0,0);
 
+  if(n === 0){ afficherProfils(); }
   if(n === 1){
     majAffichageEtape4();
     {
@@ -1293,8 +1402,292 @@ function go(n){
 }
 
 /* ══════════════════════════════════════════════════════
-   PAGE 1 — CONSENTEMENT
+   PAGE 1 — PROFILS ET CONSENTEMENT
    ══════════════════════════════════════════════════════ */
+
+/* Un profil rassemble tout ce qui concerne une voix : l'accord de la personne,
+   ses prises, la voix créée à partir d'elles, et les réglages mis au point une
+   fois pour toutes.
+
+   L'accord n'est plus une case validée une fois pour la session mais une pièce
+   du profil : deux voix différentes exigent deux accords différents, ce qu'une
+   validation unique ne savait pas exprimer. Aucun profil ne peut exister sans
+   le sien, et sans profil actif aucune étape n'est accessible. */
+function profilActif(){
+  return etat.profils.find(p => p.id === etat.profilId) || null;
+}
+
+/* Texte d'essai : environ 700 caractères, soit une minute de parole.
+
+   Assez court pour ne pas faire attendre à chaque essai, assez long pour que
+   le découpage entre en jeu (deux morceaux au moins), pour porter plusieurs
+   longueurs de phrase, une énumération, un nombre, une date, un sigle et une
+   question — c'est-à-dire ce sur quoi une élocution se juge. Les paragraphes
+   y sont placés à dessein : ils montrent ce que valent les pauses. */
+const TEXTE_ESSAI =
+  "Bonjour, et merci de prendre le temps de m'écouter.\n" +
+  "Ce texte ne sert pas à dire quelque chose. Il sert à régler une voix.\n" +
+  "\n" +
+  "Vous allez entendre des phrases courtes. Puis des phrases plus longues, " +
+  "qui prennent le temps de poser une idée avant d'arriver au point, parce que " +
+  "c'est là que le débit se juge vraiment.\n" +
+  "Il y a des chiffres : vingt-quatre mille, trois virgule cinq, le premier " +
+  "mars deux mille vingt-six. Il y a des sigles : la SNCF, une clé USB. " +
+  "Et il y a une question : est-ce que tout cela sonne juste ?\n" +
+  "\n" +
+  "Écoutez d'abord l'élocution : le rythme, les liaisons, les respirations. " +
+  "Ne touchez au son qu'ensuite.\n" +
+  "Quand la voix vous convient, verrouillez. Vous n'aurez plus à y revenir.";
+
+function reinitialiserEssai(){
+  $('texteEssai').value = TEXTE_ESSAI;
+  toast("Texte d'essai rétabli.", 'ok');
+}
+
+function ouvrirConsentement(){
+  etat.origine = null;
+  $('origMoi').checked = false;
+  $('origAutre').checked = false;
+  document.querySelectorAll('#zoneOrigine .radio').forEach(r => r.classList.remove('sel'));
+  $('zoneIdentite').style.display = 'none';
+  ['consNom','consUsage'].forEach(id => { $(id).value = ''; $(id).classList.remove('req-err'); });
+  $('consDate').value = new Date().toISOString().slice(0,10);
+  for(let i=1;i<=4;i++){ $('cons'+i).checked = false; $('chk'+i).classList.remove('req-err'); }
+  $('modaleConsentement').style.display = 'flex';
+}
+
+function fermerConsentement(){
+  $('modaleConsentement').style.display = 'none';
+}
+
+/* Crée le profil à partir du formulaire d'accord. Le consentement est vérifié
+   en premier : s'il manque quoi que ce soit, aucun profil n'est créé. */
+async function creerProfil(){
+  if(!validerConsentement()) return;
+  const profil = {
+    id: ident(),
+    nom: etat.consentement.nom,
+    consentement: etat.consentement,
+    voixId: null, voixNom: null,
+    reglages: null,
+    verrouille: false,
+    cree: new Date().toISOString()
+  };
+  etat.profils.unshift(profil);
+  await bdEcrire('profils', profil);
+  fermerConsentement();
+  await activerProfil(profil.id);
+  toast('Profil « ' + profil.nom + ' » créé.', 'ok');
+}
+
+/* Active un profil : ses prises, sa voix et ses réglages remplacent ceux du
+   profil précédent. Rien n'est partagé entre deux profils, sinon le lexique et
+   la bibliothèque d'audios, qui restent communs. */
+async function activerProfil(id){
+  const p = etat.profils.find(x => x.id === id);
+  if(!p) return;
+  etat.profilId = p.id;
+  etat.consentement = p.consentement;
+  etat.voixId = p.voixId;
+  etat.voixNom = p.voixNom;
+  await bdEcrire('config', {cle:'profilActif', valeur:p.id});
+  etat.echantillons = (await bdTout('echantillons')).filter(e => e.profilId === p.id);
+  if(p.reglages) appliquerReglagesProfil(p.reglages);
+  afficherProfils();
+  afficherEchantillons();
+  majVerrou();
+  majEtat();
+}
+
+async function supprimerProfil(id){
+  const p = etat.profils.find(x => x.id === id);
+  if(!p) return;
+  if(!confirm('Supprimer le profil « ' + p.nom + ' » et toutes ses prises ?\n' +
+              "La voix créée chez le serveur n'est pas supprimée : faites-le depuis l'étape 02.")) return;
+  for(const e of (await bdTout('echantillons')).filter(e => e.profilId === id)){
+    await bdEffacerLigne('echantillons', e.id);
+  }
+  etat.profils = etat.profils.filter(x => x.id !== id);
+  await bdEffacerLigne('profils', id);
+  if(etat.profilId === id){
+    etat.profilId = null; etat.consentement = null;
+    etat.voixId = null; etat.voixNom = null; etat.echantillons = [];
+    await bdEffacerLigne('config','profilActif');
+    afficherEchantillons();
+  }
+  afficherProfils();
+  majEtat();
+  toast('Profil supprimé.', 'ok');
+}
+
+function afficherProfils(){
+  const zone = $('listeProfils');
+  if(!zone) return;
+  if(!etat.profils.length){
+    zone.innerHTML = '<div class="vide">Aucun profil. Créez-en un pour commencer : ' +
+      "l'accord de la personne concernée vous sera demandé.</div>";
+    return;
+  }
+  zone.innerHTML = etat.profils.map(p => {
+    const actif = (p.id === etat.profilId);
+    const details = [
+      p.voixNom ? 'voix « ' + p.voixNom + ' »' : 'aucune voix créée',
+      p.verrouille ? 'réglages verrouillés' : 'réglages non verrouillés',
+      'accord du ' + new Date(p.consentement.date + 'T00:00:00').toLocaleDateString('fr-FR')
+    ].join(' · ');
+    return '<div class="profil' + (actif ? ' actif' : '') + '">' +
+      '<div><div class="profil-nom">' + echapper(p.nom) +
+        (actif ? ' <span class="badge b-vio">actif</span>' : '') + '</div>' +
+      '<div class="profil-det">' + echapper(details) + '</div></div>' +
+      '<div class="profil-act">' +
+        (actif ? '' : '<button class="btn btn-g btn-sm" onclick="activerProfil(\'' + p.id + '\')">Activer</button>') +
+        '<button class="btn btn-r btn-sm" onclick="supprimerProfil(\'' + p.id + '\')">Supprimer</button>' +
+      '</div></div>';
+  }).join('');
+}
+
+/* ─── Réglages attachés au profil ───────────────────────────────────────
+   Deux familles, parce qu'elles ne se corrigent pas au même moment : celle
+   qui décide de l'élocution, et celle qui décide du son. Les verrouiller,
+   c'est simplement cesser d'avoir à les refaire à chaque texte. */
+const REGLAGES_MOTEUR_CASES = ['graineFixe','avanceActif'];
+const REGLAGES_AUDIO_CASES  = ['traitementActif','nettoyageActif','normaliser','rogner'];
+const REGLAGES_AUDIO_CHOIX  = ['preset','resolution','frequenceExport','loudness'];
+
+function reglagesDuProfil(){
+  const nombres = {}, choix = {}, cases = {};
+  ['stabilite','debit','porte'].concat(CURSEURS_AVANCE, CURSEURS_TRAITEMENT)
+    .forEach(id => { if($(id)) nombres[id] = parseFloat($(id).value); });
+  ['elocution','debruitage','decoupage','graine'].concat(CHOIX_TRAITEMENT, REGLAGES_AUDIO_CHOIX)
+    .forEach(id => { if($(id)) choix[id] = $(id).value; });
+  REGLAGES_MOTEUR_CASES.concat(REGLAGES_AUDIO_CASES)
+    .forEach(id => { if($(id)) cases[id] = $(id).checked; });
+  return {nombres, choix, cases, miseEnForme: etat.miseEnForme};
+}
+
+/* Repose les réglages d'un profil sur l'interface.
+
+   Les rappels d'affichage sont indispensables : sans eux les curseurs
+   porteraient les bonnes valeurs mais les étiquettes afficheraient encore
+   celles du profil précédent. */
+function appliquerReglagesProfil(r){
+  if(!r) return;
+  Object.keys(r.nombres || {}).forEach(id => { if($(id)) $(id).value = r.nombres[id]; });
+  Object.keys(r.choix   || {}).forEach(id => { if($(id)) $(id).value = r.choix[id]; });
+  Object.keys(r.cases   || {}).forEach(id => { if($(id)) $(id).checked = r.cases[id]; });
+  etat.miseEnForme = r.miseEnForme || etat.miseEnForme;
+  majReglages();
+  majAvance();
+  majTraitement();
+  majNettoyage();
+  $('descElocution').textContent =
+    (ELOCUTIONS[$('elocution').value] || {}).desc || DESC_PERSO;
+}
+
+/* Reprise de l'existant.
+
+   Une version antérieure ne connaissait ni profil ni rattachement : un
+   consentement unique en configuration, des prises sans propriétaire, une voix
+   active à part. Tout cela décrit en réalité un premier profil — on le crée
+   plutôt que de le perdre, et les prises orphelines lui reviennent. */
+async function reprendreExistant(){
+  if(etat.profils.length) return;
+  const cons = await bdLire('config','consentement');
+  if(!cons || !cons.valeur) return;
+
+  const voix = await bdLire('config','voix');
+  const profil = {
+    id: ident(),
+    nom: cons.valeur.nom || 'Profil repris',
+    consentement: cons.valeur,
+    voixId: voix && voix.valeur ? voix.valeur.id : null,
+    voixNom: voix && voix.valeur ? voix.valeur.nom : null,
+    reglages: null,
+    verrouille: false,
+    cree: new Date().toISOString(),
+    repris: true
+  };
+  etat.profils = [profil];
+  await bdEcrire('profils', profil);
+
+  /* Les prises et les audios d'avant n'ont aucun propriétaire : ils sont à
+     lui, puisqu'il est le seul. */
+  for(const e of await bdTout('echantillons')){
+    if(e.profilId) continue;
+    e.profilId = profil.id;
+    await bdEcrire('echantillons', e);
+  }
+  for(const g of await bdTout('generations')){
+    if(g.profilId) continue;
+    g.profilId = profil.id;
+    await bdEcrire('generations', g);
+  }
+  await bdEcrire('config', {cle:'profilActif', valeur: profil.id});
+  toast('Profil « ' + profil.nom + ' » repris de vos données existantes.', 'ok');
+}
+
+async function enregistrerProfilActif(){
+  const p = profilActif();
+  if(p) await bdEcrire('profils', p);
+}
+
+/* Fige les réglages du profil. Ce n'est pas un interdit : c'est une mémoire.
+   Tant qu'ils ne sont pas verrouillés, chaque texte repart des réglages
+   affichés, qui ont pu bouger entre-temps. */
+async function verrouillerReglages(){
+  const p = profilActif();
+  if(!p){ toast('Aucun profil actif.', 'err'); return; }
+  if(!p.voixId){ toast("Créez d'abord la voix de ce profil.", 'err'); return; }
+  p.reglages = reglagesDuProfil();
+  p.verrouille = true;
+  await enregistrerProfilActif();
+  majVerrou();
+  afficherProfils();
+  toast('Réglages verrouillés : chaque génération les reprendra.', 'ok');
+}
+
+async function deverrouillerReglages(){
+  const p = profilActif();
+  if(!p) return;
+  p.verrouille = false;
+  await enregistrerProfilActif();
+  majVerrou();
+  afficherProfils();
+  toast('Réglages rouverts : vous pouvez les reprendre.', 'ok');
+}
+
+/* Dit où en est le profil, sur les deux pages qui s'en servent. */
+function majVerrou(){
+  const p = profilActif();
+  const b = $('etatVerrou');
+  if(b){
+    b.innerHTML = !p
+      ? '<div class="note n-amb" style="margin:0">Aucun profil actif.</div>'
+      : p.verrouille
+        ? '<div class="note n-grn" style="margin:0"><div class="note-t">Réglages verrouillés</div>' +
+          'Chaque génération de ce profil reprend ces réglages. ' +
+          '<button class="btn btn-g btn-sm" style="margin-top:9px" onclick="deverrouillerReglages()">' +
+          'Reprendre les réglages</button></div>'
+        : '<div class="note n-amb" style="margin:0"><div class="note-t">Réglages non verrouillés</div>' +
+          "Réglez l'élocution puis le son sur le texte d'essai ci-dessus, puis verrouillez : " +
+          'vous n\'aurez plus à les refaire. ' +
+          '<button class="btn btn-p btn-sm" style="margin-top:9px" onclick="verrouillerReglages()">' +
+          'Verrouiller les réglages</button></div>';
+  }
+  const r = $('rappelProfil');
+  if(r){
+    r.innerHTML = !p
+      ? '<div class="note n-red" style="margin:0">Aucun profil actif.</div>'
+      : '<div class="note ' + (p.verrouille ? 'n-grn' : 'n-amb') + '" style="margin:0">' +
+        '<div class="note-t">Profil : ' + echapper(p.nom) + '</div>' +
+        (p.verrouille
+          ? 'Réglages verrouillés à l\'étape 02. Écrivez votre texte et générez : ' +
+            'rien d\'autre n\'est à régler.'
+          : 'Réglages non verrouillés : la génération utilise les réglages affichés à ' +
+            'l\'étape 02, qui ont pu bouger. Verrouillez-les pour ne plus y revenir.') +
+        '</div>';
+  }
+}
 
 function choisirOrigine(valeur){
   etat.origine = valeur;
@@ -1668,6 +2061,9 @@ function nomDePrise(){
 
 async function ajouterEchantillon(ech){
   if(!placeDisponible(ech.duree || 0)) return false;
+  /* Une prise appartient au profil sur lequel on travaille : sans ce
+     rattachement, changer de profil afficherait les prises de l'autre. */
+  ech.profilId = etat.profilId;
   etat.echantillons.push(ech);
   await bdEcrire('echantillons', ech);
   afficherEchantillons();
@@ -2169,6 +2565,16 @@ async function creerVoix(remplacer){
     etat.voixId  = d.voice_id;
     etat.voixNom = nom;
     await bdEcrire('config', {cle:'voix', valeur:{id: d.voice_id, nom}});
+    /* La voix créée devient celle du profil : c'est lui qui la porte, et sans
+       ce rattachement le verrouillage des réglages n'aurait rien à quoi se
+       raccrocher. */
+    const profil = profilActif();
+    if(profil){
+      profil.voixId = d.voice_id;
+      profil.voixNom = nom;
+      await enregistrerProfilActif();
+      afficherProfils();
+    }
 
     /* Le remplacement ne supprime l'ancienne voix qu'une fois la nouvelle
        obtenue : un échec en cours de route ne fait donc rien perdre. */
@@ -2275,7 +2681,10 @@ async function activerVoix(id, nom){
   etat.voixId = id;
   etat.voixNom = nom;
   await bdEcrire('config', {cle:'voix', valeur:{id, nom}});
+  const p = profilActif();
+  if(p){ p.voixId = id; p.voixNom = nom; await enregistrerProfilActif(); afficherProfils(); }
   listerVoix();
+  majVerrou();
   majEtat();
   toast('Voix active : ' + nom + '.', 'ok');
 }
@@ -2288,6 +2697,8 @@ async function supprimerVoix(id, nom){
     if(etat.voixId === id){
       etat.voixId = null; etat.voixNom = null;
       await bdEffacerLigne('config', 'voix');
+      const p = profilActif();
+      if(p){ p.voixId = null; p.voixNom = null; await enregistrerProfilActif(); afficherProfils(); }
     }
     if(etat.voixAAmeliorer && etat.voixAAmeliorer.id === id) annulerAmelioration();
     listerVoix();
@@ -4059,25 +4470,58 @@ function majVoixActive(){
     '</div>';
 }
 
-async function synthetiser(){
-  const saisi = $('texte').value.trim();
+/* Le texte d'essai de l'étape 02 et le texte de l'étape 03 passent par la même
+   machinerie : c'est la condition pour que ce qu'on règle sur l'essai soit
+   exactement ce qu'on obtiendra ensuite. Seuls changent le champ lu, le bouton
+   occupé et la zone où s'affiche le résultat. */
+async function genererEssai(){
+  return synthetiser('texteEssai', 'btnEssai', 'resEssai');
+}
+
+/* Réglages appliqués à une génération.
+
+   Verrouillés, ce sont ceux du profil, quoi qu'affichent les curseurs : c'est
+   tout l'intérêt du verrou. Non verrouillés, ce sont les curseurs affichés. */
+function reglagesDeGeneration(){
+  const p = profilActif();
+  if(p && p.verrouille && p.reglages){
+    const avant = reglagesDuProfil();
+    appliquerReglagesProfil(p.reglages);
+    return avant;                     // à reposer après l'envoi
+  }
+  return null;
+}
+
+async function synthetiser(champ, idBouton, idZone){
+  champ   = champ   || 'texte';
+  idBouton = idBouton || 'btnSynth';
+  idZone  = idZone  || 'resSynth';
+  etat.zoneResultat = idZone;
+
+  /* Une génération verrouillée reprend les réglages du profil, même si les
+     curseurs affichés ont bougé depuis. */
+  const aReposer = reglagesDeGeneration();
+  const rendre = () => { if(aReposer) appliquerReglagesProfil(aReposer); };
+
+  const saisi = $(champ).value.trim();
   /* Le texte transmis est celui préparé par le style, pas la saisie brute. */
   const texte = preparerTexte(saisi, $('elocution').value);
   if(!saisi){
-    $('texte').classList.add('req-err');
+    $(champ).classList.add('req-err');
     toast('Saisissez le texte à prononcer.', 'err');
+    rendre();
     return;
   }
-  $('texte').classList.remove('req-err');
-  if(texte.length > 5000){ toast('Texte trop long : 5 000 caractères au maximum.', 'err'); return; }
+  $(champ).classList.remove('req-err');
+  if(texte.length > 5000){ toast('Texte trop long : 5 000 caractères au maximum.', 'err'); rendre(); return; }
 
-  if(etat.mode === 'demo'){ synthetiserDemo(texte); return; }
+  if(etat.mode === 'demo'){ synthetiserDemo(texte); rendre(); return; }
 
-  if(!etat.voixId){ toast("Aucune voix active. Créez-la à l'étape 04.", 'err'); return; }
+  if(!etat.voixId){ toast("Aucune voix active. Créez-la à l'étape 02.", 'err'); rendre(); return; }
 
-  const bouton = $('btnSynth');
+  const bouton = $(idBouton);
   occupe(bouton, true, 'Génération…');
-  $('resSynth').innerHTML = '';
+  $(idZone).innerHTML = '';
 
   try{
     const corps = {
@@ -4170,8 +4614,9 @@ async function synthetiser(){
     afficherGenerationEnCours();
     toast('Audio généré.', 'ok');
   }catch(e){
-    $('resSynth').innerHTML = '<div class="note n-red">' + echapper(messageReseau(e)) + '</div>';
+    $(idZone).innerHTML = '<div class="note n-red">' + echapper(messageReseau(e)) + '</div>';
   }finally{
+    rendre();
     occupe(bouton, false);
   }
 }
@@ -4282,7 +4727,7 @@ function afficherGenerationEnCours(){
     '</div>';
   };
 
-  $('resSynth').innerHTML =
+  $(etat.zoneResultat || 'resSynth').innerHTML =
     '<div class="note n-grn"><div class="note-t">Audio généré — trois versions à comparer</div>' +
       lecteur('Non traité, tel que le moteur l\'a produit', 'brut', null) +
       lecteur('Vos réglages', 'votre', g.traiteVotre ? 'traité' : null) +
@@ -4863,9 +5308,24 @@ async function demarrer(){
       }
       majEtat();
 
-      etat.echantillons = await bdTout('echantillons');
+      /* Les profils d'abord : ils décident des prises à afficher et des
+         réglages à reposer. */
+      etat.profils = (await bdTout('profils'))
+        .sort((a,b) => String(b.cree || '').localeCompare(String(a.cree || '')));
+      await reprendreExistant();
+      const actif = await bdLire('config','profilActif');
+      const vise = (actif && actif.valeur && etat.profils.some(p => p.id === actif.valeur))
+        ? actif.valeur
+        : (etat.profils[0] ? etat.profils[0].id : null);
+
       etat.generations  = (await bdTout('generations')).sort((a,b)=>b.date.localeCompare(a.date));
-      afficherEchantillons();
+      if(vise){
+        await activerProfil(vise);
+      }else{
+        etat.echantillons = [];
+        afficherEchantillons();
+      }
+      afficherProfils();
       afficherGenerations();
       afficherTraceConsentement();
     }catch(e){
@@ -4875,6 +5335,9 @@ async function demarrer(){
 
   /* Aligne l'affichage sur les choix retenus, qu'ils viennent des données
      enregistrées ou des valeurs par défaut. */
+  if(!$('texteEssai').value) $('texteEssai').value = TEXTE_ESSAI;
+  afficherProfils();
+  majVerrou();
   majAffichageEtape4();
   majAffichageAmelioration();
   majConnexion();

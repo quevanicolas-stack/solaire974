@@ -31,11 +31,17 @@ function verifier(nom, ok, detail) {
   console.log((ok ? '  OK   ' : '  ECHEC') + ' | ' + nom + (detail ? ' — ' + detail : ''));
 }
 
-async function consentir(page, usage) {
+// Le consentement n'est plus une page mais le passage oblige de toute
+// creation de profil : sans profil, aucune autre etape n'est accessible.
+async function consentir(page, usage, nom) {
+  await page.click('button:has-text("Créer un profil")');
+  await page.waitForTimeout(300);
   await page.click('#zoneOrigine .radio:nth-child(1)');
-  await page.fill('#consNom', 'Nicolas Queva');
+  await page.fill('#consNom', nom || 'Nicolas Queva');
   await page.fill('#consUsage', usage);
   for (let i = 1; i <= 4; i++) await page.check('#cons' + i);
+  await page.click('button:has-text("Créer le profil")');
+  await page.waitForTimeout(600);
 }
 
 async function creerVoix(page, nom) {
@@ -78,9 +84,9 @@ async function creerVoix(page, nom) {
   // ════════ RÈGLES VERROUILLÉES ════════
   console.log('\n--- Règles verrouillées ---');
 
-  verifier('Quatre pages, consentement en tête',
-    await page.evaluate(() => PAGES.length === 4 && PAGES[0].t === 'Consentement'));
-  verifier('Le consentement barre toutes les autres pages',
+  verifier('Quatre pages, profils en tête',
+    await page.evaluate(() => PAGES.length === 4 && PAGES[0].t === 'Profils'));
+  verifier('Sans profil, toutes les autres pages sont barrées',
     await page.evaluate(() => !!verrou(1) && !!verrou(2) && !!verrou(3)),
     await page.evaluate(() => verrou(1)));
   verifier('Bandeau « contenu synthétique » présent',
@@ -95,6 +101,34 @@ async function creerVoix(page, nom) {
     (await page.locator('#zoneOrigine .radio').count()) === 2);
   verifier('Quatre engagements, tous obligatoires',
     (await page.locator('#cons1, #cons2, #cons3, #cons4').count()) === 4);
+
+  // Le formulaire d'accord conditionne la creation : un engagement manquant,
+  // un champ vide, et aucun profil n'est cree.
+  const refusCons = await page.evaluate(async () => {
+    const avant = etat.profils.length;
+    ouvrirConsentement();
+    document.querySelector('#zoneOrigine .radio').click();
+    document.getElementById('consNom').value = 'Personne';
+    document.getElementById('consUsage').value = 'essai';
+    for (let i = 1; i <= 3; i++) document.getElementById('cons' + i).checked = true;
+    await creerProfil();                       // le quatrieme engagement manque
+    const troisCoches = etat.profils.length;
+    document.getElementById('consUsage').value = '';
+    document.getElementById('cons4').checked = true;
+    await creerProfil();                       // l'usage manque
+    const sansUsage = etat.profils.length;
+    const ouverte = document.getElementById('modaleConsentement').style.display !== 'none';
+    fermerConsentement();
+    return { avant, troisCoches, sansUsage, ouverte };
+  });
+  verifier('Trois engagements sur quatre ne créent aucun profil',
+    refusCons.troisCoches === refusCons.avant,
+    refusCons.troisCoches + ' profil(s) pour ' + refusCons.avant + ' avant');
+  verifier('Un usage non renseigné ne crée aucun profil',
+    refusCons.sansUsage === refusCons.avant, String(refusCons.sansUsage));
+  verifier('Le formulaire reste ouvert tant qu\'il est incomplet', refusCons.ouverte);
+  verifier('Aucun profil ne peut exister sans consentement',
+    await page.evaluate(() => etat.profils.every(p => !!p.consentement && !!p.consentement.nom)));
   verifier('Aucune clé écrite en dur dans le fichier',
     !(await page.content()).match(/sk-ant|xi-api-key["']\s*:\s*["'][A-Za-z0-9]{16}/));
 
@@ -106,9 +140,14 @@ async function creerVoix(page, nom) {
       [...document.querySelectorAll('.page')].findIndex(p => p.classList.contains('on')) === 0));
 
   await consentir(page, 'Vérifications automatiques');
+  verifier('Créer un profil exige et enregistre le consentement',
+    await page.evaluate(() => {
+      const p = profilActif();
+      return !!p && !!p.consentement && p.consentement.usage === 'Vérifications automatiques';
+    }));
   await page.evaluate(() => go(1));
   await page.waitForTimeout(500);
-  verifier('Navigation ouverte une fois le consentement validé',
+  verifier('Navigation ouverte une fois le profil créé',
     await page.evaluate(() =>
       [...document.querySelectorAll('.page')].findIndex(p => p.classList.contains('on')) === 1));
 
@@ -279,6 +318,10 @@ async function creerVoix(page, nom) {
 
   // ════════ RÉGLAGES ════════
   console.log('\n--- Réglages ---');
+
+  // Les reglages ont rejoint l'etape 02 : on s'y place pour les manipuler.
+  await page.evaluate(() => go(1));
+  await page.waitForTimeout(400);
 
   verifier('Suppression du bruit de fond réglable',
     (await page.locator('#debruitage').count()) === 1 &&
@@ -1029,6 +1072,109 @@ async function creerVoix(page, nom) {
   verifier('La correction laisse l\'égaliseur actif et en personnalisé',
     succes.actif && succes.preset === 'perso', succes.preset);
 
+  console.log('\n--- Profils et verrouillage ---');
+
+  await page.evaluate(() => go(1));
+  await page.waitForTimeout(400);
+
+  // Le texte d'essai doit etre la, assez long pour que le decoupage joue et
+  // pour porter plusieurs longueurs de phrase : c'est sur lui qu'on regle.
+  const essai = await page.evaluate(() => ({
+    present: !!document.getElementById('texteEssai'),
+    rempli: (document.getElementById('texteEssai').value || '').length,
+    paragraphes: (document.getElementById('texteEssai').value || '').split(/\n\s*\n/).length,
+    bouton: !!document.getElementById('btnEssai')
+  }));
+  verifier('Un texte d\'essai est proposé à l\'étape 02',
+    essai.present && essai.bouton && essai.rempli > 400,
+    essai.rempli + ' caractères');
+  verifier('Le texte d\'essai est assez long pour que le découpage joue',
+    essai.rempli > 230, essai.rempli + ' caractères pour une limite de 230 par morceau');
+  verifier('Le texte d\'essai porte plusieurs paragraphes',
+    essai.paragraphes >= 3, essai.paragraphes + ' paragraphe(s)');
+
+  // Le verrou : les reglages du profil doivent primer sur les curseurs
+  // affiches, sinon il ne sert a rien.
+  const verrouillage = await page.evaluate(async () => {
+    const p = profilActif();
+    document.getElementById('stabilite').value = 0.75;
+    document.getElementById('debit').value = 0.95;
+    majReglages();
+    await verrouillerReglages();
+    const fige = { verrouille: p.verrouille, stab: p.reglages.nombres.stabilite };
+
+    // On deregle les curseurs : une generation verrouillee doit les ignorer.
+    document.getElementById('stabilite').value = 0.20;
+    document.getElementById('debit').value = 1.20;
+    majReglages();
+    const repose = reglagesDeGeneration();
+    const pendant = parseFloat(document.getElementById('stabilite').value);
+    if (repose) appliquerReglagesProfil(repose);
+    const apres = parseFloat(document.getElementById('stabilite').value);
+
+    await deverrouillerReglages();
+    const rouvert = p.verrouille;
+    return { fige, pendant, apres, rouvert };
+  });
+  verifier('Verrouiller fige les réglages sur le profil',
+    verrouillage.fige.verrouille && Math.abs(verrouillage.fige.stab - 0.75) < 1e-9,
+    'stabilité figée à ' + verrouillage.fige.stab);
+  verifier('Une génération verrouillée reprend les réglages du profil',
+    Math.abs(verrouillage.pendant - 0.75) < 1e-9,
+    'stabilité employée : ' + verrouillage.pendant + ' malgré 0,20 affiché');
+  verifier('Les curseurs affichés sont rendus intacts après la génération',
+    Math.abs(verrouillage.apres - 0.20) < 1e-9, String(verrouillage.apres));
+  verifier('Les réglages peuvent être rouverts', verrouillage.rouvert === false);
+
+  // Deux profils ne partagent ni leurs prises, ni leur voix, ni leurs reglages.
+  const deux = await page.evaluate(async () => {
+    const premier = profilActif();
+    // Compte pris en base, et non en memoire : la suite a manipule
+    // etat.echantillons directement plus haut pour eprouver les plafonds, et
+    // c'est bien la base qui fait foi au changement de profil.
+    const nbPrises = (await bdTout('echantillons'))
+      .filter(e => e.profilId === premier.id).length;
+    premier.reglages = reglagesDuProfil();
+    premier.verrouille = true;
+    await enregistrerProfilActif();
+
+    ouvrirConsentement();
+    document.querySelector('#zoneOrigine .radio:nth-child(2)').click();
+    document.getElementById('consNom').value = 'Deuxième personne';
+    document.getElementById('consUsage').value = 'second profil';
+    for (let i = 1; i <= 4; i++) document.getElementById('cons' + i).checked = true;
+    await creerProfil();
+
+    const second = profilActif();
+    const isole = {
+      autre: second.id !== premier.id,
+      prises: etat.echantillons.length,
+      voix: etat.voixId,
+      verrouille: second.verrouille,
+      consentementPropre: second.consentement.nom
+    };
+    await activerProfil(premier.id);
+    return { nbPrises, isole, retour: etat.echantillons.length,
+             voixRevenue: etat.voixId, nb: etat.profils.length };
+  });
+  verifier('Un second profil part de zéro : aucune prise héritée',
+    deux.isole.autre && deux.isole.prises === 0,
+    deux.isole.prises + ' prise(s) pour le nouveau profil');
+  verifier('Un second profil n\'hérite ni de la voix ni du verrou',
+    deux.isole.voix === null && deux.isole.verrouille === false,
+    'voix ' + deux.isole.voix);
+  verifier('Chaque profil porte son propre consentement',
+    deux.isole.consentementPropre === 'Deuxième personne', deux.isole.consentementPropre);
+  verifier('Revenir au premier profil rend ses prises et sa voix',
+    deux.retour === deux.nbPrises && deux.nbPrises > 0 && !!deux.voixRevenue,
+    deux.retour + ' prise(s) retrouvée(s) sur ' + deux.nbPrises + ' en base');
+
+  // Les prises portent leur profil : sans cela, changer de profil afficherait
+  // les prises de l'autre.
+  verifier('Chaque prise est rattachée à un profil',
+    await page.evaluate(async () =>
+      (await bdTout('echantillons')).every(e => !!e.profilId)));
+
   console.log('\n--- Montage ---');
 
   const mont = await page.evaluate(async () => {
@@ -1229,6 +1375,79 @@ async function creerVoix(page, nom) {
   await page.waitForTimeout(400);
   verifier('Pas de débordement horizontal en mobile', !(await page.evaluate(() =>
     document.documentElement.scrollWidth > document.documentElement.clientWidth + 2)));
+
+  // ════════ REPRISE D'UNE VERSION ANTÉRIEURE ════════
+  console.log('\n--- Reprise des données d\'avant les profils ---');
+
+  // Une version anterieure ne connaissait ni profil ni rattachement : un
+  // consentement unique en configuration, des prises sans proprietaire, une
+  // voix active a part. Tout cela decrit un premier profil — le perdre serait
+  // perdre le travail de l'utilisateur.
+  //
+  // Le contexte est neuf : l'application de la page principale tient sa base
+  // ouverte, et toute montee de version y resterait bloquee.
+  // Contexte neuf, donc stockage isole ; le certificat auto-signe du mode
+  // https doit y etre accepte comme dans le contexte principal.
+  const ctxAvant = await nav.newContext({ ignoreHTTPSErrors: true });
+  const vieille = await ctxAvant.newPage();
+  const errAvant = [];
+  vieille.on('pageerror', e => errAvant.push(e.message));
+  // Meme origine, mais sans charger l'application : elle ouvrirait la base.
+  await vieille.goto(BASE + '/chat');
+  await vieille.waitForTimeout(400);
+  await vieille.evaluate(async () => {
+    const b = await new Promise((res, rej) => {
+      const q = indexedDB.open('studio_voix', 1);
+      q.onupgradeneeded = e => {
+        const d = e.target.result;
+        d.createObjectStore('echantillons', {keyPath:'id'});
+        d.createObjectStore('generations', {keyPath:'id'});
+        d.createObjectStore('config', {keyPath:'cle'});
+      };
+      q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error);
+    });
+    const put = (m, o) => new Promise(r => {
+      const t = b.transaction(m, 'readwrite').objectStore(m).put(o);
+      t.onsuccess = r; t.onerror = r;
+    });
+    await put('config', {cle:'consentement', valeur:{
+      origine:'autre', nom:'Personne reprise', date:'2026-09-01',
+      usage:'narration', valideLe:new Date().toISOString()}});
+    await put('config', {cle:'voix', valeur:{id:'voix-ancienne', nom:'Voix d\'avant'}});
+    await put('echantillons', {id:'e1', nom:'Prise 1.wav', duree:30, type:'audio/wav',
+      blob:new Blob([new Uint8Array(100)], {type:'audio/wav'})});
+    await put('echantillons', {id:'e2', nom:'Prise 2.wav', duree:25, type:'audio/wav',
+      blob:new Blob([new Uint8Array(100)], {type:'audio/wav'})});
+    await put('generations', {id:'g1', date:new Date().toISOString(), texte:'ancien',
+      voix:'Voix d\'avant', version:'votre', nom:'voix-synthetique_x.wav',
+      blob:new Blob([new Uint8Array(100)], {type:'audio/wav'})});
+    b.close();
+  });
+  await vieille.goto(BASE + '/app');
+  await vieille.waitForTimeout(2500);
+  const repris = await vieille.evaluate(async () => ({
+    nb: etat.profils.length,
+    nom: etat.profils[0] ? etat.profils[0].nom : null,
+    voix: etat.profils[0] ? etat.profils[0].voixNom : null,
+    consentement: !!(etat.profils[0] && etat.profils[0].consentement),
+    actif: profilActif() ? profilActif().nom : null,
+    prises: etat.echantillons.length,
+    prisesRattachees: (await bdTout('echantillons')).every(e => !!e.profilId),
+    genRattachees: (await bdTout('generations')).every(g => !!g.profilId),
+    navOuverte: !verrou(1)
+  }));
+  verifier('Un profil est repris des données d\'avant',
+    repris.nb === 1 && repris.nom === 'Personne reprise', repris.nom);
+  verifier('Le consentement déjà donné est repris, pas redemandé',
+    repris.consentement && repris.actif === 'Personne reprise' && repris.navOuverte);
+  verifier('La voix active d\'avant est rattachée au profil',
+    repris.voix === "Voix d'avant", String(repris.voix));
+  verifier('Les prises d\'avant sont retrouvées et rattachées',
+    repris.prises === 2 && repris.prisesRattachees, repris.prises + ' prise(s)');
+  verifier('Les audios d\'avant sont rattachés au profil', repris.genRattachees);
+  verifier('La reprise ne produit aucune erreur',
+    errAvant.length === 0, errAvant.join(' | ') || 'aucune');
+  await ctxAvant.close();
 
   console.log('\n--- Erreurs console/page ---');
   console.log(erreurs.length ? erreurs.join('\n') : 'aucune');

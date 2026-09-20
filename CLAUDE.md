@@ -35,12 +35,13 @@ Fichier unique : `solaire974_3_4_5.html` (2,6 Mo, ~2100 lignes de code applicati
 ## Contexte
 Seconde application du dépôt, indépendante du calculateur solaire.
 Fichier unique : `clonage_voix.html` (HTML/CSS/JS vanilla, même charte graphique que l'appli solaire).
-4 pages : consentement, voix (connexion, enregistrement, création), synthèse, bibliothèque.
+4 pages : profils, voix et réglage, synthèse, bibliothèque.
+Le cycle est celui du **profil** : on déclare une personne (avec son accord), on enregistre ses prises, on crée sa voix, on règle une fois pour toutes sur un texte d'essai, on verrouille — puis chaque texte se génère sans rien avoir à refaire.
 Serveur : `voix_locale/serveur.py` (FastAPI), qui porte le moteur XTTS et sert aussi la page sur `/app`. C'est le seul service — le fournisseur distant a été retiré.
 
 ## Règles verrouillées — ne jamais modifier sans demande explicite
-- Page 01 = verrou de consentement. Elle bloque l'accès à toutes les autres pages tant qu'elle n'est pas validée : ne jamais la contourner, la rendre optionnelle ni la retirer.
-- Les quatre engagements de la page 01 sont obligatoires et cumulatifs.
+- **Le consentement conditionne la création de tout profil**, et le profil conditionne tout le reste. Ce n'est plus une page permanente mais une modale obligatoire (`ouvrirConsentement` → `creerProfil`) : `creerProfil` appelle `validerConsentement` en premier et n'écrit rien s'il échoue. `verrou(n)` barre toutes les pages sans profil actif, et aussi tout profil sans consentement. Le verrou est donc le même qu'avant, attaché à la personne plutôt qu'à la session — c'est plus juste : deux voix différentes exigent deux accords différents. Ne jamais rendre la modale facultative, ni permettre un profil sans consentement.
+- Les quatre engagements du formulaire d'accord sont obligatoires et cumulatifs. `verifier.js` impose qu'aucun profil ne naisse avec trois engagements sur quatre, ni avec un usage vide, et que le formulaire reste ouvert tant qu'il est incomplet.
 - Bandeau permanent « Contenu synthétique » en haut de l'application.
 - Les fichiers générés portent le préfixe `voix-synthetique_` dans leur nom : ne pas le retirer.
 - **Aucune clé, aucun appel distant.** Le service distant, son catalogue de voix, sa clé d'accès et son choix de modèle ont été retirés : tout se passe sur la machine. Ne jamais réintroduire d'appel hors du serveur local — `verifier.js` impose l'absence de toute adresse distante dans le fichier.
@@ -53,6 +54,12 @@ Serveur : `voix_locale/serveur.py` (FastAPI), qui porte le moteur XTTS et sert a
 - Stockage local des échantillons et des audios générés en IndexedDB (base `studio_voix`).
 
 ## Notes techniques
+- **Un profil possède ses prises, sa voix et ses réglages.** `etat.profilId` désigne l'actif ; `activerProfil` recharge les prises depuis la base (filtrées par `profilId`), repose la voix et réapplique les réglages. Chaque prise porte son `profilId` dès `ajouterEchantillon` — sans ce rattachement, changer de profil affichait les prises de l'autre. `verifier.js` impose l'isolement : un second profil part sans prise, sans voix et sans verrou, et revenir au premier lui rend les siennes.
+- **Verrouillage des réglages** (`verrouillerReglages`) : `reglagesDuProfil()` capture curseurs, choix et cases ; `appliquerReglagesProfil()` les repose **et rappelle les fonctions d'affichage** — sans ces rappels les curseurs portent les bonnes valeurs mais les étiquettes affichent encore celles du profil précédent. `reglagesDeGeneration()` impose les réglages du profil au moment d'envoyer, quoi qu'affichent les curseurs, puis les rend intacts : c'est tout l'intérêt du verrou, et `verifier.js` impose les deux moitiés.
+- Le **texte d'essai** (`TEXTE_ESSAI`, ~690 caractères) sert à régler : assez long pour que le découpage entre en jeu et pour porter plusieurs longueurs de phrase, une énumération, un nombre, une date, un sigle et une question ; assez court pour ne pas faire attendre à chaque essai. Ses paragraphes sont placés à dessein. `genererEssai` passe par la **même** fonction que la synthèse — sans quoi ce qu'on règle sur l'essai ne serait pas ce qu'on obtient ensuite.
+- **Reprise des données d'avant les profils** (`reprendreExistant`) : un consentement en configuration, des prises sans propriétaire et une voix active décrivent en réalité un premier profil. On le crée plutôt que de le perdre, et les prises et audios orphelins lui reviennent. `verifier.js` le vérifie dans un contexte neuf, sur une base reconstruite en version 1 — la page ne doit pas être chargée pendant ce montage, sinon elle tient la base ouverte et la montée de version reste bloquée indéfiniment.
+- Base IndexedDB en **version 2** (magasin `profils`). Une montée de version ne doit jamais détruire les magasins existants : ils portent le travail de l'utilisateur.
+- Une modale sans fond laisse voir la page derrière : `--fond2` n'existe pas, la variable est `--bg2`. Vérifié à l'écran, pas seulement par une assertion.
 - `voix_locale/preparer_corpus.py` prépare un corpus d'affinage : il mesure chaque prise et refuse celles qui abîmeraient le modèle (traîne > 250 ms, fond > -50 dB, moindre saturation). Ne jamais assouplir ces seuils sans demande : un défaut appris par les poids devient irréversible, là où un défaut de référence se corrige en changeant de référence.
 - `voix_locale/texte_a_lire.txt` couvre les sons du français et plusieurs registres. Il ne dure que quatre minutes : c'est un noyau, pas un corpus.
 - L'affinage lui-même n'est pas outillé : il demande un GPU loué, et il n'y a aucun intérêt à l'écrire avant d'avoir un corpus qui le mérite.
