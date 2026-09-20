@@ -159,6 +159,41 @@ async function creerVoix(page, nom) {
     (await page.locator('#resSynth audio').count()) === 3);
   verifier('Proposition motivée par des mesures',
     gen && gen.raisons >= 4, gen ? gen.raisons + ' motifs' : '');
+  // Le telechargement a quitte l'ecran de generation : on y compare et on y
+  // choisit, la bibliotheque delivre les fichiers.
+  const boutons = await page.evaluate(() => {
+    const zone = document.getElementById('resSynth');
+    const noms = [...zone.querySelectorAll('button')].map(b => b.textContent.trim());
+    return { noms, charger: noms.filter(n => n === 'Charger').length,
+             telecharger: noms.filter(n => n.indexOf('Téléchar') >= 0).length };
+  });
+  verifier('Trois boutons « Charger » sur l\'écran de génération',
+    boutons.charger === 3, boutons.noms.join(' | '));
+  verifier('Plus aucun téléchargement direct depuis la génération',
+    boutons.telecharger === 0, boutons.noms.join(' | '));
+
+  const choix = await page.evaluate(async () => {
+    const g = etat.generations[0];
+    const avant = g.retenue;
+    await chargerVersion(g.id, 'propose');
+    const apres = etat.generations.find(x => x.id === g.id).retenue;
+    const enBase = (await bdLire('generations', g.id));
+    const libelle = document.getElementById('charger_propose').textContent.trim();
+    afficherGenerations();
+    const texte = document.getElementById('listeGen').textContent;
+    const btns = [...document.querySelectorAll('#listeGen button')].map(b => b.textContent.trim());
+    return { avant, apres, persiste: enBase ? enBase.retenue : null, libelle, texte, btns };
+  });
+  verifier('Aucune version n\'est retenue d\'office', choix.avant === null, String(choix.avant));
+  verifier('Charger retient la version écoutée', choix.apres === 'propose', String(choix.apres));
+  verifier('Le choix est conservé en base', choix.persiste === 'propose', String(choix.persiste));
+  verifier('Le bouton dit que la version est chargée', choix.libelle === 'Chargée', choix.libelle);
+  verifier('La bibliothèque annonce la version retenue',
+    choix.texte.indexOf('version retenue : proposition') >= 0);
+  verifier('La bibliothèque délivre les trois versions',
+    ['Non traitée', 'Vos réglages', 'Proposition'].every(n => choix.btns.indexOf(n) >= 0),
+    choix.btns.join(' | '));
+
   verifier('Bouton rendu après génération', await page.evaluate(() => {
     const b = document.getElementById('btnSynth');
     return b.textContent.trim() === "Générer l'audio" && !b.disabled && !b.querySelector('.spin');

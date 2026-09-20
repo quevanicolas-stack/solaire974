@@ -3845,6 +3845,9 @@ async function synthetiser(){
          possible plus tard, pas seulement dans la minute qui suit. */
       brut: brut, nomBrut: base + '_brut.' + ext(brut),
       propose: propose, nomPropose: base + '_propose.' + ext(propose),
+      /* Aucune version n'est retenue d'office : c'est à l'oreille de trancher,
+         et les trois ne se valent pas d'une génération à l'autre. */
+      retenue: null,
       debruitagePropose: debruitageServeur,
       raisons: proposition.raisons,
       mesures: mesures
@@ -3860,7 +3863,8 @@ async function synthetiser(){
         '</div>' +
         '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">' +
           '<audio controls src="' + URL.createObjectURL(b) + '"></audio>' +
-          '<button class="btn btn-g btn-sm" onclick="telechargerVersion(\'' + gen.id + '\',\'' + nom + '\')">Télécharger</button>' +
+          '<button class="btn btn-g btn-sm" id="charger_' + nom + '" ' +
+            'onclick="chargerVersion(\'' + gen.id + '\',\'' + nom + '\')">Charger</button>' +
         '</div>' +
       '</div>';
 
@@ -3917,25 +3921,35 @@ function afficherGenerations(){
     zone.innerHTML = '<div class="vide">Aucun audio généré pour le moment.</div>';
     return;
   }
-  zone.innerHTML = etat.generations.map(g=>
-    '<div class="item">' +
+  zone.innerHTML = etat.generations.map(g=>{
+    const v = versionsDe(g);
+    const retenue = versionRetenue(g);
+    /* Le téléchargement a quitté l'écran de génération : c'est ici, et ici
+       seulement, que les fichiers se récupèrent. */
+    const bouton = (cle, libelle, titre) => v[cle]
+      ? '<button class="btn ' + (g.retenue === cle ? 'btn-v' : 'btn-g') + ' btn-sm" title="' +
+        echapper(titre) + '" onclick="telechargerVersion(\''+g.id+'\',\''+cle+'\')">' +
+        echapper(libelle) + '</button>'
+      : '';
+    return '<div class="item">' +
       '<div class="item-corps">' +
         '<div class="item-nom">'+echapper(g.texte.slice(0,70) + (g.texte.length > 70 ? '…' : ''))+'</div>' +
         '<div class="item-meta">'+new Date(g.date).toLocaleString('fr-FR')+' — '+echapper(g.voix)+
-          ' — '+fmtTaille(g.blob.size)+
+          ' — '+fmtTaille(retenue.blob.size)+
           (g.elocution && g.elocution !== 'perso' ? ' — style ' + echapper(g.elocution) : '')+
-          (g.traitement ? ' — traitement ' + echapper(g.traitement) : '')+'</div>' +
+          (g.traitement ? ' — traitement ' + echapper(g.traitement) : '')+
+          (g.retenue ? ' — version retenue : ' + echapper(retenue.titre)
+                     : ' — aucune version retenue')+'</div>' +
       '</div>' +
-      '<audio controls preload="none" src="'+URL.createObjectURL(g.blob)+'"></audio>' +
+      '<audio controls preload="none" src="'+URL.createObjectURL(retenue.blob)+'"></audio>' +
       '<div class="item-btns">' +
-        '<button class="btn btn-g btn-sm" onclick="telechargerGeneration(\''+g.id+'\')">Télécharger</button>' +
-        (g.brut ? '<button class="btn btn-g btn-sm" title="Sans aucun traitement" ' +
-                  'onclick="telechargerVersion(\''+g.id+'\',\'brut\')">Brut</button>' : '') +
-        (g.propose ? '<button class="btn btn-g btn-sm" title="Version proposée d\'après les mesures" ' +
-                     'onclick="telechargerVersion(\''+g.id+'\',\'propose\')">Proposé</button>' : '') +
+        bouton('brut', 'Non traitée', 'Telle que le moteur l\'a produite') +
+        bouton('votre', 'Vos réglages', 'Avec les réglages de la page') +
+        bouton('propose', 'Proposition', 'Réglages déduits des mesures') +
         '<button class="btn btn-r btn-sm" onclick="supprimerGeneration(\''+g.id+'\')">Supprimer</button>' +
       '</div>' +
-    '</div>').join('');
+    '</div>';
+  }).join('');
 }
 
 function telecharger(blob, nom){
@@ -3955,17 +3969,51 @@ function base64VersBlob(donnees, type){
   return new Blob([octets], {type: type || 'audio/wav'});
 }
 
+/* Les trois versions d'une génération et leurs noms de fichier. */
+function versionsDe(g){
+  return {
+    brut:    g.brut    ? {blob: g.brut,    nom: g.nomBrut,    titre: 'non traitée'} : null,
+    votre:   {blob: g.blob, nom: g.nom, titre: 'vos réglages'},
+    propose: g.propose ? {blob: g.propose, nom: g.nomPropose, titre: 'proposition'} : null
+  };
+}
+
+/* Version retenue pour cette génération, ou celle de vos réglages par défaut :
+   la bibliothèque doit toujours pouvoir lire quelque chose. */
+function versionRetenue(g){
+  const v = versionsDe(g);
+  return (g.retenue && v[g.retenue]) ? v[g.retenue] : v.votre;
+}
+
+/* Charge dans la bibliothèque la version choisie à l'écoute.
+
+   Le téléchargement a quitté cet écran : on y compare, on y choisit, et c'est
+   la bibliothèque qui délivre les fichiers. Une génération reste enregistrée
+   même sans choix — quitter la page ne doit rien faire perdre — mais tant
+   qu'aucune version n'est retenue, la bibliothèque le dit. */
+async function chargerVersion(id, quelle){
+  const g = etat.generations.find(x => x.id === id);
+  if(!g) return;
+  const v = versionsDe(g);
+  if(!v[quelle]) return;
+  g.retenue = quelle;
+  await bdEcrire('generations', g);
+  for(const nom of ['brut', 'votre', 'propose']){
+    const b = $('charger_' + nom);
+    if(!b) continue;
+    const choisie = (nom === quelle);
+    b.textContent = choisie ? 'Chargée' : 'Charger';
+    b.className = 'btn btn-sm ' + (choisie ? 'btn-v' : 'btn-g');
+  }
+  afficherGenerations();
+  toast('Version « ' + v[quelle].titre + ' » chargée dans la bibliothèque, où elle peut être téléchargée.', 'ok');
+}
+
 function telechargerVersion(id, quelle){
   const g = etat.generations.find(x=>x.id === id);
   if(!g) return;
   if(quelle === 'brut'    && g.brut)    return telecharger(g.brut, g.nomBrut);
   if(quelle === 'propose' && g.propose) return telecharger(g.propose, g.nomPropose);
-  telecharger(g.blob, g.nom);
-}
-
-function telechargerGeneration(id){
-  const g = etat.generations.find(x=>x.id === id);
-  if(!g) return;
   telecharger(g.blob, g.nom);
 }
 
