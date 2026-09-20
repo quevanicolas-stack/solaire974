@@ -314,5 +314,74 @@ else:
         verifier("Le nombre de tranches est plafonné",
                  len(tlg) == serveur.TRANCHES_MAX, f"{len(tlg)} tranche(s)")
 
+print("\n--- Graine ---")
+
+# La graine etait fixee a 1234 des qu'aucune valeur n'arrivait, et
+# l'application en envoyait une en permanence : meme texte, meme audio a
+# l'octet pres. Une pause au milieu d'une phrase, un membre de phrase repete,
+# devenaient definitifs — relancer la generation ne pouvait rien y changer.
+
+class MoteurEspion:
+    """Retient les réglages reçus, morceau par morceau."""
+
+    def __init__(self):
+        self.recus = []
+
+    def synthetiser(self, texte, reference, reglages):
+        self.recus.append(dict(reglages))
+        return wav_muet(0.4), "audio/wav"
+
+
+TROIS = "Première phrase. Deuxième phrase. Troisième phrase."
+
+espion = MoteurEspion()
+serveur.prononcer(espion, TROIS, Path("ref.wav"), {})
+verifier("Le texte est bien découpé en trois morceaux",
+         len(espion.recus) == 3, f"{len(espion.recus)} morceau(x)")
+verifier("Le rang du morceau accompagne chaque prononciation",
+         [r.get("_morceau") for r in espion.recus] == [0, 1, 2],
+         str([r.get("_morceau") for r in espion.recus]))
+
+# Le moteur reel ne doit appeler manual_seed que si une graine est donnee, et
+# la decaler d'un morceau a l'autre : la meme graine partout faisait repartir
+# chaque morceau du meme etat du generateur.
+import types
+
+graines = []
+faux_torch = types.SimpleNamespace(manual_seed=lambda v: graines.append(v))
+sys.modules["torch"] = faux_torch
+
+with tempfile.TemporaryDirectory() as tmp:
+    dossier = Path(tmp) / "voix"
+    dossier.mkdir()
+    reference = dossier / "reference.wav"
+    reference.write_bytes(wav_muet(30))
+
+    graines.clear()
+    moteur_factice().synthetiser("Bonjour.", reference, {})
+    verifier("Sans graine, le générateur n'est pas figé",
+             graines == [], f"manual_seed appelé avec {graines}")
+
+    graines.clear()
+    moteur_factice().synthetiser("Bonjour.", reference, {"seed": 4321})
+    verifier("Une graine donnée est appliquée", graines == [4321], str(graines))
+
+    graines.clear()
+    for indice in range(3):
+        moteur_factice().synthetiser(
+            "Bonjour.", reference, {"seed": 4321, "_morceau": indice})
+    verifier("La graine est décalée d'un morceau à l'autre",
+             graines == [4321, 4322, 4323], str(graines))
+
+    # Une graine vide vaut pas de graine : l'application n'envoie plus rien
+    # quand la case n'est pas cochee, mais un ancien reglage enregistre peut
+    # encore porter une chaine vide.
+    graines.clear()
+    moteur_factice().synthetiser("Bonjour.", reference, {"seed": ""})
+    verifier("Une graine vide ne fige pas le générateur",
+             graines == [], str(graines))
+
+sys.modules.pop("torch", None)
+
 print(f"\nRESULTAT : {sum(resultats)}/{len(resultats)} vérifications réussies")
 sys.exit(0 if all(resultats) else 1)

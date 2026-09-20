@@ -172,7 +172,6 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
 .b-vio{background:var(--vio-d);color:var(--vio);border:1px solid rgba(163,113,247,.3)}
 .b-grn{background:var(--grn-d);color:var(--grn-l);border:1px solid rgba(29,158,117,.3)}
 .b-amb{background:var(--amb-d);color:var(--amb-l);border:1px solid rgba(240,180,41,.3)}
-.aide.inerte{color:var(--amb-l);margin-top:4px}
 .b-red{background:var(--red-d);color:var(--red-l);border:1px solid rgba(248,81,73,.3)}
 
 .kv{display:flex;justify-content:space-between;padding:7px 0;font-size:12.5px;border-bottom:1px solid var(--bdr)}
@@ -749,29 +748,20 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
           <div class="champ">
             <div class="curs-tete"><span>Stabilité</span><span class="curs-val" id="vStab">0,50</span></div>
             <input type="range" id="stabilite" min="0" max="1" step="0.05" value="0.5" oninput="majReglages(true)">
-            <div class="aide">Bas : plus d'émotion et de variation. Haut : ton monotone mais constant.</div>
-          </div>
-          <div class="champ">
-            <div class="curs-tete"><span>Similarité</span><span class="curs-val" id="vSim">0,75</span></div>
-            <input type="range" id="similarite" min="0" max="1" step="0.05" value="0.75" oninput="majReglages(true)">
-            <div class="aide">Haut : colle au timbre d'origine, y compris ses défauts d'enregistrement.</div>
-            <div class="aide inerte" id="inerteSim" style="display:none"></div>
-          </div>
-          <div class="champ">
-            <div class="curs-tete"><span>Expressivité</span><span class="curs-val" id="vStyle">0,00</span></div>
-            <input type="range" id="style" min="0" max="1" step="0.05" value="0" oninput="majReglages(true)">
-            <div class="aide">Accentue le style de la personne. Au-delà de 0,5 la voix devient instable.</div>
-            <div class="aide inerte" id="inerteStyle" style="display:none"></div>
+            <div class="aide">Règle la liberté laissée au moteur : température, diversité et nombre de
+              candidats examinés, tous visibles plus bas. Bas : plus d'émotion et de variation.
+              Haut : ton plus constant. La course s'arrête avant la zone où le moteur se met à
+              répéter des syllabes.</div>
           </div>
           <div class="champ">
             <div class="curs-tete"><span>Débit de parole</span><span class="curs-val" id="vDebit">1,00 ×</span></div>
-            <input type="range" id="debit" min="0.6" max="1.6" step="0.05" value="1" oninput="majReglages(true)">
-            <div class="aide">Étirement appliqué par le moteur : la hauteur de la voix ne change pas. Au-delà de 1,3 l'élocution se dégrade.</div>
+            <input type="range" id="debit" min="0.8" max="1.2" step="0.05" value="1" oninput="majReglages(true)">
+            <div class="aide">Étirement appliqué par le moteur : la hauteur de la voix ne change pas.
+              Le moteur étire la sortie du décodeur, et s'éloigner de 1,00 abîme l'élocution :
+              la course s'arrête donc à 0,80 et 1,20. Pour un écart plus grand, mieux vaut écrire
+              le texte autrement que forcer le moteur.</div>
           </div>
         </div>
-        <label class="check" style="margin-top:4px"><input type="checkbox" id="boost" checked>
-          <span>Renforcement du locuteur : améliore la ressemblance, allonge légèrement le calcul.</span></label>
-        <div class="aide inerte" id="inerteBoost" style="display:none"></div>
       </div>
 
       <div class="sec">Commande directe du moteur
@@ -792,8 +782,8 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
         <div id="reglagesAvance" style="margin-top:13px">
           <div class="grid2">
             <div class="champ">
-              <div class="curs-tete"><span>Température</span><span class="curs-val" id="vTemperature">0,58</span></div>
-              <input type="range" id="temperature" min="0.05" max="1.2" step="0.01" value="0.58" oninput="majAvance(true)">
+              <div class="curs-tete"><span>Température</span><span class="curs-val" id="vTemperature">0,65</span></div>
+              <input type="range" id="temperature" min="0.05" max="1.2" step="0.01" value="0.65" oninput="majAvance(true)">
               <div class="aide">Liberté laissée au moteur. Basse : lecture sage et répétable. Haute : plus de relief, plus d'accidents.</div>
             </div>
             <div class="champ">
@@ -836,15 +826,18 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
           </div>
 
           <div class="champ" style="margin-top:13px">
-            <label class="lbl" for="graine">Graine</label>
-            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <label class="lbl">Graine</label>
+            <label class="check"><input type="checkbox" id="graineFixe" onchange="majAvance(true)">
+              <span>Fixer la graine pour obtenir deux fois le même audio.</span></label>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px">
               <input type="text" id="graine" value="1234" style="flex:1;min-width:140px" oninput="majAvance(true)">
               <button class="btn btn-g btn-sm" onclick="graineAleatoire()">Tirer au hasard</button>
             </div>
             <div class="aide">
-              Deux générations de même graine et de mêmes réglages donnent le même audio. Changer de graine
-              donne une autre interprétation du même texte, sans rien changer d'autre : c'est le moyen de
-              relancer un essai qui ne vous plaît pas.
+              Décoché, chaque génération est un tirage neuf : relancer donne une autre interprétation du
+              même texte. C'est le recours quand une phrase est mal dite.
+              Coché, deux générations de mêmes réglages donnent le même audio — utile pour comparer un
+              réglage, mais une mauvaise interprétation revient alors à l'identique.
             </div>
           </div>
 
@@ -1995,7 +1988,6 @@ function choisirFournisseur(f){
   enregistrerFournisseur();
   majConnexion();
   majEtat();
-  majEffetDesReglages();
 }
 
 function enregistrerFournisseur(){
@@ -2070,28 +2062,11 @@ function basculerOptionsMicro(){ basculer('optionsMicro'); }
 function basculerPhrases(){ basculer('zonePhrases'); }
 
 /* Ligne d'état de la connexion, en tête de l'étape 02. */
-/* Dit lesquels de ces réglages agissent, selon le fournisseur.
-
-   Le moteur local ne lit ni la similarité, ni l'expressivité, ni le
-   renforcement du locuteur : ce sont des paramètres du service distant. Les
-   laisser présentés comme actifs poussait à les régler pour rien — et, pire,
-   les bouger bascule le style en personnalisé, ce qui changeait le rythme
-   sans rien améliorer. */
-const REGLAGES_SANS_EFFET_EN_LOCAL = [
-  ['inerteSim',   'Sans effet sur le serveur local : le moteur ne lit pas ce réglage.'],
-  ['inerteStyle', 'Sans effet sur le serveur local : le moteur ne lit pas ce réglage.'],
-  ['inerteBoost', 'Sans effet sur le serveur local : le moteur ne lit pas ce réglage.']
-];
-
-function majEffetDesReglages(){
-  const local = (etat.fournisseur === 'local');
-  for(const [id, texte] of REGLAGES_SANS_EFFET_EN_LOCAL){
-    const e = $(id);
-    if(!e) continue;
-    e.textContent = local ? texte : '';
-    e.style.display = local ? 'block' : 'none';
-  }
-}
+/* La similarité, l'expressivité et le renforcement du locuteur ont été
+   retirés : aucun moteur local ne les lit. Les annoncer comme inertes ne
+   suffisait pas — un réglage affiché finit par être réglé, et le bouger
+   basculait le style en « Personnalisé », ce qui changeait le rythme sans
+   rien améliorer. Un réglage sans effet n'a pas sa place à l'écran. */
 
 function majConnexion(){
   const titre = $('titreConnexion'), detail = $('detailConnexion'), pastille = $('dotConnexion');
@@ -2620,23 +2595,23 @@ async function supprimerVoix(id, nom){
    segmenter  : découpe aussi aux virgules, pour une élocution détachée          */
 
 const ELOCUTIONS = {
-  narrateur:    {stab:.80, expr:.10, debit:0.95, preset:'podcast',   pauses:'marquees', segmenter:false,
+  narrateur:    {stab:.80, debit:0.95, preset:'podcast',   pauses:'marquees', segmenter:false,
                  desc:"Débit régulier, peu de relief, respirations franches entre les phrases. Pour un texte long qu'on écoute sans se concentrer."},
-  enseignant:   {stab:.50, expr:.35, debit:1.10, preset:'radio',     pauses:'marquees', segmenter:true,
+  enseignant:   {stab:.50, debit:1.10, preset:'radio',     pauses:'marquees', segmenter:true,
                  desc:"Propositions détachées les unes des autres, ce qui appuie les débuts et fins de phrase. Rythme soutenu, articulation marquée."},
-  short:        {stab:.25, expr:.70, debit:1.30, preset:'annonce',   pauses:'aucune',   segmenter:true,
+  short:        {stab:.25, debit:1.30, preset:'annonce',   pauses:'aucune',   segmenter:true,
                  desc:"Très rapide, très expressif, sans temps mort. Pour des formats courts où l'attention se perd en deux secondes."},
-  publicite:    {stab:.30, expr:.60, debit:1.15, preset:'annonce',   pauses:'moderees', segmenter:true,
+  publicite:    {stab:.30, debit:1.15, preset:'annonce',   pauses:'moderees', segmenter:true,
                  desc:"Énergique et percutant, voix très en avant par une compression forte. Pour une annonce de trente secondes."},
-  journal:      {stab:.80, expr:.15, debit:1.00, preset:'radio',     pauses:'moderees', segmenter:false,
+  journal:      {stab:.80, debit:1.00, preset:'radio',     pauses:'moderees', segmenter:false,
                  desc:"Neutre et crédible, débit constant, aucune emphase. Le style attendu pour une information factuelle."},
-  livre:        {stab:.65, expr:.35, debit:0.90, preset:'podcast',   pauses:'marquees', segmenter:false,
+  livre:        {stab:.65, debit:0.90, preset:'podcast',   pauses:'marquees', segmenter:false,
                  desc:"Plus lent, chaleureux, avec de vraies respirations. Tient à l'écoute sur la durée sans fatiguer."},
-  documentaire: {stab:.75, expr:.25, debit:0.90, preset:'podcast',   pauses:'marquees', segmenter:false,
+  documentaire: {stab:.75, debit:0.90, preset:'podcast',   pauses:'marquees', segmenter:false,
                  desc:"Grave et posé, silences assumés. L'autorité vient de la lenteur, pas de l'insistance."},
-  accueil:      {stab:.85, expr:.10, debit:0.95, preset:'telephone', pauses:'marquees', segmenter:true,
+  accueil:      {stab:.85, debit:0.95, preset:'telephone', pauses:'marquees', segmenter:true,
                  desc:"Très articulé, chaque information détachée, bande passante réduite comme au téléphone. Pour un message d'accueil ou un serveur vocal."},
-  conversation: {stab:.40, expr:.45, debit:1.05, preset:'podcast',   pauses:'moderees', segmenter:false,
+  conversation: {stab:.40, debit:1.05, preset:'podcast',   pauses:'moderees', segmenter:false,
                  desc:"Naturel et familier, variations libres. Pour s'adresser à quelqu'un plutôt que de lui lire un texte."}
 };
 
@@ -2652,7 +2627,6 @@ function appliquerElocution(){
        basculement en personnalisé. */
     etat.miseEnForme = {segmenter: e.segmenter, pauses: e.pauses};
     $('stabilite').value = e.stab;
-    $('style').value     = e.expr;
     $('debit').value     = e.debit;
     majReglages();
     $('preset').value = e.preset;
@@ -2677,7 +2651,10 @@ function basculerAvance(){ basculer('blocAvance', $('btnAvance')); }
 function valeursDeduites(){
   const s = parseFloat($('stabilite').value);
   return {
-    temperature: Math.max(0.05, 0.85 - 0.55 * s),
+    /* Doit rester identique au calcul du serveur : cet écran annonce ce que
+       le serveur déduirait, et deux formules divergentes le feraient mentir.
+       verifier.js impose l'égalité. */
+    temperature: Math.max(0.05, 0.85 - 0.40 * s),
     topP:        Math.max(0.10, 0.95 - 0.30 * s),
     topK:        Math.max(1, Math.round(50 - 30 * s)),
     repetition:  10,
@@ -2695,13 +2672,17 @@ function reinitialiserAvance(){
   $('pauseCourte').value = 280;
   $('pauseLongue').value = 550;
   $('decoupage').value   = 'auto';
+  $('graineFixe').checked = false;
   $('avanceActif').checked = false;
   majAvance();
   toast('Réglages du moteur rétablis.', 'ok');
 }
 
+/* Tirer une graine n'a de sens que si on la fixe : sinon le serveur en tire
+   une neuve à chaque génération, et celle affichée ne servirait à rien. */
 function graineAleatoire(){
   $('graine').value = String(Math.floor(Math.random() * 1000000));
+  $('graineFixe').checked = true;
   majAvance(true);
 }
 
@@ -2721,7 +2702,8 @@ function majAvance(){
 
 function enregistrerAvance(){
   if(!bd) return;
-  const v = {actif: avanceActif(), decoupage: $('decoupage').value, graine: $('graine').value};
+  const v = {actif: avanceActif(), decoupage: $('decoupage').value,
+             graine: $('graine').value, graineFixe: $('graineFixe').checked};
   CURSEURS_AVANCE.forEach(id => v[id] = parseFloat($(id).value));
   bdEcrire('config', {cle:'avance', valeur:v});
 }
@@ -2742,8 +2724,13 @@ function reglagesMoteur(){
   if(forme && PAUSES_DE_PHRASE[forme.pauses] !== undefined){
     v.pause_phrase = PAUSES_DE_PHRASE[forme.pauses];
   }
-  const graine = parseInt($('graine').value, 10);
-  if(!isNaN(graine)) v.seed = graine;
+  /* La graine n'est transmise que si l'on demande à la fixer. Envoyée en
+     permanence, elle rendait chaque génération identique à la précédente :
+     une phrase mal dite le restait, et relancer n'y changeait rien. */
+  if($('graineFixe').checked){
+    const graine = parseInt($('graine').value, 10);
+    if(!isNaN(graine)) v.seed = graine;
+  }
   if(!avanceActif()) return v;
 
   v.temperature        = parseFloat($('temperature').value);
@@ -3049,8 +3036,6 @@ function majReglages(perso){
   }
   const f = n => n.toFixed(2).replace('.', ',');
   $('vStab').textContent  = f(parseFloat($('stabilite').value));
-  $('vSim').textContent   = f(parseFloat($('similarite').value));
-  $('vStyle').textContent = f(parseFloat($('style').value));
   $('vDebit').textContent = f(parseFloat($('debit').value)) + ' ×';
   majCompteur();
 }
@@ -4385,9 +4370,6 @@ async function synthetiser(){
       model_id: $('modele').value,
       voice_settings:{
         stability: parseFloat($('stabilite').value),
-        similarity_boost: parseFloat($('similarite').value),
-        style: parseFloat($('style').value),
-        use_speaker_boost: $('boost').checked,
         speed: parseFloat($('debit').value),
         /* Ignorés par le service distant, appliqués par le serveur local. */
         denoise: $('debruitage').value,
@@ -5034,6 +5016,7 @@ async function demarrer(){
         CURSEURS_AVANCE.forEach(id => { if(typeof v[id] === 'number') $(id).value = v[id]; });
         if(v.decoupage) $('decoupage').value = v.decoupage;
         if(v.graine) $('graine').value = v.graine;
+        $('graineFixe').checked = !!v.graineFixe;
         $('avanceActif').checked = !!v.actif;
         /* Sans ce rappel, les valeurs affichées resteraient celles du départ
            alors que les curseurs portent déjà les valeurs restaurées. */

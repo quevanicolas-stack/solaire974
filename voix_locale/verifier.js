@@ -228,6 +228,65 @@ async function creerVoix(page, nom) {
   verifier('Commande directe du moteur présente',
     (await page.locator('#temperature, #topP, #topK, #graine').count()) === 4);
 
+  // Les reglages qu'aucun moteur local ne lit ont ete retires. Un reglage
+  // sans effet finit par etre regle, et le bouger basculait le style en
+  // « Personnalise », ce qui changeait le rythme sans rien ameliorer.
+  const retires = await page.evaluate(() => {
+    const ids = ['similarite', 'style', 'boost'].filter(i => document.getElementById(i));
+    const envoye = Object.keys(reglagesMoteur());
+    return { ids, envoye };
+  });
+  verifier('Similarité, expressivité et renforcement du locuteur retirés de la page',
+    retires.ids.length === 0, retires.ids.join(' ') || 'aucun reliquat');
+  verifier('Aucun de ces réglages n\'est encore transmis au moteur',
+    !['similarity_boost', 'style', 'use_speaker_boost'].some(k => retires.envoye.includes(k)),
+    retires.envoye.join(' '));
+
+  // La graine etait envoyee a chaque generation et valait 1234 par defaut :
+  // meme texte, meme audio a l'octet pres. Une phrase mal dite le restait, et
+  // relancer n'y changeait rien. Elle ne part plus que si on la fixe.
+  const graine = await page.evaluate(() => {
+    document.getElementById('graineFixe').checked = false;
+    const libre = reglagesMoteur().seed;
+    document.getElementById('graineFixe').checked = true;
+    document.getElementById('graine').value = '4321';
+    const fixee = reglagesMoteur().seed;
+    document.getElementById('graineFixe').checked = false;
+    return { libre, fixee };
+  });
+  verifier('Aucune graine n\'est transmise par défaut',
+    graine.libre === undefined, 'graine envoyée : ' + String(graine.libre));
+  verifier('La graine n\'est transmise que si on la fixe',
+    graine.fixee === 4321, String(graine.fixee));
+
+  // L'ecran annonce ce que le serveur deduirait : deux formules divergentes le
+  // feraient mentir. La pente s'arrete a 0,45 pour ne pas pousser le decodeur
+  // dans la zone ou il boucle.
+  const deduites = await page.evaluate(() => {
+    const c = document.getElementById('stabilite');
+    const avant = c.value;
+    const lire = (v) => { c.value = v; return valeursDeduites().temperature; };
+    const sortie = { bas: lire(0), milieu: lire(0.5), haut: lire(1) };
+    c.value = avant;
+    return sortie;
+  });
+  verifier('La température déduite suit la pente attendue',
+    Math.abs(deduites.bas - 0.85) < 1e-9 && Math.abs(deduites.milieu - 0.65) < 1e-9 &&
+    Math.abs(deduites.haut - 0.45) < 1e-9,
+    [deduites.bas, deduites.milieu, deduites.haut].map(v => v.toFixed(2)).join(' / '));
+  verifier('La stabilité maximale ne descend pas dans la zone de bouclage',
+    deduites.haut >= 0.45 - 1e-9, 'température à stabilité 1 : ' + deduites.haut.toFixed(2));
+
+  // Le debit est un etirement applique par le moteur : loin de 1,00 il abime
+  // l'elocution. La course s'arrete donc avant.
+  const debit = await page.evaluate(() => {
+    const d = document.getElementById('debit');
+    return { min: parseFloat(d.min), max: parseFloat(d.max) };
+  });
+  verifier('La course du débit reste dans la zone saine du moteur',
+    debit.min >= 0.8 - 1e-9 && debit.max <= 1.2 + 1e-9,
+    debit.min + ' à ' + debit.max);
+
   for (const [maj, cle] of [['Graves','graves'],['BasMed','basMed'],['Mediums','mediums'],
                             ['Aigus','aigus'],['Deess','deess']]) {
     verifier('Bande « ' + cle + ' » réglable en gain, fréquence et largeur',

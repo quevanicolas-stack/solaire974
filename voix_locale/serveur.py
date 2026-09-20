@@ -37,7 +37,7 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 
 RACINE = Path(__file__).resolve().parent
 DOSSIER_VOIX = RACINE / "donnees" / "voix"
-VERSION = "2026.09.20d"     # affichée au démarrage et sur « / » : sert à vérifier
+VERSION = "2026.09.20e"     # affichée au démarrage et sur « / » : sert à vérifier
                            # que le fichier en place est bien le dernier
 FREQUENCE = 24000          # fréquence d'échantillonnage de sortie, en hertz
 """
@@ -559,8 +559,12 @@ def prononcer(moteur, texte: str, reference: Path, reglages: dict) -> tuple[byte
         return moteur.synthetiser(texte.strip(), reference, reglages)
 
     morceaux = []
-    for segment, nature in segments:
-        audio, mime = moteur.synthetiser(segment, reference, reglages)
+    for indice, (segment, nature) in enumerate(segments):
+        # Le rang du morceau décale la graine, quand il y en a une : chaque
+        # morceau part alors d'un état différent du générateur, sans que la
+        # génération cesse d'être reproductible.
+        audio, mime = moteur.synthetiser(
+            segment, reference, {**reglages, "_morceau": indice})
         if mime != "audio/wav":
             # Un moteur qui ne rend pas du WAV ne peut pas être recollé ici :
             # on repasse par une seule prononciation, sans pauses maîtrisées.
@@ -739,7 +743,10 @@ class MoteurTest(Moteur):
         total = int(FREQUENCE * syllabes * duree_syllabe)
         echantillons = []
 
-        base = 130.0 + 40.0 * float(reglages.get("similarity_boost", 0.75))
+        # Hauteur fixe : ce signal ne sert qu'à valider la chaîne, et la
+        # similarité dont il tirait sa hauteur n'existe plus — aucun moteur
+        # local ne la lisait.
+        base = 160.0
         for i in range(total):
             t = i / FREQUENCE
             position = t / duree_syllabe
@@ -919,14 +926,31 @@ class MoteurXTTS(Moteur):
             # rééchantillonnage : la hauteur de la voix n'est pas modifiée.
             vitesse = max(0.5, min(2.0, float(reglages.get("speed") or 1.0)))
 
-            # Même graine à chaque morceau : deux phrases voisines sont alors
-            # prononcées sur le même tirage, et non sur deux tirages étrangers
-            # l'un à l'autre. C'est la première cause des écarts de débit.
-            try:
-                import torch
-                torch.manual_seed(int(reglages.get("seed") or 1234))
-            except Exception:
-                pass
+            # Graine libre par défaut.
+            #
+            # Elle était fixée à 1234 dès qu'aucune valeur n'arrivait, et
+            # l'application en envoyait une en permanence. Même texte, mêmes
+            # réglages : le moteur rendait le même audio à l'octet près. Une
+            # mauvaise interprétation — une pause au milieu d'une phrase, un
+            # membre de phrase répété — devenait donc définitive, et relancer
+            # la génération ne pouvait rien y changer.
+            #
+            # Sans graine, chaque génération est un tirage neuf : relancer
+            # redevient le recours. Avec une graine, la génération reste
+            # reproductible.
+            #
+            # La graine est alors décalée d'un morceau à l'autre. La même
+            # graine pour tous ne les rendait pas solidaires : deux textes
+            # différents divergent dès le premier jeton. Elle faisait seulement
+            # repartir chaque morceau du même état du générateur — donc, sur un
+            # texte long, le même accident possible à chaque reprise.
+            graine = reglages.get("seed")
+            if graine not in (None, ""):
+                try:
+                    import torch
+                    torch.manual_seed(int(graine) + int(reglages.get("_morceau") or 0))
+                except Exception:
+                    pass
 
             # La stabilité resserre aussi l'échantillonnage, pas seulement la
             # température : à stabilité haute, le modèle choisit parmi moins de
@@ -965,7 +989,13 @@ class MoteurXTTS(Moteur):
                 **conditionnement,
                 language="fr",
                 file_path=str(sortie),
-                temperature=choix("temperature", max(0.01, 0.85 - 0.55 * stabilite), 0.01, 1.5),
+                # La pente s'arrête à 0,45 et non à 0,30. Une température
+                # basse ne rend pas un décodeur autorégressif plus sage : elle
+                # le fait boucler, et une boucle s'entend comme un membre de
+                # phrase répété. Le curseur garde toute sa course, seule la
+                # pente change. Déduction raisonnée, non vérifiée à l'oreille
+                # — XTTS ne tourne pas ici : réversible en une ligne.
+                temperature=choix("temperature", max(0.01, 0.85 - 0.40 * stabilite), 0.01, 1.5),
                 top_p=choix("top_p", max(0.50, 0.95 - 0.30 * stabilite), 0.05, 1.0),
                 top_k=choix("top_k", max(10, int(50 - 30 * stabilite)), 1, 100, entier=True),
                 repetition_penalty=choix("repetition_penalty", 10.0, 1.0, 20.0),
