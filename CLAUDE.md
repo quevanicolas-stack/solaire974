@@ -36,20 +36,20 @@ Fichier unique : `solaire974_3_4_5.html` (2,6 Mo, ~2100 lignes de code applicati
 Seconde application du dépôt, indépendante du calculateur solaire.
 Fichier unique : `clonage_voix.html` (HTML/CSS/JS vanilla, même charte graphique que l'appli solaire).
 4 pages : consentement, voix (connexion, enregistrement, création), synthèse, bibliothèque.
-Serveur local optionnel : `voix_locale/serveur.py` (FastAPI), qui expose les mêmes routes que le service distant et sert aussi la page sur `/app`.
+Serveur : `voix_locale/serveur.py` (FastAPI), qui porte le moteur XTTS et sert aussi la page sur `/app`. C'est le seul service — le fournisseur distant a été retiré.
 
 ## Règles verrouillées — ne jamais modifier sans demande explicite
 - Page 01 = verrou de consentement. Elle bloque l'accès à toutes les autres pages tant qu'elle n'est pas validée : ne jamais la contourner, la rendre optionnelle ni la retirer.
 - Les quatre engagements de la page 01 sont obligatoires et cumulatifs.
 - Bandeau permanent « Contenu synthétique » en haut de l'application.
 - Les fichiers générés portent le préfixe `voix-synthetique_` dans leur nom : ne pas le retirer.
-- La clé d'accès reste côté navigateur (`sessionStorage`, ou `localStorage` sur choix explicite). Ne jamais l'écrire en dur dans le fichier ni la transmettre ailleurs qu'au fournisseur.
+- **Aucune clé, aucun appel distant.** Le service distant, son catalogue de voix, sa clé d'accès et son choix de modèle ont été retirés : tout se passe sur la machine. Ne jamais réintroduire d'appel hors du serveur local — `verifier.js` impose l'absence de toute adresse distante dans le fichier.
 - Le mode démonstration doit toujours annoncer qu'il n'utilise pas la voix enregistrée.
 - Responsive : bascule mobile à ≤ 860 px.
 
 ## Contraintes de code
 - Mêmes règles que l'appli solaire : tout en français, pas d'emojis, vanilla JS, fichier unique.
-- Exception à la règle « aucun réseau » : le clonage et la synthèse appellent `api.elevenlabs.io`. Aucune autre dépendance distante, aucun CDN.
+- Aucun réseau, sans exception : la page ne parle qu'au serveur local. Aucun CDN, aucune adresse distante.
 - Stockage local des échantillons et des audios générés en IndexedDB (base `studio_voix`).
 
 ## Notes techniques
@@ -91,6 +91,9 @@ Serveur local optionnel : `voix_locale/serveur.py` (FastAPI), qui expose les mê
 - Mise au niveau en LUFS (UIT-R BS.1770) implémentée dans la page, en dernier maillon : toute correction postérieure ferait manquer la cible. Mesure vérifiée contre `ebur128` de ffmpeg, écart inférieur à 0,05 LUFS.
 - Plafond de qualité assumé : le moteur sort du 24 kHz, donc rien au-dessus de 12 kHz. Ne jamais présenter une conversion en 48 kHz comme un gain de finesse.
 - Trois versions par génération (non traitée, vos réglages, proposition) pour une seule prononciation : le drapeau `variantes` fait renvoyer du JSON base64. Ne jamais synthétiser trois fois le même texte pour comparer, chaque prononciation diffère.
+- **Retouche après génération** (`retoucher`) : tout ce qui suit la sortie du moteur — égaliseur, compression, porte, rognage, mise au niveau, format — est calculé dans le navigateur, donc rejouable sans refaire parler le moteur. C'est même la seule façon honnête de comparer deux réglages : regénérer donnerait une autre prononciation. La retouche repart **toujours** de `g.source`, l'audio non égalisé ; repartir de la version affichée empilerait l'égaliseur sur lui-même à chaque essai. `verifier.js` impose que deux retouches identiques donnent le même son au bit près, et qu'un retour à un réglage précédent le reproduise exactement.
+- Deux familles de réglages échappent à la retouche et demandent une nouvelle génération : la **suppression du bruit de fond**, faite par le serveur avant l'envoi, et tout ce qui touche à la **voix elle-même** (stabilité, débit, graine, texte, style). La page le dit sous le bouton.
+- Après une retouche, la version « vos réglages » déjà déposée en bibliothèque ne correspond plus : `versionChargee` repasse à vide et le bouton redit « Charger ».
 - L'écran de génération ne télécharge rien et **n'enregistre rien** : on y écoute, on y compare, et « Charger » dépose en bibliothèque la seule version choisie. La génération attend dans `etat.generationEnCours` ; quitter l'étape sans choisir la perd, et c'est voulu — la bibliothèque ne contient que ce qu'on a décidé d'y mettre. Charger une seconde fois remplace l'entrée au lieu d'en ajouter une.
 - Une entrée de bibliothèque ne porte **qu'un audio**, jamais trois : un seul lecteur, un seul bouton de téléchargement. `versionRetenue()` sait encore lire les entrées des versions antérieures, qui en portaient trois.
 - `calculerCorrection` a besoin de la version **non traitée**, seule à décrire le moteur seul. Aucun réglage de traitement n'entre donc dans la mesure : la version non traitée sort du moteur avec `debruitage: "aucun"` et ne passe pas par l'égaliseur de la page.
@@ -105,8 +108,7 @@ Serveur local optionnel : `voix_locale/serveur.py` (FastAPI), qui expose les mê
 - La proposition est déduite des mesures (`mesurer_wav` côté serveur, `mesurerAudio` côté page) et motivée à l'écran, valeur par valeur. Aucun réglage n'y est décidé à l'avance.
 - La commande directe du moteur expose tous les paramètres d'inférence. Ils ne sont transmis que si l'utilisateur prend la main ; sinon le serveur les déduit de la stabilité.
 - `VERSION` dans `serveur.py` est exposée sur `/` et `/v1/user` : c'est le moyen de vérifier quel fichier tourne réellement chez l'utilisateur.
-- Le clonage instantané exige un abonnement payant chez le fournisseur ; les offres gratuites le refusent.
-- Ouvert en `file://`, le navigateur bloque les appels distants : servir la page par un serveur local (`npx http-server`) pour tester le clonage réel.
+- Ouvert en `file://`, le navigateur bloque les appels : ouvrir la page servie par le serveur lui-même, sur `/app`.
 - `voix_locale/lancer.sh` démarre le serveur en une commande, depuis n'importe quel dossier : il se place lui-même au bon endroit et appelle `venv/bin/python` sans activation. Les deux lignes d'avant échouaient dès qu'une nouvelle fenêtre de Terminal s'ouvrait dans le dossier personnel — constaté deux fois. Ctrl+C arrête le serveur sans fermer la fenêtre ; la notice le dit désormais.
 - Micro depuis un téléphone : `--hote 0.0.0.0` ne suffit pas, les navigateurs n'ouvrent `getUserMedia` que sur un contexte sûr. `--https` émet un certificat auto-signé portant l'adresse du Mac en `subjectAltName` — sans cette extension, le navigateur le rejette même après acceptation de l'exception.
 - Matière de référence : XTTS calcule une empreinte **par fichier** fourni et en fait la moyenne, en ne lisant que le début de chacun (`max_ref_len` = 10 s, `gpt_cond_len` = 12 s par défaut). Une référence concaténée en un seul fichier se réduit donc à dix secondes, quelle que soit sa longueur. D'où `decouper_reference()` : la référence est découpée en tranches de 30 s, chaque tranche devient une empreinte de plus, et les trois durées sont transmises explicitement (`REF_EMPREINTE`, `REF_PROSODIE`). Ne jamais revenir à un fichier unique ni laisser les valeurs par défaut.

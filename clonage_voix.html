@@ -387,92 +387,21 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
         </div>
 
         <div id="zoneApi">
-          <div class="sec">Type de voix</div>
-          <div class="card">
-            <div class="radios">
-              <label class="radio sel" id="radioClonee" onclick="choisirTypeVoix('clonee')">
-                <input type="radio" name="typeVoix" id="typeClonee" checked>
-                <div>
-                  <div class="radio-t">Voix clonée</div>
-                  <div class="radio-d">Reproduit une voix que vous enregistrez.</div>
-                </div>
-              </label>
-              <label class="radio" id="radioCatalogue" onclick="choisirTypeVoix('catalogue')">
-                <input type="radio" name="typeVoix" id="typeCatalogue">
-                <div>
-                  <div class="radio-t">Voix du catalogue</div>
-                  <div class="radio-d">Voix toutes faites du service distant. Aucun enregistrement requis.</div>
-                </div>
-              </label>
-            </div>
-            <div class="note n-blu" id="noteCatalogue" style="display:none;margin-top:13px">
-              Le catalogue appartient au service distant : il exige une clé d'accès, et le serveur local
-              ne le propose pas. Aucune voix n'est clonée dans ce cas.
-            </div>
-          </div>
-
           <div id="blocFournisseur">
-            <div class="sec">Fournisseur</div>
+            <div class="sec">Serveur local</div>
             <div class="card">
-              <div class="radios">
-                <label class="radio sel" id="radioLocal" onclick="choisirFournisseur('local')">
-                  <input type="radio" name="fournisseur" id="fournLocal" checked>
-                  <div>
-                    <div class="radio-t">Serveur local</div>
-                    <div class="radio-d">Gratuit et hors ligne. Rien ne quitte la machine. Exige le serveur lancé.</div>
-                  </div>
-                </label>
-                <label class="radio" id="radioDistant" onclick="choisirFournisseur('distant')">
-                  <input type="radio" name="fournisseur" id="fournDistant">
-                  <div>
-                    <div class="radio-t">Service distant</div>
-                    <div class="radio-d">Sert de point de comparaison. Abonnement payant, les échantillons quittent la machine.</div>
-                  </div>
-                </label>
-              </div>
-              <div class="champ" id="champUrlLocale" style="display:none;margin-top:13px">
+              <div class="champ" id="champUrlLocale">
                 <label class="lbl">Adresse du serveur local</label>
                 <input type="text" id="urlLocale" value="" placeholder="http://127.0.0.1:8770" oninput="majEtat()" onchange="enregistrerFournisseur()">
                 <div class="aide">
-                  Lancez le serveur avec <span class="kv-v">python serveur.py --moteur xtts</span>
-                  depuis le dossier <span class="kv-v">voix_locale</span>, puis vérifiez la connexion.
-                  Aucune clé n'est nécessaire dans ce mode.
+                  Lancez le serveur avec <span class="kv-v">voix_locale/lancer.sh</span>, puis vérifiez
+                  la connexion. Aucune clé n'est nécessaire : tout le calcul a lieu sur cette machine et
+                  rien ne sort du réseau local.
                 </div>
               </div>
             </div>
           </div>
 
-          <div id="blocCle">
-            <div class="sec">Clé d'accès</div>
-            <div class="card">
-              <div class="champ">
-                <label class="lbl">Clé d'interface de programmation<span class="obl">*</span></label>
-                <input type="password" id="cleApi" placeholder="Collez votre clé ici" autocomplete="off" oninput="majEtat()">
-                <div class="aide">
-                  La clé reste dans ce navigateur et n'est envoyée qu'au fournisseur du service.
-                  Elle n'est transmise à aucun autre serveur et ne figure dans aucun fichier du projet.
-                </div>
-              </div>
-              <label class="check"><input type="checkbox" id="memoCle">
-                <span>Mémoriser la clé sur cet appareil. Sans cette option elle est oubliée à la fermeture de l'onglet.</span></label>
-              <button class="btn btn-g btn-sm" style="margin-top:12px" onclick="oublierCle()">Oublier la clé</button>
-            </div>
-          </div>
-
-          <div id="blocModele">
-            <div class="sec">Moteur de synthèse</div>
-            <div class="card">
-              <div class="champ">
-                <label class="lbl">Modèle</label>
-                <select id="modele">
-                  <option value="eleven_multilingual_v2">Multilingue v2 — meilleure qualité, recommandé en français</option>
-                  <option value="eleven_turbo_v2_5">Turbo v2.5 — plus rapide, qualité légèrement inférieure</option>
-                  <option value="eleven_flash_v2_5">Flash v2.5 — latence minimale, qualité la plus basse</option>
-                </select>
-                <div class="aide">Le multilingue v2 restitue le mieux les accents et la prosodie du français.</div>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -487,32 +416,6 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
         </div>
       </div>
 
-      <!-- ─── Catalogue du service distant ─── -->
-      <div id="zoneCatalogue" style="display:none">
-        <div class="note n-blu">
-          <div class="note-t">Voix toutes faites</div>
-          Ces voix appartiennent au service distant. Aucune personne de votre entourage n'est reproduite,
-          et aucun échantillon n'est envoyé. Le rendu reste une voix de synthèse et doit être présenté
-          comme tel. Vérifiez les conditions d'utilisation du fournisseur avant tout usage commercial.
-          <div style="margin-top:10px">
-            <button class="btn btn-g btn-sm" onclick="revenirAuClonage()">Enregistrer ma voix à la place</button>
-          </div>
-        </div>
-        <div class="sec">Choisir une voix</div>
-        <div class="card">
-          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
-            <div class="champ" style="flex:1;min-width:200px;margin-bottom:0">
-              <label class="lbl">Filtrer</label>
-              <input type="text" id="filtreCatalogue" placeholder="Nom, genre, accent, usage" oninput="afficherCatalogue()">
-            </div>
-            <button class="btn btn-g" id="btnCatalogue" onclick="listerCatalogue()">Charger le catalogue</button>
-          </div>
-          <div class="aide" style="margin-top:8px">
-            Écoutez l'extrait avant de choisir. Le nombre de voix dépend de l'offre du compte.
-          </div>
-          <div id="listeCatalogue" style="margin-top:14px"></div>
-        </div>
-      </div>
 
       <!-- ─── Voix clonées ─── -->
       <div id="zoneCreation">
@@ -773,7 +676,6 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
           Ces valeurs sont normalement déduites des curseurs ci-dessus. En les reprenant à la main,
           vous court-circuitez cette déduction : c'est ce qui permet d'aller plus loin, et aussi ce qui
           permet de tout dérégler. Le bouton en bas rétablit la déduction automatique.
-          Sans effet sur le service distant, qui n'expose pas ces réglages.
         </div>
 
         <label class="check" style="margin-top:13px"><input type="checkbox" id="avanceActif" onchange="majAvance()">
@@ -860,7 +762,7 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
           <div class="aide">
             Traitement effectué par le serveur, sur le grain qui persiste <em>sous</em> la parole.
             La porte ci-dessous ne peut rien contre celui-là : couper à cet endroit, ce serait couper
-            la voix. Sans effet sur le service distant, qui produit son audio lui-même.
+            la voix.
           </div>
         </div>
         <label class="check"><input type="checkbox" id="nettoyageActif" checked onchange="majNettoyage()">
@@ -1136,8 +1038,8 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
         <div class="note n-red" style="margin:0">
           <div class="note-t">Effacement total</div>
           Si la personne retire son accord, tout doit disparaître : échantillons, audios générés et voix
-          chez le fournisseur. La suppression locale est immédiate ; la voix distante doit être supprimée
-          depuis l'étape 04 ou depuis le compte du fournisseur.
+          créées. Tout est sur cette machine : la suppression locale suffit, et les voix elles-mêmes se
+          suppriment depuis l'étape 04.
         </div>
         <button class="btn btn-r" style="width:100%;justify-content:center;margin-top:12px" onclick="toutEffacer()">
           Effacer toutes les données locales
@@ -1169,7 +1071,6 @@ const PAGES = [
   {t:'Bibliothèque'}
 ];
 
-const API_DISTANTE = 'https://api.elevenlabs.io/v1';
 /* Durées, et pourquoi celles-ci.
 
    Le clonage instantané ne lit pas la matière comme un apprentissage. Le moteur
@@ -1194,9 +1095,6 @@ const etat = {
   consentement:null,     // objet figé au moment de la validation
   echantillons:[],       // {id, nom, blob, duree, type}
   mode:'reel',           // 'reel' | 'demo'
-  fournisseur:'local',   // 'local' | 'distant' — le serveur local est le défaut
-  typeVoix:'clonee',     // 'clonee' | 'catalogue'
-  fournisseurAvant:null, // fournisseur à rétablir en quittant le catalogue
   lexique:[],            // prononciations imposées : {ecrit, dit}
   baseVerbes:true,       // infinitifs en -er dont le R final s'entend
   baseSigles:true,       // sigles lus lettre par lettre
@@ -1383,9 +1281,7 @@ function go(n){
 
   if(n === 1){
     majAffichageEtape4();
-    if(etat.typeVoix === 'catalogue'){
-      afficherCatalogue();
-    } else {
+    {
       majRecapEnvoi();
       listerVoix();   // la bibliothèque de voix est le point d'entrée de l'étape
     }
@@ -1490,7 +1386,7 @@ function exporterConsentement(){
     '',
     'Échantillons conservés : ' + etat.echantillons.length,
     'Audios générés         : ' + etat.generations.length,
-    'Voix distante          : ' + (etat.voixId || 'aucune'),
+    'Voix active            : ' + (etat.voixId || 'aucune'),
     '',
     'Document généré le ' + new Date().toLocaleString('fr-FR') + '.'
   ];
@@ -1908,90 +1804,32 @@ function choisirMode(m){
   majEtat();
 }
 
-/* L'étape 04 sert trois cas : créer une voix clonée, choisir une voix du
-   catalogue, ou rappeler que le mode démonstration ne crée rien. */
+/* L'étape 04 sert deux cas : créer une voix clonée, ou rappeler que le mode
+   démonstration ne crée rien. */
 function majAffichageEtape4(){
   const demo = (etat.mode !== 'reel');
-  const catalogue = (etat.typeVoix === 'catalogue');
-  $('zoneCreation').style.display     = (!demo && !catalogue) ? 'block' : 'none';
-  $('zoneCatalogue').style.display    = (!demo &&  catalogue) ? 'block' : 'none';
+  $('zoneCreation').style.display     = demo ? 'none' : 'block';
   $('zoneCreationDemo').style.display = demo ? 'block' : 'none';
 
   const desc = $('descEtape4');
   if(desc) desc.textContent =
     demo ? 'Le mode démonstration ne reproduit aucune voix enregistrée'
-    : catalogue ? 'Retenir une voix toute faite du service distant'
     : 'Reprendre une voix existante, ou en créer une à partir de vos enregistrements';
 
   majConnexion();
   majAffichageAmelioration();
 }
 
-function choisirTypeVoix(t){
-  const change = (etat.typeVoix !== t);
-  etat.typeVoix = t;
-  $('typeClonee').checked    = (t === 'clonee');
-  $('typeCatalogue').checked = (t === 'catalogue');
-  $('radioClonee').classList.toggle('sel', t === 'clonee');
-  $('radioCatalogue').classList.toggle('sel', t === 'catalogue');
-  $('noteCatalogue').style.display   = (t === 'catalogue') ? 'block' : 'none';
-  /* Le catalogue n'existe que chez le service distant : le choix du
-     fournisseur n'a plus lieu d'être proposé. */
-  $('blocFournisseur').style.display = (t === 'catalogue') ? 'none' : 'block';
-
-  /* Le fournisseur d'avant est retenu puis rétabli au retour. Sans cela, un
-     aller-retour par le catalogue laisse l'application branchée sur le service
-     distant alors que le serveur local tourne, sans que rien ne l'indique. */
-  if(t === 'catalogue'){
-    if(etat.fournisseur !== 'distant'){
-      etat.fournisseurAvant = etat.fournisseur;
-      if(bd) bdEcrire('config', {cle:'fournisseurAvant', valeur:etat.fournisseurAvant});
-      choisirFournisseur('distant');
-    }
-  }else if(etat.fournisseurAvant){
-    const precedent = etat.fournisseurAvant;
-    etat.fournisseurAvant = null;
-    if(bd) bdEffacerLigne('config','fournisseurAvant');
-    choisirFournisseur(precedent);
-  }
-
-  /* Changer de type invalide la voix retenue précédemment, mais rétablir
-     l'affichage au démarrage ne doit rien effacer. */
-  if(change){
-    etat.voixId = null; etat.voixNom = null;
-    if(bd) bdEffacerLigne('config','voix');
-    if(bd) bdEcrire('config', {cle:'typeVoix', valeur:t});
-  }
-  majAffichageEtape4();
-  majEtat();
-}
-
-/* Le catalogue et le mode démonstration masquent l'enregistreur, et le chemin
-   du retour est replié dans les réglages : sans ce raccourci, on ne retrouve
-   plus comment enregistrer sa propre voix. */
+/* Le mode démonstration masque l'enregistreur, et le chemin du retour est
+   replié dans les réglages : sans ce raccourci, on ne retrouve plus comment
+   enregistrer sa propre voix. */
 function revenirAuClonage(){
   if(etat.mode !== 'reel') choisirMode('reel');
-  choisirTypeVoix('clonee');
   toast('Retour au clonage : vous pouvez enregistrer votre voix.', 'ok');
 }
 
-function choisirFournisseur(f){
-  etat.fournisseur = f;
-  $('fournDistant').checked = (f === 'distant');
-  $('fournLocal').checked   = (f === 'local');
-  $('radioDistant').classList.toggle('sel', f === 'distant');
-  $('radioLocal').classList.toggle('sel', f === 'local');
-  $('champUrlLocale').style.display = (f === 'local') ? 'block' : 'none';
-  $('blocCle').style.display        = (f === 'local') ? 'none'  : 'block';
-  $('blocModele').style.display     = (f === 'local') ? 'none'  : 'block';
-  etat.connexion = null;   // changer de fournisseur invalide la vérification
-  enregistrerFournisseur();
-  majConnexion();
-  majEtat();
-}
-
 function enregistrerFournisseur(){
-  if(bd) bdEcrire('config', {cle:'fournisseur', valeur:{nom:etat.fournisseur, url:urlLocale()}});
+  if(bd) bdEcrire('config', {cle:'fournisseur', valeur:{url:urlLocale()}});
 }
 
 /* Adresse du serveur local, par défaut celle d'où vient la page.
@@ -2038,10 +1876,9 @@ function urlCorrigee(){
   }
 }
 
-/* Adresse de base du service, selon le fournisseur retenu. Les deux exposent
-   les mêmes routes : le reste du code n'a pas à savoir lequel répond. */
+/* Adresse de base du service. Il n'y en a plus qu'un : le serveur local. */
 function baseApi(){
-  return etat.fournisseur === 'local' ? urlLocale() + '/v1' : API_DISTANTE;
+  return urlLocale() + '/v1';
 }
 
 function zoneResultatTest(){ return $('resTest'); }
@@ -2079,9 +1916,7 @@ function majConnexion(){
     return;
   }
 
-  titre.textContent = (etat.fournisseur === 'local')
-    ? 'Serveur local — ' + urlLocale()
-    : 'Service distant' + (etat.typeVoix === 'catalogue' ? ' — catalogue' : '');
+  titre.textContent = 'Serveur local — ' + urlLocale();
 
   if(etat.connexion && etat.connexion.ok){
     detail.textContent = etat.connexion.texte;
@@ -2095,33 +1930,10 @@ function majConnexion(){
   }
 }
 
-function cleCourante(){
-  const champ = $('cleApi');
-  return champ ? champ.value.trim() : '';
-}
-
-function memoriserCle(){
-  const cle = cleCourante();
-  if(!cle) return;
-  try{
-    if($('memoCle').checked){ localStorage.setItem('studio_voix_cle', cle); sessionStorage.removeItem('studio_voix_cle'); }
-    else { sessionStorage.setItem('studio_voix_cle', cle); localStorage.removeItem('studio_voix_cle'); }
-  }catch(e){ /* stockage indisponible : la clé reste en mémoire vive */ }
-}
-
-function oublierCle(){
-  try{ localStorage.removeItem('studio_voix_cle'); sessionStorage.removeItem('studio_voix_cle'); }catch(e){}
-  $('cleApi').value = '';
-  $('memoCle').checked = false;
-  $('resTest').innerHTML = '';
-  majEtat();
-  toast('Clé effacée de cet appareil.');
-}
-
+/* Plus aucune clé : le serveur local n'en demande pas, et le service distant
+   a été retiré. L'application ne sort plus de cette machine. */
 function entetes(json){
-  const h = {'xi-api-key': cleCourante()};
-  if(json) h['Content-Type'] = 'application/json';
-  return h;
+  return json ? {'Content-Type': 'application/json'} : {};
 }
 
 /* Traduit une erreur du service en message compréhensible. */
@@ -2133,11 +1945,6 @@ async function messageErreur(reponse){
            (typeof donnees.detail === 'string' ? donnees.detail : '') || '';
   }catch(e){}
 
-  const code = String(brut).toLowerCase();
-  if(reponse.status === 401) return "Clé refusée : vérifiez qu'elle est complète et toujours active.";
-  if(code.indexOf('can_not_use_instant_voice_cloning') >= 0 || code.indexOf('voice_limit') >= 0)
-    return "Le clonage instantané n'est pas inclus dans l'offre du compte. Il faut un abonnement payant chez le fournisseur.";
-  if(reponse.status === 403) return "Accès refusé : l'offre du compte ne permet pas cette opération. " + brut;
   if(reponse.status === 422) return 'Requête refusée : ' + (brut || 'paramètres invalides.');
   if(reponse.status === 429) return 'Trop de requêtes ou quota de caractères épuisé.';
   /* Le serveur local place son diagnostic ici : le transmettre tel quel plutôt
@@ -2163,7 +1970,7 @@ function messageReseau(e){
   if(!pannePossibleDuReseau(e)){
     return "Le traitement de l'audio a échoué dans la page, le serveur n'est pas en cause." + detail;
   }
-  if(etat.fournisseur === 'local'){
+  {
     /* Contenu mixte : le navigateur refuse l'appel avant même de l'émettre.
        Le serveur peut très bien tourner — le dire évite de le chercher. */
     if(melangeInterdit()){
@@ -2182,14 +1989,7 @@ function messageReseau(e){
 }
 
 async function testerConnexion(){
-  const local = (etat.fournisseur === 'local');
-  if(!local){
-    if(!cleCourante()){
-      $('cleApi').classList.add('req-err');
-      toast("Renseignez d'abord la clé d'accès.", 'err');
-      return;
-    }
-    $('cleApi').classList.remove('req-err');
+  {
   }
 
   const bouton = boutonTest(), zone = zoneResultatTest();
@@ -2222,16 +2022,15 @@ async function testerConnexion(){
              'Ce serveur tourne avec le moteur de test : il produit un signal sonore qui ne ressemble ' +
              'à personne. Il sert uniquement à vérifier la chaîne. Relancez-le avec un moteur réel pour cloner.</div>';
     }
-    if(local && d.ffmpeg === false){
+    if(d.ffmpeg === false){
       avis += '<div class="note n-red" style="margin-top:10px">ffmpeg est absent du serveur : ' +
               'la création de voix échouera. Lancez pip install imageio-ffmpeg puis relancez le serveur.</div>';
     }
 
     zone.innerHTML =
       '<div class="note n-grn"><div class="note-t">Connexion établie</div>' +
-      ligneKv(local ? 'Serveur' : 'Offre du compte', abo.tier || 'non communiquée') + detail + '</div>' + avis;
+      ligneKv('Serveur', abo.tier || 'non communiquée') + detail + '</div>' + avis;
     etat.connexion = {ok:true, texte: abo.tier || 'connecté'};
-    if(!local) memoriserCle();
     toast('Connexion établie.', 'ok');
   }catch(e){
     zone.innerHTML = '<div class="note n-red">' + echapper(messageReseau(e)) + '</div>';
@@ -2360,7 +2159,7 @@ async function creerVoix(remplacer){
     etat.echantillons.forEach(e=>donnees.append('files', e.blob, e.nom));
 
     /* Content-Type volontairement omis : le navigateur pose lui-même la frontière multipart. */
-    const r = await fetch(baseApi() + '/voices/add', {method:'POST', headers:{'xi-api-key':cleCourante()}, body:donnees});
+    const r = await fetch(baseApi() + '/voices/add', {method:'POST', body:donnees});
 
     if(!r.ok){
       $('resCreation').innerHTML = '<div class="note n-red">' + echapper(await messageErreur(r)) + '</div>';
@@ -2391,10 +2190,8 @@ async function creerVoix(remplacer){
       '<div class="note n-grn"><div class="note-t">' +
       (ancienne ? 'Voix remplacée' : 'Voix créée') + '</div>' +
       ligneKv('Nom', nom) + ligneKv('Identifiant', d.voice_id) + mention +
-      (d.requires_verification ? ligneKv('Vérification', 'Le fournisseur demande une vérification vocale') : '') +
       '</div>';
     toast(ancienne ? 'Nouvelle version en place.' : 'Voix clonée avec succès.', 'ok');
-    memoriserCle();
     listerVoix();
   }catch(e){
     $('resCreation').innerHTML = '<div class="note n-red">' + echapper(messageReseau(e)) + '</div>';
@@ -2407,8 +2204,8 @@ async function creerVoix(remplacer){
 let voixDistantes = [];   // dernière liste renvoyée par le service
 
 async function listerVoix(){
-  if(etat.mode !== 'reel' || (etat.fournisseur === 'distant' && !cleCourante())){
-    $('listeVoix').innerHTML = '<div class="vide">Clé d\u2019accès requise pour lister les voix.</div>';
+  if(etat.mode !== 'reel'){
+    $('listeVoix').innerHTML = '<div class="vide">Le mode démonstration ne crée aucune voix.</div>';
     return;
   }
   $('listeVoix').innerHTML = '<div class="vide">Chargement…</div>';
@@ -2464,86 +2261,6 @@ function matiereVoix(v){
   return echapper(texte);
 }
 
-/* ─── Catalogue du service distant ─── */
-
-let voixCatalogue = [];
-
-async function listerCatalogue(){
-  if(etat.fournisseur !== 'distant' || !cleCourante()){
-    $('listeCatalogue').innerHTML =
-      '<div class="vide">Le catalogue exige le service distant et une clé d’accès, à renseigner à l’étape 03.</div>';
-    return;
-  }
-  const bouton = $('btnCatalogue');
-  occupe(bouton, true, 'Chargement…');
-  try{
-    const r = await fetch(baseApi() + '/voices', {headers: entetes(false)});
-    if(!r.ok){
-      $('listeCatalogue').innerHTML = '<div class="note n-red">' + echapper(await messageErreur(r)) + '</div>';
-      return;
-    }
-    const d = await r.json();
-    voixCatalogue = (d.voices || []).filter(v=>v.category === 'premade');
-    if(!voixCatalogue.length){
-      $('listeCatalogue').innerHTML = '<div class="vide">Aucune voix de catalogue renvoyée par le service.</div>';
-      return;
-    }
-    afficherCatalogue();
-    toast(voixCatalogue.length + ' voix de catalogue chargées.', 'ok');
-  }catch(e){
-    $('listeCatalogue').innerHTML = '<div class="note n-red">' + echapper(messageReseau(e)) + '</div>';
-  }finally{
-    occupe(bouton, false);
-  }
-}
-
-/* Résume les étiquettes fournies par le service : genre, accent, usage… */
-function etiquettes(v){
-  const l = v.labels || {};
-  return Object.keys(l).map(k=>l[k]).filter(Boolean).join(' — ');
-}
-
-function afficherCatalogue(){
-  const zone = $('listeCatalogue');
-  if(!voixCatalogue.length){
-    zone.innerHTML = '<div class="vide">Cliquez sur « Charger le catalogue » pour voir les voix disponibles.</div>';
-    return;
-  }
-  const filtre = ($('filtreCatalogue').value || '').trim().toLowerCase();
-  const retenues = voixCatalogue
-    .map((v,i)=>({v, i}))
-    .filter(o => !filtre ||
-      (o.v.name + ' ' + etiquettes(o.v) + ' ' + (o.v.description || '')).toLowerCase().indexOf(filtre) >= 0);
-
-  if(!retenues.length){
-    zone.innerHTML = '<div class="vide">Aucune voix ne correspond à ce filtre.</div>';
-    return;
-  }
-
-  zone.innerHTML = retenues.map(o=>{
-    const v = o.v;
-    const desc = etiquettes(v);
-    return '<div class="item">' +
-      '<div class="item-corps">' +
-        '<div class="item-nom">'+echapper(v.name)+
-          (v.voice_id === etat.voixId ? ' <span class="badge b-grn">retenue</span>' : '')+'</div>' +
-        '<div class="item-meta">'+echapper(desc || 'aucune description')+'</div>' +
-      '</div>' +
-      (v.preview_url ? '<audio controls preload="none" src="'+encodeURI(v.preview_url)+'"></audio>' : '') +
-      '<div class="item-btns">' +
-        '<button class="btn btn-g btn-sm" onclick="activerVoixCatalogue('+o.i+')">Utiliser</button>' +
-      '</div>' +
-    '</div>';
-  }).join('');
-}
-
-function activerVoixCatalogue(i){
-  const v = voixCatalogue[i];
-  if(!v) return;
-  activerVoix(v.voice_id, v.name);
-  afficherCatalogue();
-}
-
 function activerVoixParIndice(i){
   const v = voixDistantes[i];
   if(v) activerVoix(v.voice_id, v.name);
@@ -2558,13 +2275,13 @@ async function activerVoix(id, nom){
   etat.voixId = id;
   etat.voixNom = nom;
   await bdEcrire('config', {cle:'voix', valeur:{id, nom}});
-  if(etat.typeVoix === 'clonee') listerVoix();
+  listerVoix();
   majEtat();
   toast('Voix active : ' + nom + '.', 'ok');
 }
 
 async function supprimerVoix(id, nom){
-  if(!confirm('Supprimer définitivement la voix « ' + (nom || id) + ' » chez le fournisseur ?')) return;
+  if(!confirm('Supprimer définitivement la voix « ' + (nom || id) + ' » du serveur local ?')) return;
   try{
     const r = await fetch(baseApi() + '/voices/' + id, {method:'DELETE', headers: entetes(false)});
     if(!r.ok){ toast(await messageErreur(r), 'err'); return; }
@@ -3302,7 +3019,7 @@ function encoderWav(donnees, frequence, bits){
 async function decoderAudio(blob){
   const HorsLigne = window.OfflineAudioContext || window.webkitOfflineAudioContext;
   const entete = await lireEnteteWav(blob);
-  /* Hors WAV, il s'agit du mp3 du service distant, demandé en 44 100 Hz. */
+  /* Hors WAV, on retombe sur 44 100 Hz : le serveur local rend du WAV. */
   const frequence = entete ? entete.frequence : 44100;
   const ctx = new HorsLigne(1, 1, frequence);
   return await ctx.decodeAudioData(await blob.arrayBuffer());
@@ -3570,8 +3287,8 @@ function fftSurPlace(re, im){
   }
 }
 
-/* Mesure l'audio produit, côté navigateur : le service distant ne renvoie
-   aucune mesure, et la proposition doit rester possible dans les deux cas. */
+/* Mesure l'audio produit, côté navigateur : c'est elle qui fonde la
+   proposition de réglages, valeur par valeur. */
 async function mesurerAudio(blob){
   let source;
   try{ source = await decoderAudio(blob); }catch(e){ return null; }
@@ -4303,7 +4020,7 @@ async function majInfoFormat(blob){
   zone.textContent = e
     ? 'Dernier fichier produit : ' + fmtNombre(e.frequence) + ' Hz · ' + e.bits + ' bits · '
       + (e.canaux > 1 ? 'stéréo' : 'mono') + ' · sans compression'
-    : 'Dernier fichier produit : format compressé du service distant';
+    : 'Dernier fichier produit : format inconnu';
 }
 
 function majCompteur(){
@@ -4331,14 +4048,12 @@ function majVoixActive(){
   }
   if(!etat.voixId){
     zone.innerHTML = '<div class="note n-red" style="margin:0"><div class="note-t">Aucune voix active</div>' +
-      (etat.typeVoix === 'catalogue'
-        ? 'Revenez à l\u2019étape 04 pour retenir une voix du catalogue.'
-        : 'Revenez à l\u2019étape 04 pour créer la voix ou en activer une existante.') + '</div>';
+      'Revenez à l\u2019étape 04 pour créer la voix ou en activer une existante.</div>';
     return;
   }
   zone.innerHTML =
     '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
-      '<span class="badge b-vio">' + (etat.typeVoix === 'catalogue' ? 'Voix du catalogue' : 'Voix clonée') + '</span>' +
+      '<span class="badge b-vio">Voix clonée</span>' +
       '<strong>'+echapper(etat.voixNom || 'Voix')+'</strong>' +
       '<span class="item-meta">'+echapper(etat.voixId)+'</span>' +
     '</div>';
@@ -4367,19 +4082,17 @@ async function synthetiser(){
   try{
     const corps = {
       text: texte,
-      model_id: $('modele').value,
       voice_settings:{
         stability: parseFloat($('stabilite').value),
         speed: parseFloat($('debit').value),
-        /* Ignorés par le service distant, appliqués par le serveur local. */
         denoise: $('debruitage').value,
         ...reglagesMoteur()
       }
     };
-    /* Le serveur local sait rendre plusieurs versions pour une seule
-       prononciation. Le service distant, non : on s'en passe alors. */
-    const troisVersions = (etat.fournisseur === 'local');
-    if(troisVersions) corps.variantes = true;
+    /* Le serveur rend trois versions pour une seule prononciation : la
+       comparaison porte alors sur le même tirage, pas sur trois. */
+    const troisVersions = true;
+    corps.variantes = true;
 
     const r = await fetch(baseApi() + '/text-to-speech/' + etat.voixId + '?output_format=mp3_44100_128', {
       method:'POST', headers: entetes(true), body: JSON.stringify(corps)
@@ -4443,39 +4156,19 @@ async function synthetiser(){
       },
       debruitagePropose: debruitageServeur,
       raisons: proposition.raisons,
-      mesures: mesures
+      mesures: mesures,
+      /* Source de la retouche : l'audio tel qu'il sort du serveur, débruité
+         mais sans aucun réglage de la page. Repartir de la version déjà
+         traitée empilerait deux fois l'égaliseur. */
+      source: departVotre,
+      base: base,
+      versionChargee: null
     };
     etat.generationEnCours = gen;
 
-    const lecteur = (titre, b, nom, marque) =>
-      '<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--bdr)">' +
-        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">' +
-          '<span style="font-size:12.5px;font-weight:600">' + echapper(titre) + '</span>' +
-          (marque ? '<span class="badge b-vio">' + echapper(marque) + '</span>' : '') +
-        '</div>' +
-        '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">' +
-          '<audio controls src="' + URL.createObjectURL(b) + '"></audio>' +
-          '<button class="btn btn-g btn-sm" id="charger_' + nom + '" ' +
-            'onclick="chargerVersion(\'' + gen.id + '\',\'' + nom + '\')">Charger</button>' +
-        '</div>' +
-      '</div>';
-
-    const explication =
-      '<div style="margin-top:8px;font-size:11.5px;line-height:1.6;color:var(--txt2)">' +
-        proposition.raisons.map(x => '— ' + echapper(x)).join('<br>') +
-      '</div>';
-
-    $('resSynth').innerHTML =
-      '<div class="note n-grn"><div class="note-t">Audio généré — trois versions à comparer</div>' +
-        lecteur('Non traité, tel que le moteur l\'a produit', brut, 'brut', null) +
-        lecteur('Vos réglages', blob, 'votre', traite ? 'traité' : null) +
-        lecteur('Proposition, déduite des mesures', propose, 'propose', 'automatique') +
-        explication +
-        '<div style="margin-top:10px;font-size:11.5px">Le nom des fichiers porte la mention ' +
-        '« voix-synthetique » : ne la retirez pas.</div>' +
-      '</div>';
+    gen.traiteVotre = traite;
+    afficherGenerationEnCours();
     toast('Audio généré.', 'ok');
-    memoriserCle();
   }catch(e){
     $('resSynth').innerHTML = '<div class="note n-red">' + echapper(messageReseau(e)) + '</div>';
   }finally{
@@ -4563,6 +4256,101 @@ function versionRetenue(g){
   return {blob: g.blob, nom: g.nom, titre: g.titreVersion || 'vos réglages'};
 }
 
+/* Affiche la génération en cours : trois versions, la motivation de la
+   proposition, et de quoi rejouer les réglages.
+
+   Le rendu est dans une fonction parce qu'il est redessiné après chaque
+   retouche : sans cela le lecteur continuerait de jouer l'audio d'avant. */
+function afficherGenerationEnCours(){
+  const g = etat.generationEnCours;
+  if(!g) return;
+
+  const lecteur = (titre, cle, marque) => {
+    const v = g.versions[cle];
+    const choisie = (g.versionChargee === cle);
+    return '<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--bdr)">' +
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">' +
+        '<span style="font-size:12.5px;font-weight:600">' + echapper(titre) + '</span>' +
+        (marque ? '<span class="badge b-vio">' + echapper(marque) + '</span>' : '') +
+      '</div>' +
+      '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">' +
+        '<audio controls src="' + URL.createObjectURL(v.blob) + '"></audio>' +
+        '<button class="btn btn-sm ' + (choisie ? 'btn-v' : 'btn-g') + '" id="charger_' + cle + '" ' +
+          'onclick="chargerVersion(\'' + g.id + '\',\'' + cle + '\')">' +
+          (choisie ? 'Chargée' : 'Charger') + '</button>' +
+      '</div>' +
+    '</div>';
+  };
+
+  $('resSynth').innerHTML =
+    '<div class="note n-grn"><div class="note-t">Audio généré — trois versions à comparer</div>' +
+      lecteur('Non traité, tel que le moteur l\'a produit', 'brut', null) +
+      lecteur('Vos réglages', 'votre', g.traiteVotre ? 'traité' : null) +
+      lecteur('Proposition, déduite des mesures', 'propose', 'automatique') +
+      '<div style="margin-top:8px;font-size:11.5px;line-height:1.6;color:var(--txt2)">' +
+        (g.raisons || []).map(x => '— ' + echapper(x)).join('<br>') +
+      '</div>' +
+      '<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--bdr)">' +
+        '<button class="btn btn-g btn-sm" id="btnRetoucher" onclick="retoucher()">' +
+          'Rejouer les réglages sur cet audio</button>' +
+        '<div class="aide" style="margin-top:6px">' +
+          'Change l\'égaliseur, la compression, la porte de bruit, le niveau ou le format sans ' +
+          'refaire parler le moteur : la prononciation reste exactement la même. La version ' +
+          '« vos réglages » est recalculée depuis l\'audio non égalisé.<br>' +
+          'Deux réglages font exception et demandent une nouvelle génération, parce qu\'ils ' +
+          'agissent avant la sortie du moteur : la <strong>suppression du bruit de fond</strong>, ' +
+          'faite par le serveur, et tout ce qui touche à la <strong>voix elle-même</strong> ' +
+          '(stabilité, débit, graine, texte, style).' +
+        '</div>' +
+      '</div>' +
+      '<div style="margin-top:10px;font-size:11.5px">Le nom des fichiers porte la mention ' +
+      '« voix-synthetique » : ne la retirez pas.</div>' +
+    '</div>';
+}
+
+/* Rejoue la chaîne de traitement sur une génération déjà produite.
+
+   Tout ce qui suit la sortie du moteur est calculé dans le navigateur :
+   l'égaliseur, la compression, la porte, le rognage, la mise au niveau et le
+   format. Rien n'oblige donc à refaire parler le moteur pour les changer — et
+   le refaire donnerait de toute façon une autre prononciation, donc une
+   comparaison faussée.
+
+   La retouche repart toujours de `g.source`, l'audio non égalisé. Repartir de
+   la version affichée empilerait l'égaliseur sur lui-même à chaque essai. */
+async function retoucher(){
+  const g = etat.generationEnCours;
+  const bouton = $('btnRetoucher');
+  if(!g || !g.source){
+    toast('Aucune génération à retoucher.', 'err');
+    return;
+  }
+  occupe(bouton, true, 'Traitement…');
+  try{
+    const votre = chaineCourante();
+    const besoin = !!(votre.traitement || votre.nettoyage || exportModifie());
+    const blob = besoin ? await appliquerTraitement(g.source, votre) : g.source;
+    g.versions.votre = {
+      blob: blob,
+      nom: g.base + '.' + extensionDe(blob.type || 'audio/wav'),
+      titre: 'vos réglages'
+    };
+    g.traitement = votre.traitement ? $('preset').value : null;
+    g.nettoyage = !!votre.nettoyage;
+    g.traiteVotre = (blob !== g.source) || (g.source !== g.versions.brut.blob);
+    /* La version déposée en bibliothèque, si c'était celle-ci, ne correspond
+       plus à ce qu'on vient de calculer : le bouton doit le redire. */
+    if(g.versionChargee === 'votre') g.versionChargee = null;
+    await majInfoFormat(blob);
+    afficherGenerationEnCours();
+    toast('Réglages appliqués sans refaire parler le moteur.', 'ok');
+  }catch(e){
+    toast(messageReseau(e), 'err');
+  }finally{
+    occupe(bouton, false);
+  }
+}
+
 /* Dépose en bibliothèque la seule version choisie à l'écoute.
 
    Le téléchargement a quitté cet écran : on y compare, on y choisit, et c'est
@@ -4593,13 +4381,8 @@ async function chargerVersion(id, quelle){
   else etat.generations.unshift(entree);
   await bdEcrire('generations', entree);
 
-  for(const nom of ['brut', 'votre', 'propose']){
-    const b = $('charger_' + nom);
-    if(!b) continue;
-    const choisie = (nom === quelle);
-    b.textContent = choisie ? 'Chargée' : 'Charger';
-    b.className = 'btn btn-sm ' + (choisie ? 'btn-v' : 'btn-g');
-  }
+  g.versionChargee = quelle;
+  afficherGenerationEnCours();
   afficherGenerations();
   toast((deja >= 0 ? 'Version remplacée par « ' : 'Version « ') + v.titre +
         ' », dans la bibliothèque où elle peut être téléchargée.', 'ok');
@@ -4921,11 +4704,11 @@ function majEtat(){
     $('dotVoix').className = 'dot' + (etat.voixId ? ' ok' : '');
     $('txtVoix').textContent = etat.voixId
       ? 'Voix : ' + (etat.voixNom || 'clonée')
-      : (etat.typeVoix === 'catalogue' ? 'Aucune voix retenue' : 'Aucune voix créée');
+      : 'Aucune voix créée';
   }
 
   /* Nettoyage des marqueurs d'erreur dès que le champ est rempli */
-  ['consNom','consDate','consUsage','voixNom','cleApi','texte'].forEach(id=>{
+  ['consNom','consDate','consUsage','voixNom','texte'].forEach(id=>{
     const el = $(id);
     if(el && el.value && el.value.trim()) el.classList.remove('req-err');
   });
@@ -4981,9 +4764,6 @@ async function demarrer(){
       const voix = await bdLire('config','voix');
       if(voix && voix.valeur){ etat.voixId = voix.valeur.id; etat.voixNom = voix.valeur.nom; }
 
-      const type = await bdLire('config','typeVoix');
-      if(type && type.valeur === 'catalogue') etat.typeVoix = 'catalogue';
-
       const mont = await bdLire('config','montage');
       if(mont && Array.isArray(mont.valeur)) etat.montage = mont.valeur;
 
@@ -5006,9 +4786,6 @@ async function demarrer(){
            c'est-à-dire vide, alors que le lexique est bien chargé. */
         afficherLexique();
       }
-
-      const avant = await bdLire('config','fournisseurAvant');
-      if(avant && avant.valeur) etat.fournisseurAvant = avant.valeur;
 
       const av = await bdLire('config','avance');
       if(av && av.valeur){
@@ -5070,10 +4847,7 @@ async function demarrer(){
       }
 
       const fourn = await bdLire('config','fournisseur');
-      if(fourn && fourn.valeur){
-        if(fourn.valeur.url) $('urlLocale').value = fourn.valeur.url;
-        choisirFournisseur(fourn.valeur.nom === 'local' ? 'local' : 'distant');
-      }
+      if(fourn && fourn.valeur && fourn.valeur.url) $('urlLocale').value = fourn.valeur.url;
       /* Une adresse enregistrée peut être devenue inappelable : le serveur est
          passé en https, l'adresse gardée est restée en http. Le navigateur
          bloquerait chaque appel sans qu'aucun réglage ne le laisse deviner.
@@ -5101,20 +4875,16 @@ async function demarrer(){
 
   /* Aligne l'affichage sur les choix retenus, qu'ils viennent des données
      enregistrées ou des valeurs par défaut. */
-  /* Le fournisseur d'abord : le type « catalogue » impose ensuite le service
-     distant, et doit donc avoir le dernier mot. */
-  choisirFournisseur(etat.fournisseur);
-  choisirTypeVoix(etat.typeVoix);
   majAffichageEtape4();
   majAffichageAmelioration();
   majConnexion();
 
-  /* Reprise de la clé mémorisée */
+  /* Une clé mémorisée par une version antérieure n'a plus d'usage : le
+     service distant a été retiré. On l'efface plutôt que de la laisser
+     traîner dans le stockage du navigateur. */
   try{
-    const memo = localStorage.getItem('studio_voix_cle');
-    const session = sessionStorage.getItem('studio_voix_cle');
-    if(memo){ $('cleApi').value = memo; $('memoCle').checked = true; }
-    else if(session){ $('cleApi').value = session; }
+    localStorage.removeItem('studio_voix_cle');
+    sessionStorage.removeItem('studio_voix_cle');
   }catch(e){}
 
   /* Enumération des voix du navigateur pour le mode démonstration */

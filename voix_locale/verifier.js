@@ -175,6 +175,66 @@ async function creerVoix(page, nom) {
   verifier('Plus aucun téléchargement direct depuis la génération',
     boutons.telecharger === 0, boutons.noms.join(' | '));
 
+  // Retouche : rejouer les reglages sans refaire parler le moteur.
+  //
+  // Le piege a eviter est l'empilement : si la retouche repartait de la
+  // version affichee, l'egaliseur s'ajouterait a lui-meme a chaque essai et
+  // deux retouches identiques ne donneraient pas le meme son.
+  // L'empreinte porte sur les echantillons decodes, pas sur une bande : le
+  // moteur de test n'emet rien entre 1 et 4 kHz, et un profil cale sur cette
+  // bande-la ne compare que du bruit de calcul.
+  const retouche = await page.evaluate(async () => {
+    const empreinte = async (blob) => {
+      const a = await decoderAudio(blob);
+      const d = a.getChannelData(0);
+      let carres = 0, somme = 0;
+      for (let i = 0; i < d.length; i++) { carres += d[i] * d[i]; somme += Math.abs(d[i]); }
+      return { n: d.length, rms: Math.sqrt(carres / d.length), somme: somme };
+    };
+    const ecart = (a, b) =>
+      Math.abs(a.rms - b.rms) / Math.max(a.rms, b.rms, 1e-12) +
+      Math.abs(a.somme - b.somme) / Math.max(a.somme, b.somme, 1e-12);
+
+    const g = etat.generationEnCours;
+    const departBrut = g.versions.brut.blob;
+    const sourceAvant = g.source;
+    const poser = (grave) => {
+      document.getElementById('traitementActif').checked = true;
+      document.getElementById('preset').value = 'perso';
+      document.getElementById('graves').value = grave;
+      majTraitement();
+    };
+
+    poser(6);  await retoucher();  const a1 = await empreinte(g.versions.votre.blob);
+    // Meme reglage une seconde fois : le resultat doit etre identique.
+    await retoucher();             const a2 = await empreinte(g.versions.votre.blob);
+    // Un autre reglage doit changer quelque chose.
+    poser(-6); await retoucher();  const b1 = await empreinte(g.versions.votre.blob);
+    // Revenir au premier reglage doit redonner exactement le premier son.
+    // Si la retouche repartait de la version affichee, l'egaliseur se serait
+    // empile trois fois et ce retour serait impossible.
+    poser(6);  await retoucher();  const a3 = await empreinte(g.versions.votre.blob);
+
+    return {
+      repete: ecart(a1, a2), retour: ecart(a1, a3), change: ecart(a1, b1),
+      sourceIntacte: g.source === sourceAvant,
+      brutIntact: g.versions.brut.blob === departBrut,
+      bouton: !!document.getElementById('btnRetoucher'),
+      nom: g.versions.votre.nom
+    };
+  });
+  verifier('La retouche est proposée sur l\'écran de génération', retouche.bouton);
+  verifier('La retouche modifie bien le son',
+    retouche.change > 0.01, 'écart relatif ' + retouche.change.toExponential(1));
+  verifier('Deux retouches identiques donnent le même son',
+    retouche.repete < 1e-9, 'écart ' + retouche.repete.toExponential(1));
+  verifier('Revenir à un réglage précédent le reproduit, sans cumul',
+    retouche.retour < 1e-9, 'écart ' + retouche.retour.toExponential(1));
+  verifier('La retouche ne touche ni la source ni la version non traitée',
+    retouche.sourceIntacte && retouche.brutIntact);
+  verifier('La version retouchée garde le préfixe voix-synthetique',
+    retouche.nom.startsWith('voix-synthetique_'), retouche.nom);
+
   const choix = await page.evaluate(async () => {
     const g = etat.generationEnCours;
     const avantBiblio = etat.generations.length;
@@ -1094,18 +1154,35 @@ async function creerVoix(page, nom) {
     if (document.getElementById('reglagesConnexion').style.display === 'none') basculerReglages();
   });
   await page.waitForTimeout(300);
-  await page.click('#radioCatalogue');
-  await page.waitForTimeout(500);
-  verifier('Le catalogue masque bien l\'enregistreur',
+  // Le service distant a ete retire : plus de catalogue, plus de cle, plus de
+  // choix de fournisseur. L'application ne doit plus sortir de la machine.
+  const seulLocal = await page.evaluate(() => ({
+    restes: ['radioCatalogue', 'radioDistant', 'cleApi', 'memoCle', 'blocCle', 'blocModele',
+             'zoneCatalogue', 'listeCatalogue', 'modele']
+             .filter(i => document.getElementById(i)),
+    base: baseApi(),
+    fonctions: ['cleCourante', 'choisirFournisseur', 'choisirTypeVoix', 'listerCatalogue']
+             .filter(f => typeof window[f] === 'function')
+  }));
+  verifier('Plus aucun vestige du service distant dans la page',
+    seulLocal.restes.length === 0, seulLocal.restes.join(' ') || 'aucun');
+  verifier('Plus aucune fonction du service distant',
+    seulLocal.fonctions.length === 0, seulLocal.fonctions.join(' ') || 'aucune');
+  verifier('Le service appelé est le serveur local',
+    seulLocal.base.indexOf(BASE) === 0, seulLocal.base);
+  verifier('Aucune adresse distante n\'est écrite dans le fichier',
+    !(await page.content()).includes('elevenlabs.io'));
+
+  // Le mode demonstration masque encore l'enregistreur, et le chemin du retour
+  // doit rester : sans lui on ne retrouve plus comment enregistrer sa voix.
+  await page.evaluate(() => choisirMode('demo'));
+  await page.waitForTimeout(400);
+  verifier('Le mode démonstration masque bien l\'enregistreur',
     !(await page.locator('#btnRec').isVisible()));
-  verifier('Le fournisseur d\'avant est retenu',
-    (await page.evaluate(() => etat.fournisseurAvant)) === 'local');
-  await page.click('#zoneCatalogue button:has-text("Enregistrer ma voix")');
+  await page.click('#zoneCreationDemo button:has-text("Revenir au clonage")');
   await page.waitForTimeout(600);
   verifier('Le retour au clonage rend l\'enregistreur',
     await page.locator('#btnRec').isVisible());
-  verifier('Le retour rétablit le serveur local',
-    (await page.evaluate(() => etat.fournisseur)) === 'local');
 
   // Un réglage incomplet ne doit pas faire échouer la chaîne
   const resiste = await page.evaluate(async () => {
