@@ -146,15 +146,18 @@ async function creerVoix(page, nom) {
   await page.click('#btnSynth');
   await page.waitForTimeout(13000);
 
+  // La generation n'entre plus en bibliotheque : elle attend un choix.
   const gen = await page.evaluate(() => {
-    const g = etat.generations[0];
-    return g ? { nom: g.nom, nomBrut: g.nomBrut, nomPropose: g.nomPropose,
-                 raisons: (g.raisons || []).length, taille: g.blob.size } : null;
+    const g = etat.generationEnCours;
+    if (!g) return null;
+    const v = g.versions;
+    return { noms: Object.keys(v).map(k => v[k].nom),
+             raisons: (g.raisons || []).length, taille: v.votre.blob.size };
   });
   verifier('Audio généré', !!gen, gen ? gen.taille + ' octets' : 'aucun');
   verifier('Préfixe voix-synthetique sur les trois versions',
-    gen && [gen.nom, gen.nomBrut, gen.nomPropose].every(n => n && n.startsWith('voix-synthetique_')),
-    gen ? gen.nom : '');
+    gen && gen.noms.length === 3 && gen.noms.every(n => n && n.startsWith('voix-synthetique_')),
+    gen ? gen.noms.join(' | ') : '');
   verifier('Trois lecteurs proposés',
     (await page.locator('#resSynth audio').count()) === 3);
   verifier('Proposition motivée par des mesures',
@@ -173,26 +176,41 @@ async function creerVoix(page, nom) {
     boutons.telecharger === 0, boutons.noms.join(' | '));
 
   const choix = await page.evaluate(async () => {
-    const g = etat.generations[0];
-    const avant = g.retenue;
+    const g = etat.generationEnCours;
+    const avantBiblio = etat.generations.length;
     await chargerVersion(g.id, 'propose');
-    const apres = etat.generations.find(x => x.id === g.id).retenue;
-    const enBase = (await bdLire('generations', g.id));
+    const entree = etat.generations.find(x => x.id === g.id);
+    const enBase = await bdLire('generations', g.id);
     const libelle = document.getElementById('charger_propose').textContent.trim();
+    // Charger une seconde fois doit remplacer, pas ajouter.
+    await chargerVersion(g.id, 'brut');
+    const apresDeux = etat.generations.filter(x => x.id === g.id).length;
+    const finale = etat.generations.find(x => x.id === g.id);
     afficherGenerations();
-    const texte = document.getElementById('listeGen').textContent;
     const btns = [...document.querySelectorAll('#listeGen button')].map(b => b.textContent.trim());
-    return { avant, apres, persiste: enBase ? enBase.retenue : null, libelle, texte, btns };
+    return { avantBiblio, apres: etat.generations.length, entree, libelle,
+             persiste: enBase ? enBase.version : null, apresDeux,
+             versionFinale: finale ? finale.version : null,
+             clesEntree: entree ? Object.keys(entree) : [],
+             btns, texte: document.getElementById('listeGen').textContent };
   });
-  verifier('Aucune version n\'est retenue d\'office', choix.avant === null, String(choix.avant));
-  verifier('Charger retient la version écoutée', choix.apres === 'propose', String(choix.apres));
+  verifier('Rien n\'entre en bibliothèque sans choix explicite',
+    choix.avantBiblio === 0, choix.avantBiblio + ' entrée(s) avant « Charger »');
+  verifier('Charger dépose la version écoutée',
+    choix.apres === 1 && choix.entree.version === 'propose',
+    choix.apres + ' entrée(s), version ' + (choix.entree || {}).version);
   verifier('Le choix est conservé en base', choix.persiste === 'propose', String(choix.persiste));
+  verifier('L\'entrée ne porte qu\'un seul audio',
+    !choix.clesEntree.includes('versions') && !choix.clesEntree.includes('propose'),
+    choix.clesEntree.join(' '));
+  verifier('Charger une seconde fois remplace au lieu d\'ajouter',
+    choix.apresDeux === 1 && choix.versionFinale === 'brut',
+    choix.apresDeux + ' entrée(s), version ' + choix.versionFinale);
   verifier('Le bouton dit que la version est chargée', choix.libelle === 'Chargée', choix.libelle);
-  verifier('La bibliothèque annonce la version retenue',
-    choix.texte.indexOf('version retenue : proposition') >= 0);
-  verifier('La bibliothèque délivre les trois versions',
-    ['Non traitée', 'Vos réglages', 'Proposition'].every(n => choix.btns.indexOf(n) >= 0),
-    choix.btns.join(' | '));
+  verifier('La bibliothèque annonce la version conservée',
+    choix.texte.indexOf('non traitée') >= 0);
+  verifier('La bibliothèque propose un seul téléchargement',
+    choix.btns.filter(n => n === 'Télécharger').length === 1, choix.btns.join(' | '));
 
   verifier('Bouton rendu après génération', await page.evaluate(() => {
     const b = document.getElementById('btnSynth');
