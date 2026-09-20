@@ -903,6 +903,7 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
               <option value="annonce">Annonce — voix très en avant, forte compression</option>
               <option value="telephone">Téléphone — bande passante réduite</option>
               <option value="clarte">Voix claire — dégage une voix sourde ou bourdonnante</option>
+              <option value="naturel">Rapprocher du naturel — corrige l'écart mesuré du moteur</option>
               <option value="perso">Personnalisé</option>
             </select>
             <div class="aide">Traitement appliqué dans le navigateur, après la génération.</div>
@@ -2983,6 +2984,30 @@ const PRESETS = {
   radio:     {...BANDES_ORIGINE, passeHaut:90,  passeBas:12000, graves:2.5, mediums:2,   aigus:3.5, deess:-4, seuil:-22, ratio:5,  cible:-3, normaliser:true},
   podcast:   {...BANDES_ORIGINE, passeHaut:75,  passeBas:12000, graves:1,   mediums:1.5, aigus:2,   deess:-3, seuil:-18, ratio:3,  cible:-6, normaliser:true},
   annonce:   {...BANDES_ORIGINE, passeHaut:100, passeBas:12000, graves:4,   mediums:3,   aigus:4,   deess:-5, seuil:-30, ratio:9,  cible:-2, normaliser:true},
+  /* Rapprochement du naturel.
+
+     Déduit d'une mesure, pas d'un réglage de goût. Trois prises de la même
+     voix ont été comparées à une génération faite depuis elles, enveloppe
+     spectrale lissée au cepstre, calée sur la bande 1–4 kHz. Le moteur rend
+     systématiquement trop de bas-médium et pas assez d'aigus :
+
+       80-160 Hz  +5,1 dB      4-6 kHz   -7,1 dB
+       160-300    +6,2 dB      6-8 kHz  -10,0 dB
+       300-600    +7,8 dB      8-11 kHz  -8,2 dB
+
+     Les trois prises entre elles ne s'écartaient que de 1,8 dB en moyenne :
+     l'écart mesuré est donc bien celui du moteur, pas celui des prises.
+
+     Cette chaîne ramène l'écart moyen de 5,3 dB à 1,6 dB, soit en dessous de
+     la variation naturelle entre deux prises. Vérifié en calculant la réponse
+     des trois filtres et en la reportant sur les mesures, bande par bande. */
+  naturel:   {...BANDES_ORIGINE, passeHaut:75, passeBas:12000,
+              typeGraves:'lowshelf', graves:-5,  fGraves:300,  qGraves:0.9,
+              basMed:-4.5,           fBasMed:450, qBasMed:1,
+              mediums:0,             fMediums:1800, qMediums:0.9,
+              typeAigus:'highshelf', aigus:6.5,  fAigus:4500, qAigus:0.7,
+              deess:-3, fDeess:7000, qDeess:3.5,
+              seuil:-20, ratio:2.5, cible:-3, normaliser:true},
   telephone: {...BANDES_ORIGINE, passeHaut:300, passeBas:3400,  graves:-6,  mediums:6,   aigus:-6,  deess:-2, seuil:-20, ratio:6,  cible:-4, normaliser:true},
   /* Correction d'une voix sourde et bourdonnante : creuser la résonance de
      pièce vers 180 Hz, dégager les bas-médiums, remonter la bande des

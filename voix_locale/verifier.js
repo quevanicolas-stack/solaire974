@@ -226,6 +226,22 @@ async function creerVoix(page, nom) {
   await page.selectOption('#preset', 'clarte');
   await page.waitForTimeout(300);
   const clarte = await page.evaluate(() => reglagesTraitement());
+  // Le prereglage « naturel » vient d'une mesure : trois prises de la meme voix
+  // comparees a une generation faite depuis elles. Il retire du bas-medium et
+  // rend des aigus. Un signe inverse trahirait une saisie fautive.
+  const naturel = await page.evaluate(() => PRESETS.naturel);
+  verifier('Le préréglage « naturel » retire du bas-médium',
+    naturel.graves < 0 && naturel.basMed < 0,
+    'graves ' + naturel.graves + ' dB, bas-médium ' + naturel.basMed + ' dB');
+  verifier('Le préréglage « naturel » rend des aigus',
+    naturel.aigus > 4 && naturel.typeAigus === 'highshelf',
+    naturel.typeAigus + ' ' + naturel.aigus + ' dB à ' + naturel.fAigus + ' Hz');
+  verifier('Le préréglage « naturel » ne touche pas la bande 1-4 kHz',
+    naturel.mediums === 0, 'médiums ' + naturel.mediums + ' dB');
+  verifier('Le préréglage « naturel » décrit toutes ses bandes',
+    ['fGraves','fBasMed','fMediums','fAigus','fDeess','qGraves','qBasMed','qMediums','qAigus','qDeess']
+      .every(c => typeof naturel[c] === 'number' && isFinite(naturel[c])));
+
   verifier('Préréglage « voix claire » conforme à la correction mesurée',
     clarte.typeGraves === 'peaking' && clarte.fGraves === 180 && clarte.graves === -9);
 
