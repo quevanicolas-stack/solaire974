@@ -12,6 +12,11 @@
 #     sh mettre_a_jour.sh
 #     sh mettre_a_jour.sh nom-de-branche      (pour une version en préparation)
 #
+# La branche employée est retenue dans « .branche » : les fois suivantes, la
+# commande sans argument reprend la même. Sans ce rappel, un « sh
+# mettre_a_jour.sh » machinal ramenait main, c'est-à-dire une version
+# antérieure — une mise à jour qui recule est pire que pas de mise à jour.
+#
 # Les fichiers ne sont remplacés qu'après vérification : un téléchargement
 # interrompu ou une page d'erreur GitHub ne doit pas écraser un serveur qui
 # fonctionne.
@@ -19,7 +24,22 @@
 set -e
 
 DEPOT="quevanicolas-stack/solaire974"
-BRANCHE="${1:-main}"
+
+# --forcer, à n'importe quelle place, autorise un retour à une version
+# antérieure. Sans lui, le script refuse de reculer.
+FORCER="non"
+for a in "$@"; do
+  [ "$a" = "--forcer" ] && FORCER="oui"
+done
+set -- $(for a in "$@"; do [ "$a" = "--forcer" ] || printf '%s ' "$a"; done)
+
+if [ -n "$1" ]; then
+  BRANCHE="$1"
+elif [ -f ".branche" ]; then
+  BRANCHE="$(cat .branche)"
+else
+  BRANCHE="main"
+fi
 BASE="https://raw.githubusercontent.com/$DEPOT/$BRANCHE"
 
 if [ ! -f "serveur.py" ]; then
@@ -42,7 +62,11 @@ else
   PAGE="clonage_voix.html"
 fi
 
-FICHIERS="serveur.py verifier.js verifier_moteur.py NOTICE.md preparer_corpus.py texte_a_lire.txt"
+# lancer.sh fait partie du lot : il a longtemps manqué, et « sh lancer.sh »
+# répondait alors « No such file or directory » à qui venait de mettre à jour.
+# Un outil de mise à jour qui ne livre pas l'outil de lancement ne sert qu'à
+# moitié.
+FICHIERS="serveur.py verifier.js verifier_moteur.py NOTICE.md preparer_corpus.py texte_a_lire.txt lancer.sh"
 
 echo "Mise à jour depuis la branche « $BRANCHE »."
 echo
@@ -54,6 +78,37 @@ telecharger() {
   [ -s "$TEMPO/$(basename "$2")" ] || return 1
   return 0
 }
+
+version_de() {
+  grep -m1 '^VERSION = ' "$1" 2>/dev/null | cut -d'"' -f2
+}
+
+# Une mise à jour ne doit jamais reculer.
+#
+# Constaté : un « sh mettre_a_jour.sh » sans argument reprenait main, plus
+# ancienne que la version installée, et remplaçait sans rien dire un serveur
+# qui marchait par un serveur d'avant. On compare donc les versions, et on
+# refuse le retour en arrière sauf demande explicite.
+AVANT="$(version_de serveur.py)"
+if [ -n "$AVANT" ] && telecharger "voix_locale/serveur.py" "serveur.py"; then
+  APRES="$(version_de "$TEMPO/serveur.py")"
+  if [ -n "$APRES" ] && [ "$APRES" != "$AVANT" ]; then
+    PLUS_ANCIENNE="$(printf '%s\n%s\n' "$AVANT" "$APRES" | sort | head -1)"
+    if [ "$PLUS_ANCIENNE" = "$APRES" ] && [ "$FORCER" != "oui" ]; then
+      echo "REFUS : la branche « $BRANCHE » porte la version $APRES,"
+      echo "        plus ancienne que la version installée $AVANT."
+      echo
+      echo "Rien n'a été modifié. Cette branche n'est pas celle de votre version."
+      if [ -f ".branche" ]; then
+        echo "Branche retenue la dernière fois : $(cat .branche)"
+      fi
+      echo
+      echo "Pour revenir volontairement en arrière :"
+      echo "    sh mettre_a_jour.sh $BRANCHE --forcer"
+      exit 1
+    fi
+  fi
+fi
 
 echec=0
 
@@ -75,6 +130,7 @@ for f in $FICHIERS; do
       ;;
   esac
   cp "$TEMPO/$f" "$f"
+  case "$f" in *.sh) chmod +x "$f" 2>/dev/null || true ;; esac
   echo "  à jour   $f"
 done
 
@@ -86,6 +142,20 @@ else
   echo "  ECHEC    $PAGE — non téléchargé, l'ancien est conservé"
   echec=1
 fi
+
+# Le script se met à jour lui-même en dernier, et par « mv » : renommer ne
+# touche pas au fichier déjà ouvert par le shell en cours d'exécution, là où
+# une copie par-dessus ferait lire la suite au mauvais endroit.
+if telecharger "voix_locale/mettre_a_jour.sh" "mettre_a_jour.sh" &&
+   grep -q "^DEPOT=" "$TEMPO/mettre_a_jour.sh"; then
+  mv "$TEMPO/mettre_a_jour.sh" "mettre_a_jour.sh.nouveau"
+  chmod +x "mettre_a_jour.sh.nouveau" 2>/dev/null || true
+  mv "mettre_a_jour.sh.nouveau" "mettre_a_jour.sh"
+  echo "  à jour   mettre_a_jour.sh"
+fi
+
+# La branche retenue, pour que la prochaine fois n'ait pas besoin de la retaper.
+printf '%s\n' "$BRANCHE" > .branche
 
 rm -rf __pycache__ 2>/dev/null || true
 
