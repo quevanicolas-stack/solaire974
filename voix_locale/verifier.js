@@ -541,6 +541,45 @@ async function creerVoix(page, nom) {
              ecartInitial: reference.map((v,i) => abime[i]-v) };
   });
 
+  // Le defaut qui a rendu la premiere version inutilisable : le lissage de
+  // l'enveloppe dependait de la frequence d'echantillonnage du fichier. Prises
+  // en 48 kHz contre generation en 24 kHz donnaient 13 dB d'artefact a
+  // 80-160 Hz — du meme ordre que l'ecart cherche. La mesure doit donner le
+  // meme profil pour le meme son, quelle que soit sa frequence.
+  const calibre = await page.evaluate(() => {
+    // Le signal est fabrique UNE fois a 48 kHz, puis reduit a 24 kHz en ne
+    // gardant qu'un echantillon sur deux. Toutes ses harmoniques tiennent sous
+    // 5 kHz, donc cette reduction n'introduit aucun repli : c'est exactement
+    // le meme son, decrit a deux frequences. Le fabriquer separement a chaque
+    // frequence donnerait deux sons differents, et le controle ne dirait rien.
+    const fe = 48000, n = fe * 8;
+    const haut = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      const t = i / fe;
+      const env = 0.5 + 0.5 * Math.sin(2 * Math.PI * 2.5 * t);
+      let v = 0;
+      // Harmoniques jusqu'a 10,9 kHz : toutes les bandes mesurees doivent
+      // porter du signal. Avec un contenu qui s'arrete a 5 kHz, les bandes
+      // hautes ne comparent que du bruit de calcul et le controle ment.
+      for (let h = 1; h <= 68; h++) v += Math.sin(2 * Math.PI * 160 * h * t + h) / h;
+      haut[i] = 0.3 * env * v;
+    }
+    const bas = new Float32Array(n >> 1);
+    for (let i = 0; i < bas.length; i++) bas[i] = haut[i * 2];
+    const a = profilBandes(haut, 48000);
+    const b = profilBandes(bas, 24000);
+    if (!a || !b) return null;
+    const ecarts = a.map((v, i) => Math.abs(v - b[i]));
+    return { moyen: ecarts.reduce((t, v) => t + v, 0) / ecarts.length,
+             max: Math.max(...ecarts) };
+  });
+  verifier('La mesure ne dépend pas de la fréquence d\'échantillonnage',
+    calibre && calibre.moyen < 1,
+    calibre ? 'écart moyen ' + calibre.moyen.toFixed(2) + ' dB entre 48 et 24 kHz' : 'mesure impossible');
+  verifier('Aucune bande ne dérive avec la fréquence',
+    calibre && calibre.max < 0.5,
+    calibre ? 'écart maximal ' + calibre.max.toFixed(2) + ' dB' : '');
+
   const maxAvant = Math.max(...corr.ecartInitial.map(Math.abs));
   verifier('Le défaut injecté est bien mesuré',
     maxAvant > 4, 'écart maximal mesuré ' + maxAvant.toFixed(1) + ' dB');
@@ -568,6 +607,10 @@ async function creerVoix(page, nom) {
     const q = profilBandes(d.slice(0, n - 137), fe);   // même signal, cadrage différent
     return ajusterCorrection(p, q, fe);
   });
+  verifier('Aucune bande déjà juste n\'est sensiblement abîmée',
+    corr.r.degradation <= 1.5 + 1e-9,
+    'pire dégradation ' + corr.r.degradation.toFixed(2) + ' dB');
+
   verifier('Un signal déjà conforme n\'est presque pas corrigé',
     sain.gains.every(g => Math.abs(g) < 1.5),
     'gains ' + sain.gains.map(g => g.toFixed(1)).join(' / ') + ' dB');

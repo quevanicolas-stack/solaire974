@@ -2994,26 +2994,32 @@ const PRESETS = {
   annonce:   {...BANDES_ORIGINE, passeHaut:100, passeBas:12000, graves:4,   mediums:3,   aigus:4,   deess:-5, seuil:-30, ratio:9,  cible:-2, normaliser:true},
   /* Rapprochement du naturel.
 
-     Déduit d'une mesure, pas d'un réglage de goût. Trois prises de la même
-     voix ont été comparées à une génération faite depuis elles, enveloppe
-     spectrale lissée au cepstre, calée sur la bande 1–4 kHz. Le moteur rend
-     systématiquement trop de bas-médium et pas assez d'aigus :
+     Déduit d'une mesure calibrée, pas d'un réglage de goût. Trois prises de la
+     même voix comparées à une génération faite depuis elles, enveloppe lissée
+     au cepstre, calée sur 1-4 kHz. Le moteur rend trop de bas et pas assez de
+     haut :
 
-       80-160 Hz  +5,1 dB      4-6 kHz   -7,1 dB
-       160-300    +6,2 dB      6-8 kHz  -10,0 dB
-       300-600    +7,8 dB      8-11 kHz  -8,2 dB
+       80-160 Hz  +10,9 dB      4-6 kHz   -3,9 dB
+       160-300     +6,3 dB      6-8 kHz   -4,7 dB
+       300-600     +1,9 dB      8-11 kHz  -3,3 dB
 
-     Les trois prises entre elles ne s'écartaient que de 1,8 dB en moyenne :
-     l'écart mesuré est donc bien celui du moteur, pas celui des prises.
+     Les trois prises entre elles ne s'écartaient que de 1,4 dB : l'écart
+     mesuré est celui du moteur, pas celui des prises.
 
-     Cette chaîne ramène l'écart moyen de 5,3 dB à 1,6 dB, soit en dessous de
-     la variation naturelle entre deux prises. Vérifié en calculant la réponse
-     des trois filtres et en la reportant sur les mesures, bande par bande. */
+     Ces valeurs corrigent une première version fautive. L'enveloppe y était
+     lissée d'une façon qui dépendait de la fréquence du fichier, et prises et
+     génération n'ont pas la même : jusqu'à 13 dB d'artefact. La correction
+     visait alors 300-600 Hz, où l'excès n'est en réalité que de deux
+     décibels.
+
+     Cette chaîne ramène l'écart moyen de 4,1 dB à 0,5 dB sans abîmer aucune
+     bande. Vérifié en calculant la réponse des trois filtres et en la
+     reportant sur les mesures, bande par bande. */
   naturel:   {...BANDES_ORIGINE, passeHaut:75, passeBas:12000,
-              typeGraves:'lowshelf', graves:-5,  fGraves:300,  qGraves:0.9,
-              basMed:-4.5,           fBasMed:450, qBasMed:1,
+              typeGraves:'lowshelf', graves:-9,  fGraves:250,  qGraves:1.1,
+              basMed:-4.1,           fBasMed:700, qBasMed:0.8,
               mediums:0,             fMediums:1800, qMediums:0.9,
-              typeAigus:'highshelf', aigus:6.5,  fAigus:4500, qAigus:0.7,
+              typeAigus:'highshelf', aigus:4.3,  fAigus:3500, qAigus:0.7,
               deess:-3, fDeess:7000, qDeess:3.5,
               seuil:-20, ratio:2.5, cible:-3, normaliser:true},
   telephone: {...BANDES_ORIGINE, passeHaut:300, passeBas:3400,  graves:-6,  mediums:6,   aigus:-6,  deess:-2, seuil:-20, ratio:6,  cible:-4, normaliser:true},
@@ -3757,84 +3763,125 @@ const NOMS_BANDES = ['80-160 Hz','160-300 Hz','300-600 Hz','600-1000 Hz','1-2 kH
    quoi l'ajustement trouverait des solutions justes sur le papier et
    inaudibles dans les faits. */
 const FILTRES_CORRECTION = [
-  {cle:'graves', type:'lowshelf',  f:300,  q:0.9},
-  {cle:'basMed', type:'peaking',   f:450,  q:1.0},
-  {cle:'aigus',  type:'highshelf', f:4500, q:0.7}
+  {cle:'graves', type:'lowshelf',  f:250,  q:1.1},
+  {cle:'basMed', type:'peaking',   f:700,  q:0.8},
+  {cle:'aigus',  type:'highshelf', f:3500, q:0.7}
 ];
 const GAIN_MAX_CORRECTION = 9;   // au-delà, la réponse cesse d'être proportionnelle
 /* Deux prises d'une même voix s'écartent d'environ deux décibels. Un résidu au
    double de cela signale que les deux profils ne décrivent pas la même voix. */
 const RESIDU_MAX_CORRECTION = 4;
+/* Aucune bande ne doit s'éloigner de plus d'un décibel et demi de la voix
+   d'origine : c'est en dessous de ce que deux prises d'une même personne
+   montrent naturellement. */
+const DEGRADATION_MAX = 1.5;
 
-/* Enveloppe spectrale lissée au cepstre : elle suit les formants et ignore les
-   harmoniques, seule façon de comparer deux voix sans comparer leur hauteur. */
+/* Enveloppe spectrale, et pourquoi elle est calibrée.
+
+   Le lissage au cepstre suit les formants et ignore les harmoniques : c'est la
+   seule façon de comparer deux voix sans comparer leur hauteur. Mais sa finesse
+   dépendait de la fréquence d'échantillonnage du fichier, et prises et
+   génération n'ont pas la même. Mesuré : le même enregistrement analysé à
+   48 kHz puis à 24 kHz donnait 13 dB d'écart à 80-160 Hz et 11 dB à
+   300-600 Hz — un artefact pur, du même ordre que l'écart qu'on cherche.
+
+   Trois choses sont donc fixées, et non plus déduites du fichier : la durée de
+   la fenêtre, la grille de fréquences sur laquelle le spectre est ramené avant
+   le lissage, et la longueur du lissage. Le complément par des zéros permet de
+   garder une transformée en puissance de deux sans toucher à la durée.
+
+   Vérifié après correction : 0,12 à 0,17 dB d'écart entre 22, 24, 32, 44,1 et
+   48 kHz, contre 3,5 dB avant. Pour mémoire, deux prises d'une même voix
+   s'écartent de 1,4 dB. */
+const MESURE_DUREE = 0.17067;   // secondes de fenêtre, quelle que soit la fréquence
+const MESURE_FMAX = 12000;      // le moteur ne produit rien au-dessus
+const MESURE_POINTS = 2049;     // points de la grille fixe
+const MESURE_LISSAGE = 40;      // coefficients cepstraux conservés
+
 function enveloppeSpectrale(donnees, fe){
-  const N = 4096;
-  if(donnees.length < N) return null;
-  const fen = new Float64Array(N);
-  for(let i=0;i<N;i++) fen[i] = 0.5 - 0.5*Math.cos(2*Math.PI*i/(N-1));
-  const moyenne = new Float64Array(N/2 + 1);
+  const M = Math.round(MESURE_DUREE * fe);
+  if(donnees.length < M * 4) return null;
+  let N = 1;
+  while(N < M) N <<= 1;
+
+  const fen = new Float64Array(M);
+  for(let i=0;i<M;i++) fen[i] = 0.5 - 0.5*Math.cos(2*Math.PI*i/(M-1));
+
   const re = new Float64Array(N), im = new Float64Array(N);
   const trames = [];
-  for(let deb = 0; deb + N <= donnees.length; deb += N){
+  for(let deb = 0; deb + M <= donnees.length; deb += M){
+    re.fill(0); im.fill(0);
     let energie = 0;
-    for(let i=0;i<N;i++){ re[i] = donnees[deb+i]*fen[i]; im[i] = 0; energie += donnees[deb+i]*donnees[deb+i]; }
+    for(let i=0;i<M;i++){
+      re[i] = donnees[deb+i]*fen[i];
+      energie += re[i]*re[i];
+    }
     fftSurPlace(re, im);
     const spectre = new Float64Array(N/2 + 1);
     for(let k=0;k<=N/2;k++) spectre[k] = Math.sqrt(re[k]*re[k] + im[k]*im[k]);
     trames.push({energie, spectre});
   }
   if(trames.length < 4) return null;
+
   /* Seules les trames sonores comptent : les silences décriraient le souffle. */
   trames.sort((a,b)=>a.energie-b.energie);
   const gardees = trames.slice(Math.floor(trames.length*0.7));
-  for(const t of gardees) for(let k=0;k<moyenne.length;k++) moyenne[k] += t.spectre[k];
-  for(let k=0;k<moyenne.length;k++) moyenne[k] /= gardees.length;
 
-  /* Lissage cepstral : on ne garde que les premiers coefficients, ceux qui
-     décrivent la forme large du spectre. */
-  const M = 2*(moyenne.length-1);
-  const lre = new Float64Array(M), lim = new Float64Array(M);
-  for(let k=0;k<moyenne.length;k++){
-    const v = Math.log(Math.max(moyenne[k], 1e-12));
-    lre[k] = v;
-    if(k>0 && k<moyenne.length-1) lre[M-k] = v;
+  /* Le spectre est ramené sur la grille fixe AVANT le lissage. C'est ce qui
+     rend la mesure indépendante de la fréquence du fichier. */
+  const pasSource = fe / N;
+  const moyenne = new Float64Array(MESURE_POINTS);
+  for(const t of gardees){
+    for(let j=0;j<MESURE_POINTS;j++){
+      const f = MESURE_FMAX * j / (MESURE_POINTS - 1);
+      const pos = f / pasSource;
+      const k = Math.floor(pos);
+      if(k >= N/2){ moyenne[j] += t.spectre[N/2]; continue; }
+      const frac = pos - k;
+      moyenne[j] += t.spectre[k]*(1-frac) + t.spectre[k+1]*frac;
+    }
+  }
+  for(let j=0;j<MESURE_POINTS;j++) moyenne[j] /= gardees.length;
+
+  /* Lissage cepstral sur la grille fixe. */
+  const P = 2*(MESURE_POINTS - 1);
+  const lre = new Float64Array(P), lim = new Float64Array(P);
+  for(let j=0;j<MESURE_POINTS;j++){
+    const v = Math.log(Math.max(moyenne[j], 1e-12));
+    lre[j] = v;
+    if(j>0 && j<MESURE_POINTS-1) lre[P-j] = v;
   }
   fftSurPlace(lre, lim);
-  const L = 40;
-  for(let k=L;k<=M-L;k++){ lre[k] = 0; lim[k] = 0; }
+  for(let k=MESURE_LISSAGE;k<=P-MESURE_LISSAGE;k++){ lre[k] = 0; lim[k] = 0; }
   fftSurPlace(lre, lim);
   /* La transformée directe appliquée deux fois rend le signal inversé et
-     multiplié par M : on corrige les deux. */
-  const env = new Float64Array(moyenne.length);
-  for(let k=0;k<env.length;k++){
-    const idx = (M - k) % M;
-    env[k] = 20 * Math.LOG10E * (lre[idx] / M);
+     multiplié par P : on corrige les deux. */
+  const env = new Float64Array(MESURE_POINTS);
+  for(let j=0;j<MESURE_POINTS;j++){
+    env[j] = 20 * Math.LOG10E * (lre[(P - j) % P] / P);
   }
-  return {env, frequence: fe, taille: N};
+  return env;
 }
 
-/* Valeurs par bande, calées sur 1-4 kHz. */
+/* Valeurs par bande, calées sur 1-4 kHz — la bande où le moteur ne se trompe
+   pas, et donc la seule référence honnête. */
 function profilBandes(donnees, fe){
-  const e = enveloppeSpectrale(donnees, fe);
-  if(!e) return null;
-  const pas = fe / e.taille;
+  const env = enveloppeSpectrale(donnees, fe);
+  if(!env) return null;
   const moyenneBande = (f1, f2) => {
     let somme = 0, n = 0;
-    for(let k=1;k<e.env.length;k++){
-      const f = k*pas;
-      if(f >= f1 && f < f2){ somme += e.env[k]; n++; }
+    for(let j=1;j<MESURE_POINTS;j++){
+      const f = MESURE_FMAX * j / (MESURE_POINTS - 1);
+      if(f >= f1 && f < f2){ somme += env[j]; n++; }
     }
     return n ? somme/n : null;
   };
   const reference = moyenneBande(1000, 4000);
   if(reference === null) return null;
-  const sortie = [];
-  for(const [a,b] of BANDES_MESURE){
-    const v = moyenneBande(a, Math.min(b, fe/2 - 100));
-    sortie.push(v === null ? null : v - reference);
-  }
-  return sortie;
+  return BANDES_MESURE.map(([a,b]) => {
+    const v = moyenneBande(a, b);
+    return v === null ? null : v - reference;
+  });
 }
 
 async function profilDeBlob(blob, secondesMax){
@@ -3943,11 +3990,31 @@ function ajusterCorrection(profilRef, profilGen, fe){
   let gains = resoudre3(M, v);
   if(!gains) return null;
   gains = gains.map(g => Math.max(-GAIN_MAX_CORRECTION, Math.min(GAIN_MAX_CORRECTION, g)));
-  const apres = cible.map((c,b) =>
-    c - gains.reduce((t,g,i) => t + g*bases[i][b], 0));
+
+  /* Les moindres carrés minimisent l'écart moyen, et se moquent de savoir
+     d'où vient le gain. Sur une voix réelle, ils échangeaient volontiers trois
+     décibels sur une bande déjà juste contre six sur une bande fautive :
+     la moyenne s'améliorait, l'oreille non. On réduit donc l'ampleur de la
+     correction jusqu'à ce qu'aucune bande ne soit sensiblement abîmée. */
+  const residu = f => cible.map((c,b) =>
+    c - gains.reduce((t,g,i) => t + f*g*bases[i][b], 0));
+  const pireDegradation = res => {
+    let pire = -Infinity;
+    for(let b=0;b<cible.length;b++){
+      pire = Math.max(pire, Math.abs(res[b]) - Math.abs(cible[b]));
+    }
+    return pire;
+  };
+  let ampleur = 1;
+  while(ampleur > 0 && pireDegradation(residu(ampleur)) > DEGRADATION_MAX) ampleur -= 0.04;
+  if(ampleur <= 0) return null;
+  gains = gains.map(g => g*ampleur);
+
+  const apres = residu(1);
   const moyen = t => t.reduce((s,x)=>s+Math.abs(x),0)/t.length;
-  return {gains, avant: cible.map(c=>-c), apres: apres.map(a=>-a),
-          ecartAvant: moyen(cible), ecartApres: moyen(apres)};
+  return {gains, ampleur, avant: cible.map(c=>-c), apres: apres.map(a=>-a),
+          ecartAvant: moyen(cible), ecartApres: moyen(apres),
+          degradation: pireDegradation(apres)};
 }
 
 /* Déduit une chaîne de traitement des mesures, et dit ce qu'elle corrige.
