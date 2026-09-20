@@ -504,6 +504,105 @@ async function creerVoix(page, nom) {
     !!fiche && fiche.nb_tranches > 0 && fiche.duree_utilisee > 0,
     fiche ? fiche.nb_tranches + ' tranche(s), ' + fiche.duree_utilisee + ' s utilisées' : 'aucune fiche');
 
+  console.log('\n--- Correction mesurée ---');
+
+  // Test decisif : on abime un signal avec un egaliseur CONNU, puis on demande
+  // la correction. Elle doit en etre l'inverse. Si le calcul d'enveloppe, la
+  // reponse des filtres ou l'ajustement sont faux, ce test tombe.
+  const corr = await page.evaluate(async () => {
+    const fe = 24000, n = fe * 6;
+    // Voix synthetique : harmoniques et souffle, plus realiste qu'un bruit pur.
+    const d = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      const t = i / fe;
+      const env = 0.5 + 0.5 * Math.sin(2 * Math.PI * 2.5 * t);
+      let v = 0;
+      for (let h = 1; h <= 40; h++) v += Math.sin(2 * Math.PI * 170 * h * t + h) / h;
+      d[i] = 0.3 * env * (v + 0.35 * (Math.random() - 0.5));
+    }
+    const reference = profilBandes(d, fe);
+
+    // On applique un defaut connu : trop de bas, pas assez de haut — celui du
+    // moteur, en plus marque.
+    const ctx = new OfflineAudioContext(1, n, fe);
+    const tampon = ctx.createBuffer(1, n, fe);
+    tampon.copyToChannel(d, 0);
+    const src = ctx.createBufferSource(); src.buffer = tampon;
+    const f1 = ctx.createBiquadFilter();
+    f1.type = 'lowshelf'; f1.frequency.value = 300; f1.Q.value = 0.9; f1.gain.value = 6;
+    const f2 = ctx.createBiquadFilter();
+    f2.type = 'highshelf'; f2.frequency.value = 4500; f2.Q.value = 0.7; f2.gain.value = -7;
+    src.connect(f1); f1.connect(f2); f2.connect(ctx.destination); src.start();
+    const rendu = await ctx.startRendering();
+    const abime = profilBandes(rendu.getChannelData(0), fe);
+
+    const r = ajusterCorrection(reference, abime, fe);
+    return { reference, abime, r,
+             ecartInitial: reference.map((v,i) => abime[i]-v) };
+  });
+
+  const maxAvant = Math.max(...corr.ecartInitial.map(Math.abs));
+  verifier('Le défaut injecté est bien mesuré',
+    maxAvant > 4, 'écart maximal mesuré ' + maxAvant.toFixed(1) + ' dB');
+  verifier('La correction inverse le plateau bas injecté',
+    corr.r.gains[0] < -3, 'plateau bas ' + corr.r.gains[0].toFixed(1) + ' dB pour +6 dB injectés');
+  verifier('La correction inverse le plateau haut injecté',
+    corr.r.gains[2] > 3, 'plateau haut ' + corr.r.gains[2].toFixed(1) + ' dB pour -7 dB injectés');
+  verifier('La correction réduit nettement l\'écart',
+    corr.r.ecartApres < corr.r.ecartAvant / 2,
+    corr.r.ecartAvant.toFixed(1) + ' dB ramené à ' + corr.r.ecartApres.toFixed(1) + ' dB');
+
+  // Un signal sain ne doit pas etre corrige : une correction qui invente un
+  // defaut est pire que pas de correction du tout.
+  const sain = await page.evaluate(() => {
+    const fe = 24000, n = fe * 6;
+    const d = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      const t = i / fe;
+      const env = 0.5 + 0.5 * Math.sin(2 * Math.PI * 2.5 * t);
+      let v = 0;
+      for (let h = 1; h <= 40; h++) v += Math.sin(2 * Math.PI * 170 * h * t + h) / h;
+      d[i] = 0.3 * env * (v + 0.35 * (Math.random() - 0.5));
+    }
+    const p = profilBandes(d, fe);
+    const q = profilBandes(d.slice(0, n - 137), fe);   // même signal, cadrage différent
+    return ajusterCorrection(p, q, fe);
+  });
+  verifier('Un signal déjà conforme n\'est presque pas corrigé',
+    sain.gains.every(g => Math.abs(g) < 1.5),
+    'gains ' + sain.gains.map(g => g.toFixed(1)).join(' / ') + ' dB');
+
+  // Garde-fou : jamais de gain delirant, meme sur des profils absurdes.
+  const borne = await page.evaluate(() => {
+    const ref = [0,0,0,0,0,0,0,0,0];
+    const fou = [40,40,40,0,0,0,-40,-40,-40];
+    return ajusterCorrection(ref, fou, 24000).gains;
+  });
+  verifier('Les gains restent bornés sur des mesures absurdes',
+    borne.every(g => Math.abs(g) <= 9 + 1e-9),
+    'gains ' + borne.map(g => g.toFixed(1)).join(' / ') + ' dB');
+
+  // Une comparaison entre deux voix sans rapport doit etre refusee, pas
+  // appliquee : trois filtres butes a fond abimeraient le son.
+  const refusComparaison = await page.evaluate(async () => {
+    const avant = {
+      graves: document.getElementById('graves').value,
+      aigus: document.getElementById('aigus').value
+    };
+    await calculerCorrection();
+    const texte = document.getElementById('resCorrection').textContent;
+    return { texte, apres: {
+      graves: document.getElementById('graves').value,
+      aigus: document.getElementById('aigus').value
+    }, avant };
+  });
+  verifier('Une comparaison inexploitable est refusée',
+    refusComparaison.texte.indexOf('inexploitable') >= 0, refusComparaison.texte.slice(0, 80));
+  verifier('Un refus ne touche à aucun réglage',
+    refusComparaison.avant.graves === refusComparaison.apres.graves &&
+    refusComparaison.avant.aigus === refusComparaison.apres.aigus,
+    'graves ' + refusComparaison.avant.graves + ' -> ' + refusComparaison.apres.graves);
+
   console.log('\n--- Montage ---');
 
   const mont = await page.evaluate(async () => {

@@ -907,6 +907,14 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
               <option value="perso">Personnalisé</option>
             </select>
             <div class="aide">Traitement appliqué dans le navigateur, après la génération.</div>
+            <button class="btn btn-g btn-sm" id="btnCorrection" style="margin-top:8px"
+                    onclick="calculerCorrection()">Calculer d'après mes prises</button>
+            <div class="aide" style="margin-top:6px">
+              Compare vos enregistrements à la dernière génération non traitée, et en déduit
+              la correction qui rapproche le timbre. Rien n'est décidé d'avance : les trois
+              filtres sont ajustés sur les neuf bandes mesurées.
+            </div>
+            <div id="resCorrection" style="margin-top:10px"></div>
           </div>
           <div class="champ" style="display:flex;align-items:flex-end">
             <label class="check" style="width:100%"><input type="checkbox" id="traitementActif" onchange="majTraitement()">
@@ -3614,6 +3622,332 @@ async function mesurerAudio(blob){
     coupureGrave: bandeSousLaVoix ? bandeSousLaVoix.coupure : null,
     sousLaVoix: bandeSousLaVoix ? bandeSousLaVoix.rapport : null
   };
+}
+
+/* Mesure, déduit, applique, et montre le détail. Une correction qu'on ne peut
+   pas relire est une correction qu'on ne peut pas contester. */
+async function calculerCorrection(){
+  const zone = $('resCorrection');
+  const bouton = $('btnCorrection');
+  if(!etat.echantillons.length){
+    zone.innerHTML = '<div class="note n-amb">Aucune prise enregistrée : il n\'y a rien à quoi comparer. ' +
+      'Ajoutez vos enregistrements à l\'étape 02.</div>';
+    return;
+  }
+  const g = etat.generations[0];
+  if(!g || !g.brut){
+    zone.innerHTML = '<div class="note n-amb">Aucune génération non traitée disponible. ' +
+      'Produisez d\'abord un audio : c\'est lui qui sera comparé à vos prises.</div>';
+    return;
+  }
+  occupe(bouton, true, 'Mesure…');
+  try{
+    const prises = await profilDesPrises();
+    if(!prises){
+      zone.innerHTML = '<div class="note n-red">Vos prises n\'ont pas pu être mesurées : ' +
+        'elles sont peut-être trop courtes.</div>';
+      return;
+    }
+    const gen = await profilDeBlob(g.brut);
+    if(!gen || gen.some(v => v === null)){
+      zone.innerHTML = '<div class="note n-red">La génération n\'a pas pu être mesurée. ' +
+        'Un audio d\'au moins une seconde est nécessaire.</div>';
+      return;
+    }
+    const source = await decoderAudio(g.brut);
+    const r = ajusterCorrection(prises.profil, gen, source.sampleRate);
+    if(!r){
+      zone.innerHTML = '<div class="note n-red">La correction n\'a pas pu être calculée.</div>';
+      return;
+    }
+
+    /* Refus quand l'ajustement ne tient pas.
+
+       Deux prises de la même voix ne s'écartent que de deux décibels environ.
+       Si le résidu reste grand après correction, ou si les trois gains butent
+       sur leur limite, c'est que les deux profils ne décrivent pas la même
+       chose : prises et génération viennent de voix différentes, ou la prise
+       est trop courte pour une moyenne spectrale. Appliquer quand même
+       poserait trois filtres à fond et abîmerait le son. */
+    const butes = r.gains.filter(g => Math.abs(g) >= GAIN_MAX_CORRECTION - 0.01).length;
+    if(r.ecartApres > RESIDU_MAX_CORRECTION || butes === 3){
+      zone.innerHTML = '<div class="note n-amb"><div class="note-t">Comparaison inexploitable</div>' +
+        'L\'écart entre vos prises et cette génération reste de ' +
+        r.ecartApres.toFixed(1).replace('.', ',') + ' dB après ajustement' +
+        (butes === 3 ? ', et les trois filtres butent sur leur limite' : '') +
+        '. Deux enregistrements d\'une même voix ne s\'écartent que de deux décibels environ : ' +
+        'ces deux-là ne décrivent pas la même chose. Vérifiez que la génération a bien été ' +
+        'produite avec la voix créée depuis ces prises, et que celles-ci durent plus de ' +
+        'quelques secondes. Aucun réglage n\'a été modifié.</div>';
+      return;
+    }
+
+    /* On applique, en laissant le reste de la chaîne tel quel : la mesure ne
+       porte que sur l'équilibre tonal, pas sur la compression ni le niveau. */
+    $('traitementActif').checked = true;
+    $('typeGraves').value = 'lowshelf';
+    $('graves').value = r.gains[0].toFixed(1);
+    $('fGraves').value = FILTRES_CORRECTION[0].f;
+    $('qGraves').value = FILTRES_CORRECTION[0].q;
+    $('basMed').value = r.gains[1].toFixed(1);
+    $('fBasMed').value = FILTRES_CORRECTION[1].f;
+    $('qBasMed').value = FILTRES_CORRECTION[1].q;
+    $('typeAigus').value = 'highshelf';
+    $('aigus').value = r.gains[2].toFixed(1);
+    $('fAigus').value = FILTRES_CORRECTION[2].f;
+    $('qAigus').value = FILTRES_CORRECTION[2].q;
+    $('preset').value = 'perso';
+    majTraitement();
+
+    const d1 = v => v.toFixed(1).replace('.', ',');
+    const lignes = NOMS_BANDES.map((n, i) =>
+      '<tr><td style="padding:1px 10px 1px 0">' + echapper(n) + '</td>' +
+      '<td style="text-align:right;padding:1px 10px 1px 0">' + d1(r.avant[i]) + ' dB</td>' +
+      '<td style="text-align:right">' + d1(r.apres[i]) + ' dB</td></tr>').join('');
+
+    zone.innerHTML =
+      '<div class="note n-grn"><div class="note-t">Correction calculée sur ' +
+      prises.nb + ' prise(s)</div>' +
+      '<div style="font-size:11.5px;line-height:1.6;margin-top:6px">' +
+        'Écart de la génération à vos prises, bande par bande, calé sur 1-4 kHz. ' +
+        'Un écart positif signifie que le moteur en met trop.' +
+      '</div>' +
+      '<table style="font-size:11.5px;margin-top:8px;font-family:\'DM Mono\',ui-monospace,monospace">' +
+        '<tr style="color:var(--txt2)"><td></td><td style="text-align:right;padding-right:10px">avant</td>' +
+        '<td style="text-align:right">après</td></tr>' + lignes +
+      '</table>' +
+      '<div style="font-size:11.5px;line-height:1.6;margin-top:8px">' +
+        'Écart moyen : <strong>' + d1(r.ecartAvant) + ' dB</strong> ramené à <strong>' +
+        d1(r.ecartApres) + ' dB</strong>.<br>' +
+        'Plateau bas ' + FILTRES_CORRECTION[0].f + ' Hz : ' + d1(r.gains[0]) + ' dB. ' +
+        'Cloche ' + FILTRES_CORRECTION[1].f + ' Hz : ' + d1(r.gains[1]) + ' dB. ' +
+        'Plateau haut ' + FILTRES_CORRECTION[2].f + ' Hz : ' + d1(r.gains[2]) + ' dB.<br>' +
+        'Ces réglages sont maintenant dans l\'égaliseur, et restent modifiables.' +
+      '</div></div>';
+    toast('Correction appliquée d\'après vos prises.', 'ok');
+  }catch(e){
+    zone.innerHTML = '<div class="note n-red">' + echapper(messageReseau(e)) + '</div>';
+  }finally{
+    occupe(bouton, false);
+  }
+}
+
+/* ══════════════════════════════════════════════════════
+   CORRECTION MESURÉE SUR LA VOIX D'ORIGINE
+   ══════════════════════════════════════════════════════ */
+
+/* Le moteur ne se trompe pas sur la voix, il se trompe sur son équilibre.
+
+   Comparé à ses propres enregistrements, il rend trop de bas-médium et pas
+   assez d'aigus. La bande 1-4 kHz, elle, coïncide : c'est pourquoi le calage
+   se fait sur elle, et pourquoi l'écart mesuré ailleurs décrit un défaut de
+   timbre et non une différence de voix.
+
+   Tout est mesuré ici, rien n'est supposé : les prises servent de référence,
+   la génération non traitée de sujet, et les trois filtres sont ajustés par
+   moindres carrés sur les neuf bandes. Aucune valeur n'est écrite d'avance. */
+
+const BANDES_MESURE = [[80,160],[160,300],[300,600],[600,1000],[1000,2000],
+                       [2000,4000],[4000,6000],[6000,8000],[8000,11000]];
+const NOMS_BANDES = ['80-160 Hz','160-300 Hz','300-600 Hz','600-1000 Hz','1-2 kHz',
+                     '2-4 kHz','4-6 kHz','6-8 kHz','8-11 kHz'];
+
+/* Les trois filtres de la correction, décrits par leur forme. Seuls leurs
+   gains sont cherchés : les fréquences et les largeurs restent fixes, sans
+   quoi l'ajustement trouverait des solutions justes sur le papier et
+   inaudibles dans les faits. */
+const FILTRES_CORRECTION = [
+  {cle:'graves', type:'lowshelf',  f:300,  q:0.9},
+  {cle:'basMed', type:'peaking',   f:450,  q:1.0},
+  {cle:'aigus',  type:'highshelf', f:4500, q:0.7}
+];
+const GAIN_MAX_CORRECTION = 9;   // au-delà, la réponse cesse d'être proportionnelle
+/* Deux prises d'une même voix s'écartent d'environ deux décibels. Un résidu au
+   double de cela signale que les deux profils ne décrivent pas la même voix. */
+const RESIDU_MAX_CORRECTION = 4;
+
+/* Enveloppe spectrale lissée au cepstre : elle suit les formants et ignore les
+   harmoniques, seule façon de comparer deux voix sans comparer leur hauteur. */
+function enveloppeSpectrale(donnees, fe){
+  const N = 4096;
+  if(donnees.length < N) return null;
+  const fen = new Float64Array(N);
+  for(let i=0;i<N;i++) fen[i] = 0.5 - 0.5*Math.cos(2*Math.PI*i/(N-1));
+  const moyenne = new Float64Array(N/2 + 1);
+  const re = new Float64Array(N), im = new Float64Array(N);
+  const trames = [];
+  for(let deb = 0; deb + N <= donnees.length; deb += N){
+    let energie = 0;
+    for(let i=0;i<N;i++){ re[i] = donnees[deb+i]*fen[i]; im[i] = 0; energie += donnees[deb+i]*donnees[deb+i]; }
+    fftSurPlace(re, im);
+    const spectre = new Float64Array(N/2 + 1);
+    for(let k=0;k<=N/2;k++) spectre[k] = Math.sqrt(re[k]*re[k] + im[k]*im[k]);
+    trames.push({energie, spectre});
+  }
+  if(trames.length < 4) return null;
+  /* Seules les trames sonores comptent : les silences décriraient le souffle. */
+  trames.sort((a,b)=>a.energie-b.energie);
+  const gardees = trames.slice(Math.floor(trames.length*0.7));
+  for(const t of gardees) for(let k=0;k<moyenne.length;k++) moyenne[k] += t.spectre[k];
+  for(let k=0;k<moyenne.length;k++) moyenne[k] /= gardees.length;
+
+  /* Lissage cepstral : on ne garde que les premiers coefficients, ceux qui
+     décrivent la forme large du spectre. */
+  const M = 2*(moyenne.length-1);
+  const lre = new Float64Array(M), lim = new Float64Array(M);
+  for(let k=0;k<moyenne.length;k++){
+    const v = Math.log(Math.max(moyenne[k], 1e-12));
+    lre[k] = v;
+    if(k>0 && k<moyenne.length-1) lre[M-k] = v;
+  }
+  fftSurPlace(lre, lim);
+  const L = 40;
+  for(let k=L;k<=M-L;k++){ lre[k] = 0; lim[k] = 0; }
+  fftSurPlace(lre, lim);
+  /* La transformée directe appliquée deux fois rend le signal inversé et
+     multiplié par M : on corrige les deux. */
+  const env = new Float64Array(moyenne.length);
+  for(let k=0;k<env.length;k++){
+    const idx = (M - k) % M;
+    env[k] = 20 * Math.LOG10E * (lre[idx] / M);
+  }
+  return {env, frequence: fe, taille: N};
+}
+
+/* Valeurs par bande, calées sur 1-4 kHz. */
+function profilBandes(donnees, fe){
+  const e = enveloppeSpectrale(donnees, fe);
+  if(!e) return null;
+  const pas = fe / e.taille;
+  const moyenneBande = (f1, f2) => {
+    let somme = 0, n = 0;
+    for(let k=1;k<e.env.length;k++){
+      const f = k*pas;
+      if(f >= f1 && f < f2){ somme += e.env[k]; n++; }
+    }
+    return n ? somme/n : null;
+  };
+  const reference = moyenneBande(1000, 4000);
+  if(reference === null) return null;
+  const sortie = [];
+  for(const [a,b] of BANDES_MESURE){
+    const v = moyenneBande(a, Math.min(b, fe/2 - 100));
+    sortie.push(v === null ? null : v - reference);
+  }
+  return sortie;
+}
+
+async function profilDeBlob(blob, secondesMax){
+  const source = await decoderAudio(blob);
+  let d = source.getChannelData(0);
+  if(secondesMax){
+    const n = Math.min(d.length, Math.round(secondesMax * source.sampleRate));
+    d = d.slice(0, n);
+  }
+  return profilBandes(d, source.sampleRate);
+}
+
+/* Profil moyen des prises : c'est la voix réelle, la cible à atteindre. */
+async function profilDesPrises(){
+  const profils = [];
+  for(const e of etat.echantillons){
+    /* Trente secondes par prise suffisent à une moyenne spectrale, et évitent
+       de faire attendre sur un quart d'heure d'audio. */
+    const p = await profilDeBlob(e.blob, 30);
+    if(p && p.every(v => v !== null)) profils.push(p);
+  }
+  if(!profils.length) return null;
+  const moyenne = [];
+  for(let i=0;i<BANDES_MESURE.length;i++){
+    moyenne.push(profils.reduce((t,p)=>t+p[i], 0) / profils.length);
+  }
+  return {profil: moyenne, nb: profils.length};
+}
+
+/* Module de la réponse d'un biquad, en décibels. Formules du livre de
+   recettes audio de Robert Bristow-Johnson, les mêmes que celles du
+   navigateur : la correction calculée ici est donc celle qui sera appliquée. */
+function reponseBiquad(type, f0, gainDb, Q, f, fe){
+  const A = Math.pow(10, gainDb/40);
+  const w0 = 2*Math.PI*f0/fe, cw = Math.cos(w0), sw = Math.sin(w0);
+  const al = sw/(2*Q);
+  let b0,b1,b2,a0,a1,a2;
+  if(type === 'peaking'){
+    b0 = 1+al*A; b1 = -2*cw; b2 = 1-al*A;
+    a0 = 1+al/A; a1 = -2*cw; a2 = 1-al/A;
+  }else if(type === 'lowshelf'){
+    const s = 2*Math.sqrt(A)*al;
+    b0 = A*((A+1)-(A-1)*cw+s); b1 = 2*A*((A-1)-(A+1)*cw); b2 = A*((A+1)-(A-1)*cw-s);
+    a0 = (A+1)+(A-1)*cw+s;     a1 = -2*((A-1)+(A+1)*cw);  a2 = (A+1)+(A-1)*cw-s;
+  }else{
+    const s = 2*Math.sqrt(A)*al;
+    b0 = A*((A+1)+(A-1)*cw+s); b1 = -2*A*((A-1)+(A+1)*cw); b2 = A*((A+1)+(A-1)*cw-s);
+    a0 = (A+1)-(A-1)*cw+s;     a1 = 2*((A-1)-(A+1)*cw);    a2 = (A+1)-(A-1)*cw-s;
+  }
+  const w = 2*Math.PI*f/fe, c1 = Math.cos(-w), s1 = Math.sin(-w);
+  const c2 = Math.cos(-2*w), s2 = Math.sin(-2*w);
+  const nr = b0/a0 + (b1/a0)*c1 + (b2/a0)*c2;
+  const ni =           (b1/a0)*s1 + (b2/a0)*s2;
+  const dr = 1 + (a1/a0)*c1 + (a2/a0)*c2;
+  const di =     (a1/a0)*s1 + (a2/a0)*s2;
+  const num = Math.sqrt(nr*nr + ni*ni), den = Math.sqrt(dr*dr + di*di);
+  return 20*Math.log10(Math.max(num/Math.max(den,1e-12), 1e-9));
+}
+
+/* Gain moyen apporté par un filtre dans chaque bande, à gain unité. La réponse
+   en décibels est proportionnelle au gain demandé — vérifié : moins de 0,2 dB
+   d'écart jusqu'à neuf décibels — donc un ajustement linéaire suffit. */
+function reponseParBande(filtre, fe){
+  const sortie = [];
+  for(const [a,b] of BANDES_MESURE){
+    const haut = Math.min(b, fe/2 - 100);
+    if(haut <= a){ sortie.push(0); continue; }
+    let somme = 0;
+    const n = 16;
+    for(let i=0;i<n;i++){
+      const f = a * Math.pow(haut/a, i/(n-1));
+      somme += reponseBiquad(filtre.type, filtre.f, 1, filtre.q, f, fe);
+    }
+    sortie.push(somme/n);
+  }
+  return sortie;
+}
+
+/* Résout un système 3x3 par élimination. Rend null si la matrice est plate. */
+function resoudre3(M, v){
+  const a = M.map((l,i)=>l.concat([v[i]]));
+  for(let c=0;c<3;c++){
+    let piv = c;
+    for(let l=c+1;l<3;l++) if(Math.abs(a[l][c]) > Math.abs(a[piv][c])) piv = l;
+    if(Math.abs(a[piv][c]) < 1e-12) return null;
+    const t = a[c]; a[c] = a[piv]; a[piv] = t;
+    for(let l=0;l<3;l++){
+      if(l === c) continue;
+      const f = a[l][c]/a[c][c];
+      for(let k=c;k<4;k++) a[l][k] -= f*a[c][k];
+    }
+  }
+  return [a[0][3]/a[0][0], a[1][3]/a[1][1], a[2][3]/a[2][2]];
+}
+
+/* Cherche les trois gains qui rapprochent le plus la génération des prises. */
+function ajusterCorrection(profilRef, profilGen, fe){
+  const cible = profilRef.map((v,i) => v - profilGen[i]);   // ce qu'il faut ajouter
+  const bases = FILTRES_CORRECTION.map(f => reponseParBande(f, fe));
+  const M = [[0,0,0],[0,0,0],[0,0,0]], v = [0,0,0];
+  for(let i=0;i<3;i++){
+    for(let j=0;j<3;j++)
+      for(let b=0;b<BANDES_MESURE.length;b++) M[i][j] += bases[i][b]*bases[j][b];
+    for(let b=0;b<BANDES_MESURE.length;b++) v[i] += bases[i][b]*cible[b];
+  }
+  let gains = resoudre3(M, v);
+  if(!gains) return null;
+  gains = gains.map(g => Math.max(-GAIN_MAX_CORRECTION, Math.min(GAIN_MAX_CORRECTION, g)));
+  const apres = cible.map((c,b) =>
+    c - gains.reduce((t,g,i) => t + g*bases[i][b], 0));
+  const moyen = t => t.reduce((s,x)=>s+Math.abs(x),0)/t.length;
+  return {gains, avant: cible.map(c=>-c), apres: apres.map(a=>-a),
+          ecartAvant: moyen(cible), ecartApres: moyen(apres)};
 }
 
 /* Déduit une chaîne de traitement des mesures, et dit ce qu'elle corrige.
