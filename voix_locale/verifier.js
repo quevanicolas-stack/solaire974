@@ -491,6 +491,52 @@ async function creerVoix(page, nom) {
   verifier('Une prise qui dépasserait le plafond est refusée',
     jauge.refus === false);
 
+  // Un refus ne doit pas etre suivi d'un « prise ajoutee » : deux messages
+  // contradictoires laissent croire que la prise est entree.
+  const refusPrise = await page.evaluate(async () => {
+    const vrais = etat.echantillons.slice();
+    const dits = [];
+    const vrai = window.toast;
+    window.toast = (t, k) => { dits.push(t); };
+    // Le plafond doit etre franchi par la prise de trois secondes : a cinq
+    // secondes pres il restait de la place, et la prise entrait a bon droit.
+    etat.echantillons = [{id:'gros', nom:'gros.wav', duree: DUREE_MAXI - 1,
+      blob: new Blob([new Uint8Array(500)]), type:'audio/wav', source:'micro'}];
+    const donnees = new Float32Array(48000 * 3);
+    for (let i = 0; i < donnees.length; i++) donnees[i] = 0.1 * Math.sin(i / 20);
+    await finaliserEnregistrement(donnees, 48000);
+    const etatRec = document.getElementById('recEtat').textContent;
+    window.toast = vrai;
+    etat.echantillons = vrais;
+    afficherEchantillons();
+    return { dits, etatRec, ajoutee: dits.some(t => t.indexOf('ajoutée') >= 0) };
+  });
+  verifier('Une prise refusée n\'est pas annoncée comme ajoutée',
+    refusPrise.ajoutee === false, refusPrise.dits.join(' | '));
+  verifier('Le refus se lit aussi à côté du chronomètre',
+    refusPrise.etatRec.indexOf('refus') >= 0, refusPrise.etatRec);
+
+  // Deux prises ne doivent jamais porter le meme nom : elles se
+  // telechargeraient dans le meme fichier.
+  const nommage = await page.evaluate(async () => {
+    const vrais = etat.echantillons.slice();
+    etat.echantillons = [];
+    const faux = n => ({id:'n'+n, nom:'Prise '+n+'.wav', duree:5,
+      blob:new Blob([new Uint8Array(100)]), type:'audio/wav', source:'micro'});
+    await ajouterEchantillon(faux(1));
+    await ajouterEchantillon(faux(2));
+    await supprimerEchantillon('n1');
+    const propose = nomDePrise();
+    await ajouterEchantillon({id:'n3', nom: propose, duree:5,
+      blob:new Blob([new Uint8Array(100)]), type:'audio/wav', source:'micro'});
+    const noms = etat.echantillons.map(e => e.nom);
+    etat.echantillons = vrais;
+    afficherEchantillons();
+    return { propose, noms, uniques: new Set(noms).size === noms.length };
+  });
+  verifier('Aucune prise ne reprend le nom d\'une autre',
+    nommage.uniques, nommage.noms.join(' | '));
+
   // Le serveur doit exploiter la matiere, pas seulement la stocker.
   const fiche = await page.evaluate(async () => {
     const r = await fetch(baseApi() + '/voices', { headers: entetes() });
@@ -607,6 +653,23 @@ async function creerVoix(page, nom) {
     const q = profilBandes(d.slice(0, n - 137), fe);   // même signal, cadrage différent
     return ajusterCorrection(p, q, fe);
   });
+  // Ce qui est annonce doit etre ce qui est applique : les curseurs de gain
+  // avancent par demi-decibel, et un gain calcule a -6,3 dB devenait -6,5 une
+  // fois pose, sans que l'ecran le dise.
+  const pose = await page.evaluate(() => {
+    const g = ajusterCorrection([0,0,0,0,0,0,0,0,0],
+                                [6.3,4.1,2.2,1.1,0,0,-2.3,-3.7,-4.9], 24000).gains;
+    document.getElementById('graves').value = g[0];
+    document.getElementById('basMed').value = g[1];
+    document.getElementById('aigus').value = g[2];
+    majTraitement();
+    const c = chaineCourante().traitement;
+    return { calcules: g, appliques: [c.graves, c.basMed, c.aigus] };
+  });
+  verifier('Les gains calculés sont exactement ceux appliqués',
+    pose.calcules.every((v, i) => Math.abs(v - pose.appliques[i]) < 1e-9),
+    'calculés ' + pose.calcules.join(' / ') + '  appliqués ' + pose.appliques.join(' / '));
+
   verifier('Aucune bande déjà juste n\'est sensiblement abîmée',
     corr.r.degradation <= 1.5 + 1e-9,
     'pire dégradation ' + corr.r.degradation.toFixed(2) + ' dB');

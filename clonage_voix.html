@@ -1682,13 +1682,19 @@ async function finaliserEnregistrement(donnees, frequence){
   }
 
   const blob = encoderWav(donnees, frequence, 16);
-  await ajouterEchantillon({
+  /* Le retour compte : au plafond, la prise est refusée et l'annoncer ajoutée
+     donnerait deux messages contradictoires. */
+  const ajoutee = await ajouterEchantillon({
     id: ident(),
-    nom: 'Prise ' + (etat.echantillons.length + 1) + '.wav',
+    nom: nomDePrise(),
     blob, duree, type: 'audio/wav',
     source: 'micro',
     frequence
   });
+  if(!ajoutee){
+    $('recEtat').textContent = 'Prise refusée';
+    return;
+  }
   toast('Prise ajoutée : ' + fmtDuree(duree) + ' en ' + Math.round(frequence/1000) + ' kHz non compressé.', 'ok');
 }
 
@@ -1748,6 +1754,19 @@ function placeDisponible(duree){
   return true;
 }
 
+/* Nom de prise libre.
+
+   Numéroter d'après le nombre de prises présentes donnait deux fois le même
+   nom dès qu'on en supprimait une : supprimer « Prise 1 » puis enregistrer
+   redonnait « Prise 2 », alors qu'une « Prise 2 » existait déjà. Deux prises de
+   même nom se téléchargent ensuite dans le même fichier. */
+function nomDePrise(){
+  const pris = new Set(etat.echantillons.map(e => e.nom));
+  let n = 1;
+  while(pris.has('Prise ' + n + '.wav')) n++;
+  return 'Prise ' + n + '.wav';
+}
+
 async function ajouterEchantillon(ech){
   if(!placeDisponible(ech.duree || 0)) return false;
   etat.echantillons.push(ech);
@@ -1760,18 +1779,21 @@ async function ajouterEchantillon(ech){
 async function importerFichiers(evt){
   const fichiers = Array.from(evt.target.files || []);
   evt.target.value = '';
+  let retenus = 0;
   for(const f of fichiers){
     if(f.type && f.type.indexOf('audio') !== 0){
       toast('Fichier ignoré, ce n\u2019est pas de l\u2019audio : ' + f.name, 'err');
       continue;
     }
     const duree = await mesurerDuree(f, 0);
-    await ajouterEchantillon({
+    if(await ajouterEchantillon({
       id: ident(), nom: f.name, blob: f, duree,
       type: f.type || 'audio/mpeg', source: 'fichier'
-    });
+    })) retenus++;
   }
-  if(fichiers.length) toast(fichiers.length + ' fichier(s) traité(s).', 'ok');
+  /* On annonce ce qui est entré, pas ce qui a été proposé : au plafond, les
+     derniers fichiers sont refusés et le dire autrement serait faux. */
+  if(retenus) toast(retenus + ' fichier(s) ajouté(s).', 'ok');
 }
 
 function afficherEchantillons(){
@@ -3692,14 +3714,14 @@ async function calculerCorrection(){
        porte que sur l'équilibre tonal, pas sur la compression ni le niveau. */
     $('traitementActif').checked = true;
     $('typeGraves').value = 'lowshelf';
-    $('graves').value = r.gains[0].toFixed(1);
+    $('graves').value = r.gains[0];
     $('fGraves').value = FILTRES_CORRECTION[0].f;
     $('qGraves').value = FILTRES_CORRECTION[0].q;
-    $('basMed').value = r.gains[1].toFixed(1);
+    $('basMed').value = r.gains[1];
     $('fBasMed').value = FILTRES_CORRECTION[1].f;
     $('qBasMed').value = FILTRES_CORRECTION[1].q;
     $('typeAigus').value = 'highshelf';
-    $('aigus').value = r.gains[2].toFixed(1);
+    $('aigus').value = r.gains[2];
     $('fAigus').value = FILTRES_CORRECTION[2].f;
     $('qAigus').value = FILTRES_CORRECTION[2].q;
     $('preset').value = 'perso';
@@ -3767,6 +3789,11 @@ const FILTRES_CORRECTION = [
   {cle:'basMed', type:'peaking',   f:700,  q:0.8},
   {cle:'aigus',  type:'highshelf', f:3500, q:0.7}
 ];
+/* Les curseurs de gain avancent par demi-décibel. Un gain calculé à -6,3 dB
+   devient donc -6,5 une fois posé, et l'écran annoncerait une valeur qui n'est
+   pas celle appliquée. On arrondit avant de mesurer le résultat : ce qui est
+   affiché est alors exactement ce que l'oreille entendra. */
+const PAS_GAIN = 0.5;
 const GAIN_MAX_CORRECTION = 9;   // au-delà, la réponse cesse d'être proportionnelle
 /* Deux prises d'une même voix s'écartent d'environ deux décibels. Un résidu au
    double de cela signale que les deux profils ne décrivent pas la même voix. */
@@ -4008,9 +4035,12 @@ function ajusterCorrection(profilRef, profilGen, fe){
   let ampleur = 1;
   while(ampleur > 0 && pireDegradation(residu(ampleur)) > DEGRADATION_MAX) ampleur -= 0.04;
   if(ampleur <= 0) return null;
-  gains = gains.map(g => g*ampleur);
+  gains = gains.map(g => Math.round(g*ampleur/PAS_GAIN)*PAS_GAIN);
 
-  const apres = residu(1);
+  /* Le résidu est recalculé sur les gains arrondis, ceux qui seront réellement
+     posés sur les curseurs, et non sur ceux que le calcul aurait voulus. */
+  const apres = cible.map((c,b) =>
+    c - gains.reduce((t,g,i) => t + g*bases[i][b], 0));
   const moyen = t => t.reduce((s,x)=>s+Math.abs(x),0)/t.length;
   return {gains, ampleur, avant: cible.map(c=>-c), apres: apres.map(a=>-a),
           ecartAvant: moyen(cible), ecartApres: moyen(apres),

@@ -217,7 +217,49 @@ m5 = serveur.decouper_texte(court)
 verifier("Un texte court reste en un seul morceau",
          len(m5) == 1 and m5[0][0] == court, f"{len(m5)} morceau(x)")
 verifier("Le dernier morceau n'est jamais suivi d'un silence",
-         serveur.decouper_texte(LONG)[-1][1] == 0.0)
+         serveur.decouper_texte(LONG)[-1][1] == "fin")
+
+# Les silences ne se valent pas. Une coupure faite pour tenir sous la limite du
+# moteur ne doit pas s'entendre comme un changement de paragraphe : un texte
+# courant de cinq phrases se voyait allonger de plus de deux secondes.
+natures = [n for _, n in serveur.decouper_texte(
+    "Bonjour à tous. Nous allons parler du projet. Le calendrier est tenu. Merci.")]
+verifier("Des phrases d'une même ligne sont séparées par une pause de phrase",
+         natures[:-1] == ["phrase"] * (len(natures) - 1), " ".join(natures))
+verifier("Le dernier morceau n'est suivi d'aucun silence",
+         natures[-1] == "fin", natures[-1])
+
+natures = [n for _, n in serveur.decouper_texte("Bonjour.\nNous commençons.\nMerci.")]
+verifier("Un retour à la ligne reste une respiration",
+         natures[0] == "ligne", " ".join(natures))
+
+natures = [n for _, n in serveur.decouper_texte("Premier bloc ici.\n\nSecond bloc là.")]
+verifier("Une ligne vide reste un paragraphe",
+         natures[0] == "paragraphe", " ".join(natures))
+
+longue = "Alpha " * 80 + "."
+natures = [n for _, n in serveur.decouper_texte(longue)]
+verifier("Une phrase tronçonnée garde des pauses internes courtes",
+         "proposition" in natures, " ".join(natures))
+
+verifier("Les durées vont croissant : proposition, phrase, respiration, paragraphe",
+         serveur.PAUSE_PROPOSITION < serveur.PAUSE_PHRASE <= serveur.PAUSE_COURTE
+         < serveur.PAUSE_LONGUE,
+         f"{serveur.PAUSE_PROPOSITION} < {serveur.PAUSE_PHRASE} <= "
+         f"{serveur.PAUSE_COURTE} < {serveur.PAUSE_LONGUE}")
+
+# Le silence total d'un texte courant doit rester modeste.
+DUREES = {"proposition": serveur.PAUSE_PROPOSITION, "phrase": serveur.PAUSE_PHRASE,
+          "ligne": serveur.PAUSE_COURTE, "paragraphe": serveur.PAUSE_LONGUE, "fin": 0.0}
+total = sum(DUREES[n] for _, n in serveur.decouper_texte(
+    "Bonjour à tous. Nous allons parler du projet. Le calendrier est tenu. "
+    "Les moyens sont réunis. Merci de votre attention."))
+verifier("Cinq phrases n'ajoutent pas plus d'une seconde de silence",
+         total <= 1.0, f"{total:.2f} s ajoutées")
+
+# Une nature inconnue ne doit pas devenir un silence nul sans le dire.
+verifier("Toutes les natures produites sont connues du recollage",
+         all(n in DUREES for _, n in serveur.decouper_texte(LONG)))
 
 print("\n--- Découpage de la référence ---")
 

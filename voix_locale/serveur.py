@@ -37,7 +37,7 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 
 RACINE = Path(__file__).resolve().parent
 DOSSIER_VOIX = RACINE / "donnees" / "voix"
-VERSION = "2026.09.20b"     # affichée au démarrage et sur « / » : sert à vérifier
+VERSION = "2026.09.20c"     # affichée au démarrage et sur « / » : sert à vérifier
                            # que le fichier en place est bien le dernier
 FREQUENCE = 24000          # fréquence d'échantillonnage de sortie, en hertz
 """
@@ -315,9 +315,23 @@ des retours à la ligne ; chaque morceau est prononcé séparément avec exactem
 les mêmes réglages et la même graine, puis les morceaux sont recollés avec des
 silences de durée choisie. Le débit devient régulier et les pauses, exactes.
 """
-PAUSE_COURTE = 0.28        # secondes, entre propositions
-PAUSE_LONGUE = 0.55        # secondes, entre phrases
-PASSAGE_UNIQUE_MAX = 220   # au-delà, le modèle découpe lui-même le morceau
+"""
+Durée des silences, selon ce qui les motive.
+
+Quatre situations, et elles ne se valent pas. Les confondre s'entend : avant
+cette distinction, une coupure faite pour tenir sous la limite du moteur
+recevait le même silence qu'un changement de paragraphe, et un texte courant de
+cinq phrases se voyait allonger de plus de deux secondes alors qu'il n'en
+demandait aucune — le modèle enchaînait très bien tout seul.
+
+Chaque morceau se termine par ailleurs sur un peu de silence produit par le
+moteur lui-même : les valeurs ci-dessous s'ajoutent à cela, elles ne le
+remplacent pas. C'est pourquoi elles sont plus courtes qu'une pause entendue.
+"""
+PAUSE_PROPOSITION = 0.16   # coupure à l'intérieur d'une phrase, imposée par la longueur
+PAUSE_PHRASE = 0.25        # entre deux phrases d'une même ligne
+PAUSE_COURTE = 0.28        # retour à la ligne : une respiration voulue
+PAUSE_LONGUE = 0.55        # ligne vide : un changement de paragraphe
 
 """
 La limite de caractères du moteur.
@@ -449,19 +463,20 @@ def decouper_texte(texte: str) -> list[tuple[str, float]]:
                 troncons = _tronconner(phrase)
                 for k, troncon in enumerate(troncons):
                     dernier = (k == len(troncons) - 1)
-                    # Silence long entre deux phrases, court à l'intérieur de
-                    # l'une : une phrase tronçonnée ne doit pas s'entendre
-                    # comme plusieurs phrases.
+                    # Une phrase tronçonnée ne doit pas s'entendre comme
+                    # plusieurs phrases, ni une phrase comme un paragraphe.
                     if not dernier:
-                        pause = PAUSE_COURTE
-                    elif derniere_phrase and not derniere_ligne:
-                        pause = PAUSE_COURTE
+                        nature = "proposition"
+                    elif not derniere_phrase:
+                        nature = "phrase"
+                    elif not derniere_ligne:
+                        nature = "ligne"
                     else:
-                        pause = PAUSE_LONGUE
-                    segments.append([troncon, pause])
+                        nature = "paragraphe"
+                    segments.append([troncon, nature])
     if segments:
-        segments[-1][1] = 0.0        # aucun silence à la toute fin
-    return [(s, p) for s, p in segments]
+        segments[-1][1] = "fin"      # aucun silence à la toute fin
+    return [(s, n) for s, n in segments]
 
 
 MONTEE = 0.002   # secondes de fondu à l'entrée d'un morceau
@@ -520,21 +535,33 @@ def prononcer(moteur, texte: str, reference: Path, reglages: dict) -> tuple[byte
     """Découpage, prononciation morceau par morceau, recollage. Aucun filtrage."""
     segments = decouper_texte(texte)
     vitesse = max(0.5, min(2.0, float(reglages.get("speed") or 1.0)))
-    # Les pauses sont réglables : l'application peut les allonger ou les supprimer.
+    # Les pauses sont réglables : l'application peut les allonger ou les
+    # supprimer. Les deux réglages exposés pilotent la respiration et le
+    # paragraphe ; les silences internes à une phrase suivent la respiration,
+    # proportionnellement, pour qu'un réglage à zéro les emporte aussi.
     courte = float(reglages.get("pause_courte", PAUSE_COURTE))
     longue = float(reglages.get("pause_longue", PAUSE_LONGUE))
+    durees = {
+        "proposition": courte * (PAUSE_PROPOSITION / PAUSE_COURTE),
+        "phrase":      courte * (PAUSE_PHRASE / PAUSE_COURTE),
+        "ligne":       courte,
+        "paragraphe":  longue,
+        "fin":         0.0,
+    }
 
     if len(segments) <= 1:
         return moteur.synthetiser(texte.strip(), reference, reglages)
 
     morceaux = []
-    for segment, pause in segments:
+    for segment, nature in segments:
         audio, mime = moteur.synthetiser(segment, reference, reglages)
         if mime != "audio/wav":
             # Un moteur qui ne rend pas du WAV ne peut pas être recollé ici :
             # on repasse par une seule prononciation, sans pauses maîtrisées.
             return moteur.synthetiser(texte, reference, reglages)
-        duree = longue if pause == PAUSE_LONGUE else (courte if pause == PAUSE_COURTE else 0.0)
+        # Une nature inconnue ne doit pas devenir un silence nul en silence :
+        # on retombe sur la respiration, qui est le cas le plus fréquent.
+        duree = durees.get(nature, courte)
         morceaux.append((audio, duree / vitesse))
     return assembler_audio(morceaux), "audio/wav"
 
