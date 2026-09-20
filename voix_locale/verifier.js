@@ -1175,6 +1175,90 @@ async function creerVoix(page, nom) {
     await page.evaluate(async () =>
       (await bdTout('echantillons')).every(e => !!e.profilId)));
 
+  console.log('\n--- Tonalité et réglages masqués ---');
+
+  // Un reglage affiche doit agir. Une fois verrouilles, les curseurs du studio
+  // n'agissent plus : les laisser visibles afficherait une fausse info.
+  const masque = await page.evaluate(async () => {
+    const p = profilActif();
+    await verrouillerReglages();
+    const verrouille = document.getElementById('blocReglagesProfil').style.display;
+    await deverrouillerReglages();
+    const ouvert = document.getElementById('blocReglagesProfil').style.display;
+    return { verrouille, ouvert, etait: p.verrouille };
+  });
+  verifier('Verrouillés, les réglages du studio sont masqués',
+    masque.verrouille === 'none', 'display: ' + masque.verrouille);
+  verifier('Rouverts, ils réapparaissent',
+    masque.ouvert !== 'none', 'display: ' + masque.ouvert);
+
+  // La tonalite est le seul reglage laisse a la generation : elle doit donc
+  // agir reellement, sur la chaine active comme sur la chaine inactive.
+  const ton = await page.evaluate(async () => {
+    const empreinte = async (blob) => {
+      const a = await decoderAudio(blob);
+      const d = a.getChannelData(0);
+      let carres = 0;
+      for (let i = 0; i < d.length; i++) carres += d[i] * d[i];
+      return Math.sqrt(carres / d.length);
+    };
+    // Un signal grave franc : un plateau bas doit s'y entendre.
+    const fe = 24000, n = fe * 3;
+    const d = new Float32Array(n);
+    for (let i = 0; i < n; i++) d[i] = 0.2 * Math.sin(2 * Math.PI * 100 * i / fe);
+    const src = encoderWav(d, fe, 16);
+
+    const poser = (g, a, v) => {
+      document.getElementById('radioGraves').value = g;
+      document.getElementById('radioAigus').value = a;
+      document.getElementById('radioVolume').value = v;
+      majAutoradio();
+    };
+    const sansChaine = {traitement:null, nettoyage:null, resolution:16, frequence:0, loudness:'0'};
+
+    poser(0, 0, 0);
+    const plat = await empreinte(await appliquerTraitement(src, {...sansChaine, autoradio: autoradio()}));
+    poser(6, 0, 0);
+    const graves = await empreinte(await appliquerTraitement(src, {...sansChaine, autoradio: autoradio()}));
+    poser(0, 0, 6);
+    const fort = await empreinte(await appliquerTraitement(src, {...sansChaine, autoradio: autoradio()}));
+    poser(0, 0, -6);
+    const faible = await empreinte(await appliquerTraitement(src, {...sansChaine, autoradio: autoradio()}));
+    poser(0, 0, 0);
+
+    // La chaine courante doit porter la tonalite, sinon la generation l'ignore.
+    poser(3, -2, 1);
+    const dansChaine = chaineCourante().autoradio;
+    // Elle ne doit PAS entrer dans les reglages verrouilles du profil.
+    const dansProfil = Object.keys(reglagesDuProfil().nombres).filter(k => k.startsWith('radio'));
+    poser(0, 0, 0);
+    remettreAutoradio();
+    const remis = autoradio();
+
+    return { plat, graves, fort, faible, dansChaine, dansProfil, remis };
+  });
+  verifier('Le plateau des graves agit sur un signal grave',
+    ton.graves > ton.plat * 1.4,
+    'niveau ' + ton.plat.toFixed(4) + ' -> ' + ton.graves.toFixed(4));
+  verifier('Le volume monte et descend réellement',
+    ton.fort > ton.plat * 1.8 && ton.faible < ton.plat * 0.6,
+    '+6 dB : ' + ton.fort.toFixed(4) + '  -6 dB : ' + ton.faible.toFixed(4) +
+    '  à plat : ' + ton.plat.toFixed(4));
+  verifier('La tonalité est bien transmise à la chaîne',
+    ton.dansChaine && ton.dansChaine.graves === 3 && ton.dansChaine.aigus === -2 &&
+    ton.dansChaine.volume === 1, JSON.stringify(ton.dansChaine));
+  verifier('La tonalité n\'est pas absorbée par le verrouillage du profil',
+    ton.dansProfil.length === 0, ton.dansProfil.join(' ') || 'aucune');
+  verifier('La tonalité se remet à plat',
+    ton.remis.graves === 0 && ton.remis.aigus === 0 && ton.remis.volume === 0);
+
+  // Aucun autre reglage ne doit subsister a l'etape de generation.
+  const etape3 = await page.evaluate(() =>
+    [...document.querySelectorAll('#p2 input[type=range], #p2 select')].map(e => e.id));
+  verifier('À la génération, seule la tonalité reste réglable',
+    etape3.length === 3 && etape3.every(i => i.startsWith('radio')),
+    etape3.join(' ') || 'aucun');
+
   console.log('\n--- Montage ---');
 
   const mont = await page.evaluate(async () => {

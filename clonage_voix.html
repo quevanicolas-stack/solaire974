@@ -667,6 +667,10 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
         </div>
       </div>
 
+      <!-- Tout ce bloc est repris par le verrouillage : une fois verrouillé,
+           il est masqué, car la génération ne le lit plus. Le laisser visible
+           afficherait des valeurs qui ne sont pas celles employées. -->
+      <div id="blocReglagesProfil">
       <div class="sec">Style d'élocution</div>
       <div class="card">
         <div class="champ">
@@ -1022,13 +1026,18 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
         <div id="infoFormat" class="item-meta" style="margin-top:10px"></div>
       </div>
 
+      </div><!-- fin blocReglagesProfil -->
+
       <div class="sec">Verrouillage</div>
       <div class="card">
         <div id="etatVerrou"></div>
         <div class="aide" style="margin-top:10px">
           Le verrouillage fige les réglages ci-dessus pour ce profil : élocution, moteur, nettoyage,
-          égaliseur, dynamique, niveau et format. L'étape suivante n'aura plus qu'à recevoir le texte.
-          Ils restent modifiables à tout moment en les rouvrant.
+          égaliseur, dynamique, niveau et format. Une fois verrouillés, ils sont masqués : la
+          génération ne les lit plus, et les laisser affichés donnerait des valeurs qui ne sont pas
+          celles employées. L'étape suivante n'a plus qu'à recevoir le texte, et ne garde que la
+          tonalité — graves, aigus, volume — qui, elle, agit toujours.
+          Tout reste modifiable en rouvrant les réglages.
         </div>
       </div>
 
@@ -1073,6 +1082,33 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
             Le style découpe le texte pour guider les pauses, et le lexique remplace les mots
             que vous y avez inscrits. Choisissez « Personnalisé » pour ne garder que le lexique.
           </div>
+        </div>
+      </div>
+
+      <div class="sec">Tonalité</div>
+      <div class="card">
+        <div class="grid3">
+          <div class="champ">
+            <div class="curs-tete"><span>Graves</span><span class="curs-val" id="vRadioGraves">0 dB</span></div>
+            <input type="range" id="radioGraves" min="-6" max="6" step="0.5" value="0" oninput="majAutoradio()">
+          </div>
+          <div class="champ">
+            <div class="curs-tete"><span>Aigus</span><span class="curs-val" id="vRadioAigus">0 dB</span></div>
+            <input type="range" id="radioAigus" min="-6" max="6" step="0.5" value="0" oninput="majAutoradio()">
+          </div>
+          <div class="champ">
+            <div class="curs-tete"><span>Volume</span><span class="curs-val" id="vRadioVolume">0 dB</span></div>
+            <input type="range" id="radioVolume" min="-12" max="12" step="0.5" value="0" oninput="majAutoradio()">
+          </div>
+        </div>
+        <div class="aide">
+          Les trois seuls réglages qui restent ici, et ils agissent vraiment : ce sont ceux d'un
+          autoradio. Ils s'ajoutent aux réglages du profil sans les remplacer — le travail de
+          l'étape 02 reste la base, ceci ne fait que l'incliner d'un cran.
+          Le volume décale le niveau final ; quand une cible de niveau est réglée dans le profil,
+          c'est elle qui se déplace, de sorte que la mise au niveau reste le dernier maillon.
+          <button class="btn btn-g btn-sm" style="margin-top:9px" onclick="remettreAutoradio()">
+            Tout remettre à plat</button>
         </div>
       </div>
 
@@ -1395,7 +1431,8 @@ function go(n){
       listerVoix();   // la bibliothèque de voix est le point d'entrée de l'étape
     }
   }
-  if(n === 2){ majVoixActive(); majCompteur(); }
+  if(n === 1){ majVerrou(); }
+  if(n === 2){ majVoixActive(); majCompteur(); majVerrou(); }
   if(n === 3){ afficherGenerations(); afficherMontage(); afficherTraceConsentement(); }
 
   majEtat();
@@ -1665,7 +1702,8 @@ function majVerrou(){
       ? '<div class="note n-amb" style="margin:0">Aucun profil actif.</div>'
       : p.verrouille
         ? '<div class="note n-grn" style="margin:0"><div class="note-t">Réglages verrouillés</div>' +
-          'Chaque génération de ce profil reprend ces réglages. ' +
+          'Chaque génération de ce profil reprend ces réglages, et ils sont masqués : ' +
+          'affichés, ils montreraient des valeurs qui ne sont plus celles employées. ' +
           '<button class="btn btn-g btn-sm" style="margin-top:9px" onclick="deverrouillerReglages()">' +
           'Reprendre les réglages</button></div>'
         : '<div class="note n-amb" style="margin:0"><div class="note-t">Réglages non verrouillés</div>' +
@@ -1674,6 +1712,12 @@ function majVerrou(){
           '<button class="btn btn-p btn-sm" style="margin-top:9px" onclick="verrouillerReglages()">' +
           'Verrouiller les réglages</button></div>';
   }
+  /* Une fois verrouillés, les curseurs du studio n'agissent plus : la
+     génération reprend les valeurs du profil. Les laisser affichés et
+     manipulables afficherait une fausse information — on les masque. */
+  const bloc = $('blocReglagesProfil');
+  if(bloc) bloc.style.display = (p && p.verrouille) ? 'none' : 'block';
+
   const r = $('rappelProfil');
   if(r){
     r.innerHTML = !p
@@ -1682,7 +1726,7 @@ function majVerrou(){
         '<div class="note-t">Profil : ' + echapper(p.nom) + '</div>' +
         (p.verrouille
           ? 'Réglages verrouillés à l\'étape 02. Écrivez votre texte et générez : ' +
-            'rien d\'autre n\'est à régler.'
+            'seule la tonalité ci-dessous reste à portée de main.'
           : 'Réglages non verrouillés : la génération utilise les réglages affichés à ' +
             'l\'étape 02, qui ont pu bouger. Verrouillez-les pour ne plus y revenir.') +
         '</div>';
@@ -3459,8 +3503,42 @@ async function reechantillonner(donnees, freqSource, freqCible){
    temps réel : la durée du rendu ne dépend pas de la durée de l'audio. */
 /* Réglages tels qu'affichés. Les extraire permet d'appliquer la même chaîne à
    une autre série de valeurs, ce dont la version proposée a besoin. */
+/* Tonalité, à la manière d'un autoradio.
+
+   Deux plateaux et un volume, posés PAR-DESSUS la chaîne du profil. Ce ne
+   sont pas les réglages du studio en réduction : ils s'y ajoutent, comme les
+   graves et les aigus d'un autoradio s'ajoutent à ce qu'émet la station.
+
+   C'est le seul réglage laissé à l'étape de génération, parce que c'est le
+   seul qui ait encore un sens une fois le profil réglé — et parce qu'il agit
+   réellement, ce que les curseurs du studio ne faisaient plus une fois
+   verrouillés. */
+const AUTORADIO_GRAVES = 180;    // Hz : plateau bas, comme sur un autoradio
+const AUTORADIO_AIGUS  = 5000;   // Hz : plateau haut
+
+function autoradio(){
+  const lire = (id) => { const e = $(id); return e ? parseFloat(e.value) || 0 : 0; };
+  return {graves: lire('radioGraves'), aigus: lire('radioAigus'), volume: lire('radioVolume')};
+}
+
+function majAutoradio(){
+  const a = autoradio();
+  const dB = v => (v > 0 ? '+' : '') + v.toFixed(1).replace('.', ',') + ' dB';
+  $('vRadioGraves').textContent = dB(a.graves);
+  $('vRadioAigus').textContent  = dB(a.aigus);
+  $('vRadioVolume').textContent = dB(a.volume);
+  if(bd) bdEcrire('config', {cle:'autoradio', valeur:a});
+}
+
+function remettreAutoradio(){
+  ['radioGraves','radioAigus','radioVolume'].forEach(id => { if($(id)) $(id).value = 0; });
+  majAutoradio();
+  toast('Tonalité remise à plat.', 'ok');
+}
+
 function chaineCourante(){
   return {
+    autoradio: autoradio(),
     traitement: traitementActif() ? reglagesTraitement() : null,
     nettoyage: nettoyageActif()
       ? {seuil: parseFloat($('porte').value), rogner: $('rogner').checked}
@@ -3537,6 +3615,13 @@ async function appliquerTraitement(blob, chaineDemandee){
     chaine.push(compresseur);
   }
 
+  /* Les plateaux de tonalité viennent après la chaîne du profil, et
+     s'appliquent même quand celle-ci est inactive : ils doivent agir dans
+     tous les cas, sinon ils afficheraient à leur tour une fausse info. */
+  const ton = c.autoradio || {graves:0, aigus:0, volume:0};
+  if(ton.graves) chaine.push(filtre('lowshelf',  AUTORADIO_GRAVES, null, ton.graves));
+  if(ton.aigus)  chaine.push(filtre('highshelf', Math.min(AUTORADIO_AIGUS, nyquist), null, ton.aigus));
+
   let precedent = lecteur;
   for(const noeud of chaine){ precedent.connect(noeud); precedent = noeud; }
   precedent.connect(off.destination);
@@ -3553,6 +3638,12 @@ async function appliquerTraitement(blob, chaineDemandee){
     if(c.nettoyage.rogner) donnees = rognerSilences(donnees, rendu.sampleRate, seuilPorte);
   }
 
+  /* Le volume de la tonalité décale l'étage de niveau au lieu de s'ajouter
+     après lui : une correction posée après la mise au niveau ferait manquer
+     la cible, et la mise au niveau doit rester le dernier maillon. */
+  const volume = (c.autoradio && c.autoradio.volume) || 0;
+  let volumeAbsorbe = false;
+
   if(chaineActive && r.normaliser){
     let crete = 0;
     for(let i=0;i<donnees.length;i++){
@@ -3560,8 +3651,9 @@ async function appliquerTraitement(blob, chaineDemandee){
       if(v > crete) crete = v;
     }
     if(crete > 0.0001){
-      const facteur = Math.pow(10, r.cible / 20) / crete;
+      const facteur = Math.pow(10, (r.cible + volume) / 20) / crete;
       for(let i=0;i<donnees.length;i++) donnees[i] *= facteur;
+      volumeAbsorbe = true;
     }
   }
 
@@ -3572,7 +3664,10 @@ async function appliquerTraitement(blob, chaineDemandee){
   if(loudness){
     const mesure = await mesurerLoudness(donnees, rendu.sampleRate);
     if(mesure !== null){
-      let facteur = Math.pow(10, (loudness.cible - mesure) / 20);
+      /* La cible se déplace du volume demandé : l'étage de niveau reste ainsi
+         le dernier, et le volume ne le contredit pas. */
+      let facteur = Math.pow(10, (loudness.cible + volume - mesure) / 20);
+      volumeAbsorbe = true;
       /* Le plafond de crête n'est pas négociable : dépasser sature. */
       let crete = 0;
       for(let i=0;i<donnees.length;i++){
@@ -3583,6 +3678,14 @@ async function appliquerTraitement(blob, chaineDemandee){
       if(crete * facteur > plafond) facteur = plafond / Math.max(crete, 1e-9);
       for(let i=0;i<donnees.length;i++) donnees[i] *= facteur;
     }
+  }
+
+  /* Aucun étage de niveau n'a absorbé le volume : il s'applique alors
+     simplement, en gain. Sans cela le curseur n'aurait aucun effet sur un
+     profil sans normalisation ni cible de niveau. */
+  if(volume && !volumeAbsorbe){
+    const gain = Math.pow(10, volume / 20);
+    for(let i=0;i<donnees.length;i++) donnees[i] = Math.max(-1, Math.min(1, donnees[i] * gain));
   }
 
   const converti = await reechantillonner(donnees, rendu.sampleRate, c.frequence || 0);
@@ -5245,6 +5348,13 @@ async function demarrer(){
         majAvance();
       }
 
+      const ton = await bdLire('config','autoradio');
+      if(ton && ton.valeur){
+        $('radioGraves').value  = ton.valeur.graves  || 0;
+        $('radioAigus').value   = ton.valeur.aigus   || 0;
+        $('radioVolume').value  = ton.valeur.volume  || 0;
+      }
+
       const deb = await bdLire('config','debruitage');
       if(deb && deb.valeur && $('debruitage').querySelector('option[value="'+deb.valeur+'"]'))
         $('debruitage').value = deb.valeur;
@@ -5336,6 +5446,7 @@ async function demarrer(){
   /* Aligne l'affichage sur les choix retenus, qu'ils viennent des données
      enregistrées ou des valeurs par défaut. */
   if(!$('texteEssai').value) $('texteEssai').value = TEXTE_ESSAI;
+  majAutoradio();
   afficherProfils();
   majVerrou();
   majAffichageEtape4();
