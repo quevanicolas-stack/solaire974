@@ -914,9 +914,13 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
             <button class="btn btn-g btn-sm" id="btnCorrection" style="margin-top:8px"
                     onclick="calculerCorrection()">Calculer d'après mes prises</button>
             <div class="aide" style="margin-top:6px">
-              Compare vos enregistrements à la dernière génération non traitée, et en déduit
-              la correction qui rapproche le timbre. Rien n'est décidé d'avance : les trois
-              filtres sont ajustés sur les neuf bandes mesurées.
+              Vos enregistrements sont la référence. Ils sont comparés à toutes les versions
+              non traitées disponibles — la génération en cours et celles chargées en
+              bibliothèque — moyennées entre elles, car une génération seule n'est qu'un
+              tirage du moteur. Aucun de vos réglages n'entre dans la mesure : la version non
+              traitée sort du moteur sans débruitage et sans passer par l'égaliseur. Rien
+              n'est décidé d'avance : les trois filtres sont ajustés sur les neuf bandes
+              mesurées.
             </div>
             <div id="resCorrection" style="margin-top:10px"></div>
           </div>
@@ -3723,17 +3727,11 @@ async function calculerCorrection(){
      moteur, les autres décrivent déjà un traitement. Elle se trouve dans la
      génération en cours ; à défaut, dans une entrée de bibliothèque chargée
      en « non traitée ». */
-  const enCours = etat.generationEnCours;
-  const brut = (enCours && enCours.versions && enCours.versions.brut)
-    ? enCours.versions.brut.blob
-    : (() => {
-        const e = etat.generations.find(x => x.version === 'brut');
-        return e ? versionRetenue(e).blob : null;
-      })();
-  if(!brut){
+  const bruts = versionsNonTraitees();
+  if(!bruts.length){
     zone.innerHTML = '<div class="note n-amb">Aucune version non traitée disponible. ' +
       'Produisez un audio — la comparaison se fait sur la version non traitée, ' +
-      'celle qui décrit le moteur seul.</div>';
+      'celle qui décrit le moteur seul, sans aucun de vos réglages.</div>';
     return;
   }
   occupe(bouton, true, 'Mesure…');
@@ -3744,13 +3742,14 @@ async function calculerCorrection(){
         'elles sont peut-être trop courtes.</div>';
       return;
     }
-    const gen = await profilDeBlob(brut);
-    if(!gen || gen.some(v => v === null)){
+    const sujet = await profilDesGenerations(bruts);
+    if(!sujet){
       zone.innerHTML = '<div class="note n-red">La génération n\'a pas pu être mesurée. ' +
         'Un audio d\'au moins une seconde est nécessaire.</div>';
       return;
     }
-    const source = await decoderAudio(brut);
+    const gen = sujet.profil;
+    const source = await decoderAudio(bruts[0]);
     const r = ajusterCorrection(prises.profil, gen, source.sampleRate);
     if(!r){
       zone.innerHTML = '<div class="note n-red">La correction n\'a pas pu être calculée.</div>';
@@ -3801,11 +3800,24 @@ async function calculerCorrection(){
       '<td style="text-align:right;padding:1px 10px 1px 0">' + d1(r.avant[i]) + ' dB</td>' +
       '<td style="text-align:right">' + d1(r.apres[i]) + ' dB</td></tr>').join('');
 
+    /* Une génération est un tirage : le dire, plutôt que de laisser croire que
+       la mesure décrit le moteur alors qu'elle décrit peut-être cette
+       génération-là. La dispersion entre générations donne la réponse. */
+    const tirages = sujet.nb === 1
+      ? 'Une seule génération non traitée était disponible : c\'est un seul tirage du ' +
+        'moteur. Produisez-en d\'autres et relancez le calcul pour asseoir la mesure.'
+      : sujet.nb + ' générations non traitées moyennées, écart de ' +
+        d1(sujet.dispersion) + ' dB entre elles' +
+        (sujet.dispersion > 2
+          ? ' — c\'est beaucoup : le moteur varie, la moyenne était nécessaire.'
+          : ' — elles se ressemblent, la mesure est stable.');
+
     zone.innerHTML =
       '<div class="note n-grn"><div class="note-t">Correction calculée sur ' +
-      prises.nb + ' prise(s)</div>' +
+      prises.nb + ' prise(s) et ' + sujet.nb + ' génération(s)</div>' +
       '<div style="font-size:11.5px;line-height:1.6;margin-top:6px">' +
-        'Écart de la génération à vos prises, bande par bande, calé sur 1-4 kHz. ' +
+        'Vos prises sont la référence, les générations non traitées le sujet. ' +
+        'Écart bande par bande, calé sur 1-4 kHz. ' +
         'Un écart positif signifie que le moteur en met trop.' +
       '</div>' +
       '<table style="font-size:11.5px;margin-top:8px;font-family:\'DM Mono\',ui-monospace,monospace">' +
@@ -3818,6 +3830,7 @@ async function calculerCorrection(){
         'Plateau bas ' + FILTRES_CORRECTION[0].f + ' Hz : ' + d1(r.gains[0]) + ' dB. ' +
         'Cloche ' + FILTRES_CORRECTION[1].f + ' Hz : ' + d1(r.gains[1]) + ' dB. ' +
         'Plateau haut ' + FILTRES_CORRECTION[2].f + ' Hz : ' + d1(r.gains[2]) + ' dB.<br>' +
+        tirages + '<br>' +
         'Ces réglages sont maintenant dans l\'égaliseur, et restent modifiables.' +
       '</div></div>';
     toast('Correction appliquée d\'après vos prises.', 'ok');
@@ -3987,6 +4000,55 @@ async function profilDeBlob(blob, secondesMax){
     d = d.slice(0, n);
   }
   return profilBandes(d, source.sampleRate);
+}
+
+/* Toutes les versions non traitées disponibles, la plus récente d'abord.
+
+   Une seule génération est un seul tirage : le modèle varie d'une fois à
+   l'autre, et une correction déduite d'un échantillon unique décrit cette
+   génération-là plutôt que le moteur. On moyenne donc tout ce qu'on a.
+
+   Seules les versions NON TRAITÉES entrent : elles sortent du moteur sans
+   débruitage et sans passer par l'égaliseur de la page. Aucun réglage de
+   traitement ne peut donc fausser la mesure — et c'était déjà le cas avec une
+   seule génération. */
+function versionsNonTraitees(){
+  const sortie = [];
+  const vus = new Set();
+  const enCours = etat.generationEnCours;
+  if(enCours && enCours.versions && enCours.versions.brut){
+    sortie.push(enCours.versions.brut.blob);
+    vus.add(enCours.id);
+  }
+  /* Charger la version non traitée en bibliothèque en fait une entrée portant
+     le même identifiant que la génération en cours : sans ce filtre le même
+     audio serait compté deux fois, et l'écran annoncerait deux tirages là où
+     il n'y en a qu'un. */
+  for(const g of etat.generations){
+    if(g.version !== 'brut' || vus.has(g.id)) continue;
+    vus.add(g.id);
+    sortie.push(versionRetenue(g).blob);
+  }
+  return sortie;
+}
+
+/* Profil moyen des générations, et dispersion entre elles. La dispersion est
+   affichée : elle dit si une seule génération suffisait à décrire le moteur. */
+async function profilDesGenerations(blobs){
+  const profils = [];
+  for(const b of blobs){
+    const p = await profilDeBlob(b, 30);
+    if(p && p.every(v => v !== null)) profils.push(p);
+  }
+  if(!profils.length) return null;
+  const moyenne = [], etendue = [];
+  for(let i=0;i<BANDES_MESURE.length;i++){
+    const col = profils.map(p => p[i]);
+    moyenne.push(col.reduce((t,v)=>t+v,0) / col.length);
+    etendue.push(Math.max.apply(null, col) - Math.min.apply(null, col));
+  }
+  return {profil: moyenne, nb: profils.length,
+          dispersion: etendue.reduce((t,v)=>t+v,0) / etendue.length};
 }
 
 /* Profil moyen des prises : c'est la voix réelle, la cible à atteindre. */
@@ -4519,13 +4581,12 @@ function versionRetenue(g){
   return {blob: g.blob, nom: g.nom, titre: g.titreVersion || 'vos réglages'};
 }
 
-/* Charge dans la bibliothèque la version choisie à l'écoute.
+/* Dépose en bibliothèque la seule version choisie à l'écoute.
 
    Le téléchargement a quitté cet écran : on y compare, on y choisit, et c'est
-   la bibliothèque qui délivre les fichiers. Une génération reste enregistrée
-   même sans choix — quitter la page ne doit rien faire perdre — mais tant
-   qu'aucune version n'est retenue, la bibliothèque le dit. */
-/* Dépose en bibliothèque la seule version choisie.
+   la bibliothèque qui délivre les fichiers. Rien n'y est enregistré tant
+   qu'aucune version n'est retenue — quitter l'étape sans choisir perd la
+   génération, et c'est voulu.
 
    Une génération produit trois versions pour une même prononciation, mais une
    seule mérite d'être gardée. Charger deux fois remplace la précédente : la

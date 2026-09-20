@@ -756,6 +756,78 @@ async function creerVoix(page, nom) {
     borne.every(g => Math.abs(g) <= 9 + 1e-9),
     'gains ' + borne.map(g => g.toFixed(1)).join(' / ') + ' dB');
 
+  // Une generation est un tirage du moteur, pas le moteur. La correction doit
+  // se deduire de TOUTES les versions non traitees disponibles, moyennees, et
+  // annoncer combien elle en a vu.
+  const moyenne = await page.evaluate(async () => {
+    const fe = 24000, n = fe * 6;
+    // Deux sons de la meme voix, avec deux equilibres differents : la moyenne
+    // des deux profils doit tomber entre les deux, exactement au milieu.
+    const faire = (pente) => {
+      const d = new Float32Array(n);
+      for (let i = 0; i < n; i++) {
+        const t = i / fe;
+        const env = 0.5 + 0.5 * Math.sin(2 * Math.PI * 2.5 * t);
+        let v = 0;
+        for (let h = 1; h <= 60; h++) v += Math.sin(2 * Math.PI * 180 * h * t + h) / Math.pow(h, pente);
+        // Amplitude basse a dessein : encoderWav ecrete a plus ou moins un,
+        // et un ecretage change le spectre mesure.
+        d[i] = 0.12 * env * v;
+      }
+      return encoderWav(d, fe, 16);
+    };
+    const a = faire(1), b = faire(1.4);
+    const pa = await profilDeBlob(a), pb = await profilDeBlob(b);
+    const m = await profilDesGenerations([a, b]);
+    const seul = await profilDesGenerations([a]);
+    const ecart = m.profil.map((v, i) => Math.abs(v - (pa[i] + pb[i]) / 2));
+    const etendues = pa.map((v, i) => Math.abs(v - pb[i]));
+    return {
+      nb: m.nb, ecartMax: Math.max(...ecart),
+      dispersion: m.dispersion,
+      etendueVraie: etendues.reduce((t, v) => t + v, 0) / etendues.length,
+      nbSeul: seul.nb, dispersionSeul: seul.dispersion,
+      identique: pa.every((v, i) => Math.abs(v - seul.profil[i]) < 1e-9)
+    };
+  });
+  verifier('La correction moyenne toutes les générations non traitées',
+    moyenne.nb === 2 && moyenne.ecartMax < 1e-9,
+    moyenne.nb + ' générations, écart à la moyenne ' + moyenne.ecartMax.toExponential(1) + ' dB');
+  verifier('La dispersion entre générations est mesurée',
+    Math.abs(moyenne.dispersion - moyenne.etendueVraie) < 1e-9,
+    'annoncée ' + moyenne.dispersion.toFixed(2) + ' dB, réelle ' + moyenne.etendueVraie.toFixed(2) + ' dB');
+  verifier('Une génération seule reste son propre profil',
+    moyenne.nbSeul === 1 && moyenne.identique && moyenne.dispersionSeul === 0,
+    moyenne.nbSeul + ' génération, dispersion ' + moyenne.dispersionSeul);
+
+  // La version non traitee chargee en bibliotheque porte le meme identifiant
+  // que la generation en cours : comptee deux fois, l'ecran annoncerait deux
+  // tirages la ou il n'y en a qu'un.
+  const sources = await page.evaluate(async () => {
+    const avant = versionsNonTraitees().length;
+    const memeId = etat.generationEnCours &&
+      etat.generations.some(g => g.id === etat.generationEnCours.id && g.version === 'brut');
+    // Une entree traitee ne doit jamais entrer dans la mesure.
+    const g0 = etat.generations[0];
+    const traitee = Object.assign({}, g0, { id: 'entree-traitee', version: 'propose' });
+    etat.generations.push(traitee);
+    const avecTraitee = versionsNonTraitees().length;
+    // Une seconde generation non traitee, elle, doit compter.
+    const autre = Object.assign({}, g0, { id: 'autre-brut', version: 'brut' });
+    etat.generations.push(autre);
+    const avecAutre = versionsNonTraitees().length;
+    etat.generations = etat.generations.filter(
+      g => g.id !== 'entree-traitee' && g.id !== 'autre-brut');
+    return { avant, memeId, avecTraitee, avecAutre };
+  });
+  verifier('La même génération n\'est jamais comptée deux fois',
+    sources.memeId && sources.avant === 1,
+    sources.avant + ' source(s) pour une génération chargée en bibliothèque');
+  verifier('Une version traitée n\'entre pas dans la mesure',
+    sources.avecTraitee === 1, sources.avecTraitee + ' source(s) après ajout d\'une version traitée');
+  verifier('Une autre génération non traitée entre dans la mesure',
+    sources.avecAutre === 2, sources.avecAutre + ' source(s) après ajout d\'une seconde non traitée');
+
   // Une comparaison entre deux voix sans rapport doit etre refusee, pas
   // appliquee : trois filtres butes a fond abimeraient le son.
   const refusComparaison = await page.evaluate(async () => {
@@ -776,6 +848,67 @@ async function creerVoix(page, nom) {
     refusComparaison.avant.graves === refusComparaison.apres.graves &&
     refusComparaison.avant.aigus === refusComparaison.apres.aigus,
     'graves ' + refusComparaison.avant.graves + ' -> ' + refusComparaison.apres.graves);
+
+  // Le chemin qui reussit, de bout en bout, jusqu'a l'ecran : le seul controle
+  // qui lise ce que l'utilisateur voit apres un calcul abouti.
+  //
+  // La generation et la prise sont fabriquees ici, et non reprises du moteur
+  // de test : celui-ci n'emet que trois harmoniques, donc rien au-dessus de
+  // 500 Hz. La bande 1-4 kHz sur laquelle tout se cale n'y porte que du bruit
+  // de calcul, et la correction deduite serait sans rapport avec le defaut
+  // introduit. Un signal de controle doit porter du signal dans TOUTES les
+  // bandes mesurees — le piege est deja connu, ne pas y retomber.
+  //
+  // La prise est la generation deformee par un plateau bas de +5 dB : les deux
+  // profils decrivent alors la meme voix, et la correction doit remonter le
+  // grave de la generation d'a peu pres autant.
+  const succes = await page.evaluate(async () => {
+    const memoireEch = etat.echantillons;
+    const memoireBrut = etat.generationEnCours.versions.brut.blob;
+    const fe = 24000, n = fe * 6;
+    const d = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      const t = i / fe;
+      const env = 0.5 + 0.5 * Math.sin(2 * Math.PI * 2.5 * t);
+      let v = 0;
+      for (let h = 1; h <= 68; h++) v += Math.sin(2 * Math.PI * 160 * h * t + h) / h;
+      d[i] = 0.12 * env * v;
+    }
+    const ctx = new OfflineAudioContext(1, n, fe);
+    const t = ctx.createBuffer(1, n, fe);
+    t.copyToChannel(d, 0);
+    const s = ctx.createBufferSource(); s.buffer = t;
+    const f = ctx.createBiquadFilter();
+    f.type = 'lowshelf'; f.frequency.value = 250; f.Q.value = 1.1; f.gain.value = 5;
+    s.connect(f); f.connect(ctx.destination); s.start();
+    const rendu = await ctx.startRendering();
+
+    etat.generationEnCours.versions.brut.blob = encoderWav(d, fe, 16);
+    etat.echantillons = [{ id: 'controle', nom: 'controle.wav',
+      blob: encoderWav(rendu.getChannelData(0), fe, 16) }];
+    await calculerCorrection();
+    const texte = document.getElementById('resCorrection').textContent;
+    const gains = ['graves', 'basMed', 'aigus']
+      .map(k => parseFloat(document.getElementById(k).value));
+    etat.echantillons = memoireEch;
+    etat.generationEnCours.versions.brut.blob = memoireBrut;
+    return { texte, gains, preset: document.getElementById('preset').value,
+             actif: document.getElementById('traitementActif').checked };
+  });
+  verifier('Une comparaison exploitable aboutit à une correction',
+    succes.texte.indexOf('Correction calculée') >= 0, succes.texte.slice(0, 70));
+  verifier('L\'écran dit sur combien de prises et de générations il a mesuré',
+    /sur\s+\d+\s+prise\(s\)\s+et\s+\d+\s+génération\(s\)/.test(succes.texte),
+    succes.texte.slice(0, 70));
+  verifier('L\'écran dit si une seule génération a servi',
+    succes.texte.indexOf('un seul tirage') >= 0 ||
+    /générations non traitées moyennées/.test(succes.texte),
+    succes.texte.indexOf('un seul tirage') >= 0 ? 'une seule génération, annoncée' : 'plusieurs, moyennées');
+  verifier('La correction retrouve le défaut introduit dans la prise',
+    succes.gains[0] >= 3 && succes.gains[0] <= 6,
+    'plateau bas ' + succes.gains[0] + ' dB pour +5 dB de graves dans la prise');
+  verifier('La correction laisse l\'égaliseur actif et en personnalisé',
+    succes.actif && succes.preset === 'perso', succes.preset);
 
   console.log('\n--- Montage ---');
 
