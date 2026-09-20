@@ -210,6 +210,58 @@ async function creerVoix(page, nom) {
     lex.accent === 'Oh-ré-lie et Aurélien', lex.accent);
   await page.evaluate(() => { etat.lexique = []; });
 
+  // Lexique de base. XTTS n'accepte aucune transcription phonetique : la seule
+  // facon d'imposer une prononciation est de reecrire le mot. Ces controles
+  // verifient que la base agit, qu'elle ne prend jamais le pas sur les mots de
+  // l'utilisateur, et qu'elle n'abime pas les mots en -er dont le R s'entend.
+  const base = await page.evaluate(() => {
+    const avant = etat.lexique.slice();
+    etat.lexique = [];
+    etat.baseEcartees = [];
+    etat.baseVerbes = etat.baseSigles = etat.baseAnglicismes = true;
+    const r = {
+      verbe: appliquerLexique('Il faut gommer son accent et diriger.'),
+      sigle: appliquerLexique('Le PDG a signé.'),
+      anglais: appliquerLexique('On planifie un meeting.'),
+      // Pieges : ces mots finissent aussi par -er, leur R se prononce.
+      pieges: appliquerLexique('hiver cher mer fer super amer papier premier métier'),
+      // Ambigus, volontairement absents de la liste.
+      ambigus: appliquerLexique('un reporter et un supporter'),
+      nb: lexiqueDeBase().length
+    };
+    // Vos mots passent avant ceux de la base.
+    etat.lexique = [{ecrit:'gommer', dit:'go-mère'}];
+    r.priorite = appliquerLexique('Il faut gommer.');
+    // Une entrée écartée cesse d'agir.
+    etat.lexique = [];
+    etat.baseEcartees = ['diriger'];
+    r.ecartee = appliquerLexique('Il faut diriger.');
+    etat.baseEcartees = [];
+    etat.baseVerbes = false;
+    r.eteinte = appliquerLexique('Il faut gommer.');
+    etat.baseVerbes = true;
+    etat.lexique = avant;
+    return r;
+  });
+  verifier('Le lexique de base retire le R final des infinitifs',
+    base.verbe === 'Il faut gommé son accent et dirigé.', base.verbe);
+  verifier('Les sigles sont lus lettre par lettre',
+    base.sigle.indexOf('pé dé gé') >= 0, base.sigle);
+  verifier('Les mots anglais sont réécrits à la française',
+    base.anglais.indexOf('miting') >= 0, base.anglais);
+  verifier('Les mots en -er dont le R se prononce sont épargnés',
+    base.pieges === 'hiver cher mer fer super amer papier premier métier', base.pieges);
+  verifier('Les mots ambigus sont laissés tels quels',
+    base.ambigus === 'un reporter et un supporter', base.ambigus);
+  verifier('Vos mots passent avant le lexique de base',
+    base.priorite === 'Il faut go-mère.', base.priorite);
+  verifier('Une entrée de base écartée cesse d\'agir',
+    base.ecartee === 'Il faut diriger.', base.ecartee);
+  verifier('Une liste désactivée n\'agit plus du tout',
+    base.eteinte === 'Il faut gommer.', base.eteinte);
+  verifier('Le lexique de base compte des entrées',
+    base.nb > 300, base.nb + ' réécriture(s)');
+
   // Mesure de niveau, confrontée au comportement attendu
   const lufs = await page.evaluate(async () => {
     const fe = 48000, n = fe * 4, d = new Float32Array(n);

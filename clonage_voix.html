@@ -667,7 +667,7 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
         </div>
       </div>
 
-      <div class="sec">Prononciation des noms propres
+      <div class="sec">Prononciation des mots et des noms propres
         <button class="btn btn-g btn-sm" style="margin-left:8px;text-transform:none;letter-spacing:0"
                 id="btnLexique" onclick="basculerLexique()">Afficher</button></div>
       <div class="card" id="blocLexique" style="display:none">
@@ -691,6 +691,26 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
         <button class="btn btn-g btn-sm" onclick="ajouterAuLexique()">Ajouter au lexique</button>
 
         <div id="listeLexique" style="margin-top:14px"></div>
+
+        <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--bdr)">
+          <div style="font-size:12.5px;font-weight:600;margin-bottom:4px">Lexique de base</div>
+          <div class="aide" style="margin-bottom:10px">
+            Le moteur n'accepte aucune transcription phonétique : la seule façon d'imposer une
+            prononciation est d'écrire le mot autrement. Ces trois listes appliquent les
+            réécritures les plus courantes. Vos propres mots restent prioritaires.
+          </div>
+          <label class="check"><input type="checkbox" id="baseVerbes" checked onchange="enregistrerLexiqueBase()">
+            <span>Infinitifs en <em>-er</em> dont le R final s'entend (<span id="nbVerbes">0</span> verbes)</span></label>
+          <label class="check"><input type="checkbox" id="baseSigles" checked onchange="enregistrerLexiqueBase()">
+            <span>Sigles lus lettre par lettre : PDG, TVA, SNCF…</span></label>
+          <label class="check"><input type="checkbox" id="baseAnglicismes" checked onchange="enregistrerLexiqueBase()">
+            <span>Mots anglais réécrits à la française : meeting, marketing, deadline…</span></label>
+          <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-g btn-sm" onclick="basculer('detailBase', this)">Voir les mots</button>
+            <span class="aide" id="resumeBase" style="align-self:center"></span>
+          </div>
+          <div id="detailBase" style="display:none;margin-top:10px;max-height:260px;overflow:auto"></div>
+        </div>
 
         <div class="aide" style="margin-top:12px">
           Écrivez la prononciation à la française, en séparant les syllabes par des traits d'union
@@ -1148,6 +1168,10 @@ const etat = {
   typeVoix:'clonee',     // 'clonee' | 'catalogue'
   fournisseurAvant:null, // fournisseur à rétablir en quittant le catalogue
   lexique:[],            // prononciations imposées : {ecrit, dit}
+  baseVerbes:true,       // infinitifs en -er dont le R final s'entend
+  baseSigles:true,       // sigles lus lettre par lettre
+  baseAnglicismes:true,  // mots anglais réécrits à la française
+  baseEcartees:[],       // entrées de base désactivées une à une
   voixAAmeliorer:null,   // voix dont on prépare une nouvelle version
   connexion:null,        // dernier résultat de vérification du service
   voixId:null,
@@ -2654,13 +2678,129 @@ function basculerLexique(){ basculer('blocLexique', $('btnLexique')); }
 
 function echapperMotif(s){ return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 
+/* ══════════════════════════════════════════════════════
+   LEXIQUE DE BASE
+   ══════════════════════════════════════════════════════ */
+
+/* Pourquoi un lexique, et pas un dictionnaire phonétique.
+
+   XTTS n'a aucune entrée phonétique. Pas d'alphabet phonétique, pas d'espeak,
+   aucune conversion graphème-phonème : le texte est nettoyé — passé en
+   minuscules, nombres et sept abréviations développés — puis découpé par un
+   tokeniseur BPE et donné tel quel au modèle. Sa connaissance de la
+   prononciation est dans ses poids, et rien ne permet de la compléter de
+   l'extérieur.
+
+   Le seul levier est donc l'orthographe : écrire le mot comme on veut
+   l'entendre. C'est ce que fait le lexique, et ce lexique de base en fournit
+   les entrées les plus courantes.
+
+   Ces prononciations n'ont pas pu être vérifiées à l'oreille sur ce poste :
+   le modèle n'y tourne pas. Elles reposent sur le comportement connu du
+   moteur en français, et chaque entrée reste désactivable une à une. */
+
+/* Infinitifs en -er dont le moteur prononce parfois le R final.
+
+   Une règle sur la terminaison serait fautive : « hiver », « cher », « mer »,
+   « papier », « premier » se terminent aussi par -er, et leur R se prononce
+   ou leur graphie est déjà correcte. La liste ne contient donc que des verbes,
+   nommés un à un.
+
+   « reporter » et « supporter » en sont volontairement absents : ce sont aussi
+   des noms communs dont le R se prononce, et la correction serait fautive une
+   fois sur deux. */
+const VERBES_ER = (
+  'aider aimer ajouter allumer amener améliorer analyser annoncer annuler appeler apporter ' +
+  'approcher apprécier arriver arrêter assurer attaquer attirer augmenter avancer avouer ' +
+  'baisser bloquer bouger briser brûler calculer calmer casser causer changer chanter ' +
+  'charger chercher choquer citer classer commander commencer comparer compliquer compléter ' +
+  'composer compter concerner conserver considérer consulter continuer contrôler copier ' +
+  'corriger coucher couper coûter crier critiquer créer cultiver célébrer danser demander ' +
+  'dessiner deviner diminuer diriger discuter disposer distinguer diviser donner doubler ' +
+  'douter durer décider déclarer découper décrocher démarrer dépasser dépenser déplacer ' +
+  'déposer déranger dériver désirer détailler déterminer développer effacer emmener ' +
+  'employer emporter empêcher engager enlever enregistrer enseigner entourer entrer envoyer ' +
+  'espérer essayer estimer examiner exciter excuser exiger expliquer exploiter exporter ' +
+  'exposer exprimer fabriquer faciliter fatiguer favoriser fermer figurer filmer financer ' +
+  'fixer fonder former formuler fouiller frapper fâcher gagner garder garer glisser gommer ' +
+  'goûter grimper grouper guider gérer habiter hésiter identifier ignorer imaginer imiter ' +
+  'importer imposer improviser indiquer influencer informer inquiéter insister installer ' +
+  'interpréter interroger intégrer intéresser inventer inviter isoler jouer juger justifier ' +
+  'laisser lancer laver lever libérer limiter livrer loger louer lutter manger manifester ' +
+  'manipuler manquer marcher marquer mater mener mesurer modifier monter montrer motiver ' +
+  'multiplier mélanger mériter nager nettoyer nommer noter négocier observer occuper ' +
+  'organiser oser oublier parler participer passer payer penser persuader peser ' +
+  'photographier placer pleurer plier porter poser posséder pousser pratiquer presser prier ' +
+  'priver profiter programmer prolonger promener proposer protéger prouver provoquer ' +
+  'préciser précéder préférer préparer présenter préserver prêter publier quitter raconter ' +
+  'ramasser ramener ranger rappeler rassembler rassurer rater recommander refuser regarder ' +
+  'regretter relever remarquer remercier remonter remplacer rencontrer renforcer renoncer ' +
+  'rentrer reprocher représenter respecter respirer ressembler rester retirer retourner ' +
+  'retrouver rouler réaliser récupérer régler réparer répéter réserver résister réveiller ' +
+  'révéler rêver sauter sauver serrer signaler signer simplifier situer soigner souhaiter ' +
+  'soulever souligner soupçonner supposer supprimer surveiller séparer tenter terminer ' +
+  'tirer tomber toucher tourner tracer traiter transformer transférer transporter ' +
+  'travailler traverser tromper trouver tuer téléphoner utiliser valider varier verser ' +
+  'viser visiter voler voter voyager vérifier échanger échapper éclairer écouter élever ' +
+  'éliminer éviter ôter'
+).split(/\s+/).filter(Boolean);
+
+/* Sigles lus lettre par lettre. Le moteur les prononce parfois comme un mot. */
+const SIGLES = {
+  'PDG':'pé dé gé', 'SNCF':'ès èn cé èf', 'RATP':'èr a té pé', 'TVA':'té vé a',
+  'PME':'pé èm ne', 'PMI':'pé èm i', 'DRH':'dé èr ache', 'RDV':'rendez-vous',
+  'SMS':'èss èm èss', 'CV':'cé vé', 'HT':'ache té', 'TTC':'té té cé',
+  'RSA':'èr èss a', 'CDI':'cé dé i', 'CDD':'cé dé dé', 'QI':'ku i',
+  'IA':'i a', 'PDF':'pé dé èf', 'URL':'u èr èl', 'USB':'u èss bé',
+  'OK':'okay', 'ADN':'a dé èn', 'BTP':'bé té pé', 'EDF':'e dé èf'
+};
+
+/* Mots anglais d'usage courant en français, réécrits à la française. */
+const ANGLICISMES = {
+  'meeting':'miting', 'marketing':'marketigne', 'briefing':'brifing',
+  'deadline':'dèdlaïne', 'feedback':'fidbak', 'business':'biznèss',
+  'design':'dizaïne', 'cloud':'klaoud', 'mail':'mèl', 'email':'imèl',
+  'week-end':'ouikènde', 'weekend':'ouikènde', 'challenge':'tchalèndj',
+  'coaching':'kotching', 'coach':'kotch', 'planning':'planing',
+  'staff':'staf', 'team':'tîme', 'timing':'taïming', 'leader':'lideur',
+  'leadership':'lideurchip', 'management':'manadjment', 'manager':'manadjeur',
+  'brainstorming':'breinstorming', 'workshop':'oueurkchop',
+  'start-up':'starteup', 'startup':'starteup', 'smartphone':'smartfone',
+  'software':'softouère', 'hardware':'hardouère', 'podcast':'podkaste',
+  'replay':'riplé', 'live':'laïve', 'scoop':'skoupe', 'show':'chow'
+};
+
+/* Assemble le lexique de base à partir des trois sources ci-dessus. */
+function lexiqueDeBase(){
+  const entrees = [];
+  if(etat.baseVerbes){
+    for(const v of VERBES_ER){
+      entrees.push({ecrit: v, dit: v.slice(0, -2) + 'é', origine: 'verbe'});
+    }
+  }
+  if(etat.baseSigles){
+    for(const s in SIGLES) entrees.push({ecrit: s, dit: SIGLES[s], origine: 'sigle'});
+  }
+  if(etat.baseAnglicismes){
+    for(const a in ANGLICISMES) entrees.push({ecrit: a, dit: ANGLICISMES[a], origine: 'anglais'});
+  }
+  /* Une entrée désactivée à la main disparaît : l'utilisateur garde le dernier
+     mot sur chaque prononciation. */
+  return entrees.filter(e => etat.baseEcartees.indexOf(e.ecrit.toLowerCase()) < 0);
+}
+
 /* Remplace les mots du lexique, entiers seulement et sans égard à la casse.
    Les bornes de mot de l'expression régulière ne connaissent que l'alphabet
    anglais : « Aurélie » y serait coupé sur l'accent. On borne donc à la main,
    sur tout ce qui n'est ni lettre ni chiffre, quel que soit l'alphabet. */
 function appliquerLexique(texte){
   let sortie = String(texte);
-  for(const e of etat.lexique){
+  /* Vos mots d'abord : une entrée de base portant le même mot est écartée.
+     Sans cela, la base pourrait défaire une prononciation que vous avez
+     choisie vous-même, ce qui serait le contraire du but. */
+  const vôtres = etat.lexique.filter(e => e && e.ecrit).map(e => e.ecrit.toLowerCase());
+  const base = lexiqueDeBase().filter(e => vôtres.indexOf(e.ecrit.toLowerCase()) < 0);
+  for(const e of etat.lexique.concat(base)){
     if(!e || !e.ecrit) continue;
     const motif = echapperMotif(e.ecrit);
     let regle;
@@ -2674,6 +2814,59 @@ function appliquerLexique(texte){
     sortie = sortie.replace(regle, e.dit);
   }
   return sortie;
+}
+
+/* Enregistre l'état des trois listes de base et rafraîchit l'affichage. */
+function enregistrerLexiqueBase(){
+  etat.baseVerbes = $('baseVerbes').checked;
+  etat.baseSigles = $('baseSigles').checked;
+  etat.baseAnglicismes = $('baseAnglicismes').checked;
+  if(bd) bdEcrire('config', {cle:'lexiqueBase', valeur:{
+    verbes: etat.baseVerbes, sigles: etat.baseSigles,
+    anglicismes: etat.baseAnglicismes, ecartees: etat.baseEcartees
+  }});
+  afficherLexiqueBase();
+}
+
+/* Retire ou remet une entrée de base. Une prononciation qui ne convient pas
+   doit pouvoir être écartée seule, sans désactiver toute une liste. */
+function basculerEntreeBase(mot){
+  const cle = String(mot).toLowerCase();
+  const i = etat.baseEcartees.indexOf(cle);
+  if(i >= 0) etat.baseEcartees.splice(i, 1);
+  else etat.baseEcartees.push(cle);
+  enregistrerLexiqueBase();
+}
+
+function afficherLexiqueBase(){
+  const nb = $('nbVerbes');
+  if(nb) nb.textContent = String(VERBES_ER.length);
+  const actives = lexiqueDeBase();
+  const resume = $('resumeBase');
+  if(resume){
+    resume.textContent = actives.length + ' réécriture(s) active(s)' +
+      (etat.baseEcartees.length ? ', ' + etat.baseEcartees.length + ' écartée(s)' : '');
+  }
+  const zone = $('detailBase');
+  if(!zone) return;
+  const toutes = [];
+  if(etat.baseVerbes) for(const v of VERBES_ER) toutes.push([v, v.slice(0,-2)+'é']);
+  if(etat.baseSigles) for(const k in SIGLES) toutes.push([k, SIGLES[k]]);
+  if(etat.baseAnglicismes) for(const k in ANGLICISMES) toutes.push([k, ANGLICISMES[k]]);
+  if(!toutes.length){
+    zone.innerHTML = '<div class="vide">Aucune liste de base active.</div>';
+    return;
+  }
+  zone.innerHTML = toutes.map(([ecrit, dit]) => {
+    const ecartee = etat.baseEcartees.indexOf(ecrit.toLowerCase()) >= 0;
+    return '<div style="display:flex;align-items:center;gap:10px;padding:3px 0;' +
+      (ecartee ? 'opacity:.45' : '') + '">' +
+      '<span style="flex:1;font-size:12px"><strong>' + echapper(ecrit) + '</strong>' +
+      ' <span style="color:var(--txt2)">se dit</span> ' + echapper(dit) + '</span>' +
+      '<button class="btn btn-g btn-sm" onclick="basculerEntreeBase(\'' +
+      echapper(ecrit).replace(/'/g, "\\'") + '\')">' +
+      (ecartee ? 'Remettre' : 'Écarter') + '</button></div>';
+  }).join('');
 }
 
 function afficherLexique(){
@@ -3893,6 +4086,18 @@ async function demarrer(){
 
       const type = await bdLire('config','typeVoix');
       if(type && type.valeur === 'catalogue') etat.typeVoix = 'catalogue';
+
+      const socle = await bdLire('config','lexiqueBase');
+      if(socle && socle.valeur){
+        etat.baseVerbes = socle.valeur.verbes !== false;
+        etat.baseSigles = socle.valeur.sigles !== false;
+        etat.baseAnglicismes = socle.valeur.anglicismes !== false;
+        etat.baseEcartees = socle.valeur.ecartees || [];
+        $('baseVerbes').checked = etat.baseVerbes;
+        $('baseSigles').checked = etat.baseSigles;
+        $('baseAnglicismes').checked = etat.baseAnglicismes;
+      }
+      afficherLexiqueBase();
 
       const lex = await bdLire('config','lexique');
       if(lex && Array.isArray(lex.valeur)){
