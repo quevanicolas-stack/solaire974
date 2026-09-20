@@ -1724,6 +1724,7 @@ function afficherEchantillons(){
   if(!etat.echantillons.length){
     zone.innerHTML = '<div class="vide">Aucun échantillon pour le moment.</div>';
     majJauge();
+    majRecapEnvoi();
     return;
   }
   zone.innerHTML = etat.echantillons.map(e=>
@@ -1741,6 +1742,11 @@ function afficherEchantillons(){
       '</div>' +
     '</div>').join('');
   majJauge();
+  /* Le récapitulatif d'envoi vivait sur le seul appel fait à l'arrivée sur
+     l'étape : il restait donc figé à zéro échantillon pendant que la jauge,
+     juste au-dessus, comptait quinze minutes. Les deux affichages lisent la
+     même liste, ils doivent se rafraîchir au même endroit. */
+  majRecapEnvoi();
 }
 
 /* Récupérer les prises telles qu'elles ont été captées. C'est ce qui permet de
@@ -2156,6 +2162,7 @@ async function testerConnexion(){
    ══════════════════════════════════════════════════════ */
 
 function majRecapEnvoi(){
+  if(!$('recapEnvoi')) return;
   const total = dureeCumulee();
   let avis = '';
   if(total < DUREE_MINI){

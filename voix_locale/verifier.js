@@ -346,6 +346,39 @@ async function creerVoix(page, nom) {
     majJauge();
     return { depasse, plein, normal, refus, largeurDepasse };
   });
+  // Le recapitulatif d'envoi ne se rafraichissait qu'a l'arrivee sur l'etape :
+  // il affichait zero echantillon pendant que la jauge, juste au-dessus,
+  // comptait quinze minutes. Ce controle passe par le vrai parcours — ajout
+  // puis suppression d'une prise — et non par un appel direct aux fonctions
+  // d'affichage, qui est precisement ce qui avait laisse passer le defaut.
+  const recap = await page.evaluate(async () => {
+    const lire = () => {
+      const t = document.getElementById('recapEnvoi').textContent;
+      return {
+        nb: (t.match(/Échantillons\s*([0-9]+)/) || [])[1],
+        duree: (t.match(/Durée cumulée\s*([0-9:]+)/) || [])[1],
+        insuffisant: t.indexOf('Matière insuffisante') >= 0
+      };
+    };
+    const depart = lire();
+    await ajouterEchantillon({ id: 'temoin', nom: 'Témoin.wav', duree: 420,
+      blob: new Blob([new Uint8Array(500000)]), type: 'audio/wav', source: 'micro' });
+    const apresAjout = lire();
+    await supprimerEchantillon('temoin');
+    const apresRetrait = lire();
+    return { depart, apresAjout, apresRetrait,
+             reel: etat.echantillons.length, jauge: dureeCumulee() };
+  });
+  verifier('Le récapitulatif compte les prises réellement présentes',
+    Number(recap.apresAjout.nb) === recap.reel + 1,
+    recap.apresAjout.nb + ' annoncé(s) pour ' + (recap.reel + 1) + ' présent(s)');
+  verifier('Le récapitulatif ne reste pas à zéro pendant que la jauge compte',
+    recap.apresAjout.duree !== '00:00' && recap.apresAjout.insuffisant === false,
+    'durée annoncée ' + recap.apresAjout.duree);
+  verifier('Le récapitulatif suit aussi une suppression',
+    Number(recap.apresRetrait.nb) === recap.reel,
+    recap.apresRetrait.nb + ' annoncé(s) pour ' + recap.reel + ' présent(s)');
+
   verifier('Sous la cible, la jauge n\'ajoute aucun commentaire',
     jauge.normal === '', JSON.stringify(jauge.normal));
   verifier('Au-delà de la cible, la jauge dit où va le surplus',
