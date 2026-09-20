@@ -261,6 +261,22 @@ verifier("Cinq phrases n'ajoutent pas plus d'une seconde de silence",
 verifier("Toutes les natures produites sont connues du recollage",
          all(n in DUREES for _, n in serveur.decouper_texte(LONG)))
 
+# La duree d'une pause de phrase vient du style choisi dans l'application.
+# Elle doit arriver jusqu'au recollage, sinon le style ne s'entend pas.
+def duree_phrase(reglages):
+    courte = float(reglages.get("pause_courte", serveur.PAUSE_COURTE))
+    phrase = reglages.get("pause_phrase")
+    return (float(phrase) if phrase not in (None, "")
+            else courte * (serveur.PAUSE_PHRASE / serveur.PAUSE_COURTE))
+
+verifier("Sans consigne, la pause de phrase garde sa valeur par défaut",
+         abs(duree_phrase({}) - serveur.PAUSE_PHRASE) < 1e-9,
+         f"{duree_phrase({}):.2f} s")
+verifier("Un style à pauses marquées allonge la pause de phrase",
+         duree_phrase({"pause_phrase": 0.42}) == 0.42)
+verifier("Des pauses réglées à zéro emportent aussi les silences internes",
+         duree_phrase({"pause_courte": 0.0}) == 0.0)
+
 print("\n--- Découpage de la référence ---")
 
 if not serveur.ffmpeg_disponible():

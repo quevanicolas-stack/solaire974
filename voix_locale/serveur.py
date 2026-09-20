@@ -37,7 +37,7 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 
 RACINE = Path(__file__).resolve().parent
 DOSSIER_VOIX = RACINE / "donnees" / "voix"
-VERSION = "2026.09.20c"     # affichée au démarrage et sur « / » : sert à vérifier
+VERSION = "2026.09.20d"     # affichée au démarrage et sur « / » : sert à vérifier
                            # que le fichier en place est bien le dernier
 FREQUENCE = 24000          # fréquence d'échantillonnage de sortie, en hertz
 """
@@ -541,9 +541,15 @@ def prononcer(moteur, texte: str, reference: Path, reglages: dict) -> tuple[byte
     # proportionnellement, pour qu'un réglage à zéro les emporte aussi.
     courte = float(reglages.get("pause_courte", PAUSE_COURTE))
     longue = float(reglages.get("pause_longue", PAUSE_LONGUE))
+    # La pause de phrase vient du style choisi dans l'application. À défaut,
+    # elle suit la respiration, proportionnellement, pour qu'un réglage des
+    # pauses à zéro emporte aussi les silences internes.
+    phrase = reglages.get("pause_phrase")
+    phrase = (float(phrase) if phrase not in (None, "")
+              else courte * (PAUSE_PHRASE / PAUSE_COURTE))
     durees = {
         "proposition": courte * (PAUSE_PROPOSITION / PAUSE_COURTE),
-        "phrase":      courte * (PAUSE_PHRASE / PAUSE_COURTE),
+        "phrase":      phrase,
         "ligne":       courte,
         "paragraphe":  longue,
         "fin":         0.0,
@@ -965,7 +971,6 @@ class MoteurXTTS(Moteur):
                 repetition_penalty=choix("repetition_penalty", 10.0, 1.0, 20.0),
                 length_penalty=choix("length_penalty", 1.0, 0.2, 3.0),
                 speed=vitesse,
-                # Le découpage est fait en amont : le modèle ne doit pas le refaire.
                 # Le découpage est fait en amont, et chaque morceau tient
                 # désormais sous la limite du moteur : le laisser redécouper
                 # relancerait un tirage par phrase, donc un débit inégal.

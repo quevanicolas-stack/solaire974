@@ -550,6 +550,56 @@ async function creerVoix(page, nom) {
     !!fiche && fiche.nb_tranches > 0 && fiche.duree_utilisee > 0,
     fiche ? fiche.nb_tranches + ' tranche(s), ' + fiche.duree_utilisee + ' s utilisées' : 'aucune fiche');
 
+  console.log('\n--- Mise en forme du texte ---');
+
+  // L'auteur ecrit des paragraphes pour placer ses pauses. Un style ne doit
+  // jamais en fabriquer d'autres : les siens noieraient ceux de l'auteur.
+  const pitch = "Une croyance bloque beaucoup de monde. Elle est tenace.\n\n" +
+                "Regardez les dirigeants respectés. Aucun n'a gommé son accent.\n\n" +
+                "Alors pourquoi ce blocage ?";
+  const formes = await page.evaluate((pitch) => {
+    const out = {};
+    for (const cle of ['perso', 'narrateur', 'journal', 'enseignant', 'livre']) {
+      document.getElementById('elocution').value = cle;
+      appliquerElocution();
+      const t = preparerTexte(pitch, cle);
+      out[cle] = { blancs: (t.match(/\n\n/g) || []).length,
+                   pausePhrase: reglagesMoteur().pause_phrase };
+    }
+    return out;
+  }, pitch);
+  const voulus = 2;
+  for (const cle of Object.keys(formes)) {
+    verifier('Le style « ' + cle + ' » respecte les paragraphes de l\'auteur',
+      formes[cle].blancs === voulus,
+      formes[cle].blancs + ' paragraphe(s) pour ' + voulus + ' voulu(s)');
+  }
+  verifier('Un style à pauses marquées allonge la pause de phrase',
+    formes.narrateur.pausePhrase > formes.journal.pausePhrase,
+    'narrateur ' + formes.narrateur.pausePhrase + ' s, journal ' + formes.journal.pausePhrase + ' s');
+
+  // Bouger un curseur bascule en personnalise : le texte transmis ne doit pas
+  // changer pour autant, sinon le rythme change sans que rien ne l'annonce.
+  const bascule = await page.evaluate((pitch) => {
+    document.getElementById('elocution').value = 'narrateur';
+    appliquerElocution();
+    const avant = { texte: preparerTexte(pitch, 'narrateur'),
+                    phrase: reglagesMoteur().pause_phrase };
+    const c = document.getElementById('stabilite');
+    c.value = '0.9'; c.dispatchEvent(new Event('input', {bubbles:true}));
+    const apres = { style: document.getElementById('elocution').value,
+                    texte: preparerTexte(pitch, document.getElementById('elocution').value),
+                    phrase: reglagesMoteur().pause_phrase };
+    return { avant, apres };
+  }, pitch);
+  verifier('Bouger un curseur bascule bien en personnalisé',
+    bascule.apres.style === 'perso', bascule.apres.style);
+  verifier('Bouger un curseur ne change pas le texte transmis',
+    bascule.avant.texte === bascule.apres.texte);
+  verifier('Bouger un curseur ne change pas la durée des pauses',
+    bascule.avant.phrase === bascule.apres.phrase,
+    bascule.avant.phrase + ' s puis ' + bascule.apres.phrase + ' s');
+
   console.log('\n--- Correction mesurée ---');
 
   // Test decisif : on abime un signal avec un egaliseur CONNU, puis on demande

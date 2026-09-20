@@ -172,6 +172,7 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
 .b-vio{background:var(--vio-d);color:var(--vio);border:1px solid rgba(163,113,247,.3)}
 .b-grn{background:var(--grn-d);color:var(--grn-l);border:1px solid rgba(29,158,117,.3)}
 .b-amb{background:var(--amb-d);color:var(--amb-l);border:1px solid rgba(240,180,41,.3)}
+.aide.inerte{color:var(--amb-l);margin-top:4px}
 .b-red{background:var(--red-d);color:var(--red-l);border:1px solid rgba(248,81,73,.3)}
 
 .kv{display:flex;justify-content:space-between;padding:7px 0;font-size:12.5px;border-bottom:1px solid var(--bdr)}
@@ -754,11 +755,13 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
             <div class="curs-tete"><span>Similarité</span><span class="curs-val" id="vSim">0,75</span></div>
             <input type="range" id="similarite" min="0" max="1" step="0.05" value="0.75" oninput="majReglages(true)">
             <div class="aide">Haut : colle au timbre d'origine, y compris ses défauts d'enregistrement.</div>
+            <div class="aide inerte" id="inerteSim" style="display:none"></div>
           </div>
           <div class="champ">
             <div class="curs-tete"><span>Expressivité</span><span class="curs-val" id="vStyle">0,00</span></div>
             <input type="range" id="style" min="0" max="1" step="0.05" value="0" oninput="majReglages(true)">
             <div class="aide">Accentue le style de la personne. Au-delà de 0,5 la voix devient instable.</div>
+            <div class="aide inerte" id="inerteStyle" style="display:none"></div>
           </div>
           <div class="champ">
             <div class="curs-tete"><span>Débit de parole</span><span class="curs-val" id="vDebit">1,00 ×</span></div>
@@ -768,6 +771,7 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
         </div>
         <label class="check" style="margin-top:4px"><input type="checkbox" id="boost" checked>
           <span>Renforcement du locuteur : améliore la ressemblance, allonge légèrement le calcul.</span></label>
+        <div class="aide inerte" id="inerteBoost" style="display:none"></div>
       </div>
 
       <div class="sec">Commande directe du moteur
@@ -1201,6 +1205,7 @@ const etat = {
   baseSigles:true,       // sigles lus lettre par lettre
   baseAnglicismes:true,  // mots anglais réécrits à la française
   baseEcartees:[],       // entrées de base désactivées une à une
+  miseEnForme:null,      // mise en forme du dernier style, conservée en personnalisé
   montage:[],            // extraits assemblés : {cle, source, debut, fin, pause}
   montageRendu:null,     // dernier assemblage produit : {blob, nom}
   voixAAmeliorer:null,   // voix dont on prépare une nouvelle version
@@ -1985,6 +1990,7 @@ function choisirFournisseur(f){
   enregistrerFournisseur();
   majConnexion();
   majEtat();
+  majEffetDesReglages();
 }
 
 function enregistrerFournisseur(){
@@ -2059,6 +2065,29 @@ function basculerOptionsMicro(){ basculer('optionsMicro'); }
 function basculerPhrases(){ basculer('zonePhrases'); }
 
 /* Ligne d'état de la connexion, en tête de l'étape 02. */
+/* Dit lesquels de ces réglages agissent, selon le fournisseur.
+
+   Le moteur local ne lit ni la similarité, ni l'expressivité, ni le
+   renforcement du locuteur : ce sont des paramètres du service distant. Les
+   laisser présentés comme actifs poussait à les régler pour rien — et, pire,
+   les bouger bascule le style en personnalisé, ce qui changeait le rythme
+   sans rien améliorer. */
+const REGLAGES_SANS_EFFET_EN_LOCAL = [
+  ['inerteSim',   'Sans effet sur le serveur local : le moteur ne lit pas ce réglage.'],
+  ['inerteStyle', 'Sans effet sur le serveur local : le moteur ne lit pas ce réglage.'],
+  ['inerteBoost', 'Sans effet sur le serveur local : le moteur ne lit pas ce réglage.']
+];
+
+function majEffetDesReglages(){
+  const local = (etat.fournisseur === 'local');
+  for(const [id, texte] of REGLAGES_SANS_EFFET_EN_LOCAL){
+    const e = $(id);
+    if(!e) continue;
+    e.textContent = local ? texte : '';
+    e.style.display = local ? 'block' : 'none';
+  }
+}
+
 function majConnexion(){
   const titre = $('titreConnexion'), detail = $('detailConnexion'), pastille = $('dotConnexion');
   if(!titre) return;
@@ -2614,6 +2643,9 @@ function appliquerElocution(){
   $('descElocution').textContent = e ? e.desc : DESC_PERSO;
 
   if(e){
+    /* Retenue avant de passer la main aux curseurs : c'est elle qui survit au
+       basculement en personnalisé. */
+    etat.miseEnForme = {segmenter: e.segmenter, pauses: e.pauses};
     $('stabilite').value = e.stab;
     $('style').value     = e.expr;
     $('debit').value     = e.debit;
@@ -2692,11 +2724,19 @@ function enregistrerAvance(){
 /* Réglages envoyés au moteur. Les pauses partent toujours : elles sont gérées
    par le serveur, pas par le modèle, et ne dépendent donc pas du pilotage
    manuel. Le reste n'est transmis que si l'on a pris la main. */
+/* Durée d'une pause de phrase, selon le style. C'est ce qui remplace la
+   réécriture du texte : le style règle le temps, l'auteur règle la structure. */
+const PAUSES_DE_PHRASE = {aucune: 0.12, moderees: 0.25, marquees: 0.42};
+
 function reglagesMoteur(){
   const v = {
     pause_courte: parseFloat($('pauseCourte').value) / 1000,
     pause_longue: parseFloat($('pauseLongue').value) / 1000
   };
+  const forme = ELOCUTIONS[$('elocution').value] || etat.miseEnForme;
+  if(forme && PAUSES_DE_PHRASE[forme.pauses] !== undefined){
+    v.pause_phrase = PAUSES_DE_PHRASE[forme.pauses];
+  }
   const graine = parseInt($('graine').value, 10);
   if(!isNaN(graine)) v.seed = graine;
   if(!avanceActif()) return v;
@@ -2717,7 +2757,8 @@ function enregistrerDebruitage(){
 }
 
 function enregistrerElocution(){
-  if(bd) bdEcrire('config', {cle:'elocution', valeur:$('elocution').value});
+  if(bd) bdEcrire('config', {cle:'elocution',
+    valeur:{nom: $('elocution').value, miseEnForme: etat.miseEnForme}});
 }
 
 /* Met le texte en forme selon le style. Aucun mot n'est ajouté ni retiré :
@@ -2969,14 +3010,29 @@ function enregistrerLexique(){
 }
 
 function preparerTexte(brut, cle){
-  const e = ELOCUTIONS[cle];
+  /* « Personnalisé » n'est pas « aucune mise en forme ».
+
+     Bouger un curseur bascule le style en personnalisé. Sans cette reprise, la
+     mise en forme du style disparaissait du même coup : les paragraphes
+     s'effaçaient, le rythme changeait, et rien à l'écran ne l'annonçait.
+     Seuls les réglages du moteur doivent devenir libres, pas la ponctuation
+     du texte. */
+  const e = ELOCUTIONS[cle] || (cle === 'perso' ? etat.miseEnForme : null);
   /* Le lexique passe en premier : le style découpe ensuite le texte réellement
      prononcé, et non celui que l'on a saisi. */
   let t = appliquerLexique(String(brut)).replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
   if(!e) return t;
-  if(e.segmenter)              t = t.replace(/,[ ]+/g, ',\n');
-  if(e.pauses === 'moderees')  t = t.replace(/([.!?…])[ ]+/g, '$1\n');
-  if(e.pauses === 'marquees')  t = t.replace(/([.!?…])[ ]+/g, '$1\n\n');
+  /* Un style ne fabrique plus de paragraphes.
+
+     « Pauses marquées » transformait chaque fin de phrase en saut de
+     paragraphe. Les paragraphes que l'auteur écrit lui-même pour placer ses
+     respirations devenaient alors indiscernables de ceux que le style
+     inventait : sur un texte de trois paragraphes voulus, le style en
+     produisait quatre. La mise en page appartient à l'auteur.
+
+     La longueur des pauses de phrase, elle, reste un choix de style : elle
+     part au serveur comme un réglage, pas comme une ponctuation. */
+  if(e.segmenter) t = t.replace(/,[ ]+/g, ',\n');
   return t;
 }
 
@@ -4912,10 +4968,19 @@ async function demarrer(){
         $('debruitage').value = deb.valeur;
 
       const eloc = await bdLire('config','elocution');
-      if(eloc && eloc.valeur && $('elocution').querySelector('option[value="'+eloc.valeur+'"]')){
-        $('elocution').value = eloc.valeur;
-        const e = ELOCUTIONS[eloc.valeur];
-        $('descElocution').textContent = e ? e.desc : DESC_PERSO;
+      if(eloc && eloc.valeur){
+        /* Les versions d'avant enregistraient une simple chaîne : la relire
+           doit rester possible, sinon le style choisi serait perdu au
+           premier chargement après mise à jour. */
+        const v = eloc.valeur;
+        const nom = (typeof v === 'string') ? v : v.nom;
+        if(typeof v === 'object' && v.miseEnForme) etat.miseEnForme = v.miseEnForme;
+        if(nom && $('elocution').querySelector('option[value="'+nom+'"]')){
+          $('elocution').value = nom;
+          const e = ELOCUTIONS[nom];
+          $('descElocution').textContent = e ? e.desc : DESC_PERSO;
+          if(e) etat.miseEnForme = {segmenter: e.segmenter, pauses: e.pauses};
+        }
       }
 
       const exp = await bdLire('config','export');
