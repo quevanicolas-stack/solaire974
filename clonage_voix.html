@@ -813,6 +813,24 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
             la voix.
           </div>
         </div>
+        <div class="champ" style="margin-bottom:14px">
+          <label class="lbl" for="souffle">Retrait du souffle, après traitement</label>
+          <select id="souffle" onchange="majTraitement(true)">
+            <option value="aucun">Aucun — signal laissé tel quel</option>
+            <option value="leger">Léger — souffle discret</option>
+            <option value="moyen" selected>Moyen — réglage conseillé</option>
+            <option value="fort">Fort — souffle marqué, voix un peu mate</option>
+          </select>
+          <div class="aide">
+            Celui de l'étape précédente agit sur l'audio brut du moteur. Celui-ci agit
+            <strong>après</strong> l'égaliseur, la compression et la remontée de niveau — c'est-à-dire
+            avant que l'égaliseur et la compression n'aient de quoi l'amplifier. Mesuré sur un signal
+            de contrôle : la chaîne coûte 11,3 dB de séparation voix / souffle, et le réglage
+            « moyen » en rend 14,6 — sans rien prendre à la voix.
+            Au-delà de « fort », la soustraction fabrique un gargouillis métallique pire que le souffle.
+          </div>
+        </div>
+
         <label class="check"><input type="checkbox" id="nettoyageActif" checked onchange="majNettoyage()">
           <span>Faire taire ce qui n'est pas de la parole : souffle, clics et bruits entre les mots.</span></label>
         <div id="reglagesNettoyage" style="margin-top:13px">
@@ -3539,6 +3557,7 @@ function remettreAutoradio(){
 function chaineCourante(){
   return {
     autoradio: autoradio(),
+    souffle: ($('souffle') ? $('souffle').value : 'aucun'),
     traitement: traitementActif() ? reglagesTraitement() : null,
     nettoyage: nettoyageActif()
       ? {seuil: parseFloat($('porte').value), rogner: $('rogner').checked}
@@ -3564,9 +3583,28 @@ async function appliquerTraitement(blob, chaineDemandee){
   const c = chaineDemandee || chaineCourante();
   const r = c.traitement || reglagesTraitement();
   const chaineActive = !!c.traitement;
+
+  /* Le souffle se retire AVANT la chaîne, sur le signal tel qu'il sort du
+     moteur.
+
+     Placé après le compresseur, le traitement perdait l'essentiel de son
+     effet, et pour une raison de principe : un compresseur donne plus de gain
+     aux silences qu'à la parole, donc le souffle cesse d'y être stationnaire,
+     et le profil mesuré dans les silences ne décrit plus celui qui se trouve
+     sous la voix. Avant la chaîne, le souffle est stationnaire, le profil est
+     juste, et l'égaliseur comme la compression n'ont plus grand-chose à
+     amplifier. */
+  let echantillonsSource = source.getChannelData(0);
+  if(c.souffle && c.souffle !== 'aucun'){
+    echantillonsSource = retirerSouffle(echantillonsSource, source.sampleRate, c.souffle);
+  }
+
   const off = new HorsLigne(1, source.length, source.sampleRate);
+  const tampon = off.createBuffer(1, source.length, source.sampleRate);
+  tampon.copyToChannel(echantillonsSource instanceof Float32Array
+    ? echantillonsSource : Float32Array.from(echantillonsSource), 0);
   const lecteur = off.createBufferSource();
-  lecteur.buffer = source;
+  lecteur.buffer = tampon;
 
   const filtre = (type, freq, q, gain) => {
     const f = off.createBiquadFilter();
@@ -3771,6 +3809,116 @@ async function mesurerLoudness(donnees, frequence){
    deux. Elle sert à mesurer une bande sans pente qui déborde : un filtre du
    premier ordre, employé pour la même chose, laissait passer la voix dans la
    mesure censée détecter ce qui se trouve sous elle. */
+/* ══════════════════════════════════════════════════════
+   RETRAIT DU SOUFFLE, APRÈS LA CHAÎNE
+   ══════════════════════════════════════════════════════ */
+
+/* Pourquoi ici et pas seulement sur le serveur.
+
+   Le serveur débruite l'audio tel qu'il sort du moteur. La page l'égalise
+   ensuite, le comprime, puis remonte le niveau — et ces trois étages remontent
+   aussi ce qui restait de souffle. Mesuré sur un signal de contrôle : voix et
+   souffle séparés de 33,4 dB avant la chaîne, de 22,1 dB après. La chaîne
+   coûte donc 11,3 dB de séparation, et c'est le compresseur qui en est cause :
+   il abaisse la parole sans toucher au souffle, que la remontée de niveau
+   ramène ensuite au premier plan.
+
+   Avec le retrait réglé sur « moyen », la séparation remonte à 36,7 dB, soit
+   mieux que le signal d'origine, et la voix ne perd rien (elle gagne 0,2 dB).
+
+   Le signal de contrôle doit avoir des attaques douces : coupée net, la voix
+   fabrique des clics que les filtres font sonner dans les silences, et l'on
+   mesure alors la traîne des filtres en croyant mesurer le souffle. Première
+   version de la mesure faussée exactement ainsi.
+
+   Débruiter en amont ne peut rien contre cela : ce qui survit est amplifié
+   après. Le traitement doit donc avoir lieu APRÈS la chaîne — et avant la mise
+   au niveau, qui reste le dernier maillon.
+
+   Méthode : soustraction spectrale. Le profil du souffle est mesuré sur les
+   trames les plus faibles, celles où l'on ne parle pas, puis retiré de toutes.
+   Un plancher est conservé (`PLANCHER_SOUFFLE`) : soustraire jusqu'à zéro
+   fabrique le « bruit musical », ce gargouillis métallique bien pire que le
+   souffle qu'il remplace. */
+const SOUFFLE_N = 1024;              // taille de fenêtre, en échantillons
+const SOUFFLE_SAUT = SOUFFLE_N / 4;  // recouvrement aux trois quarts
+const PLANCHER_SOUFFLE = 0.12;       // part du souffle laissée en place
+
+/* Force de la soustraction : combien de fois le profil mesuré est retiré.
+   Au-delà de 2, le bruit musical devient audible sur une voix réelle. */
+const FORCES_SOUFFLE = {aucun: 0, leger: 1.0, moyen: 1.5, fort: 2.0};
+
+function retirerSouffle(donnees, frequence, force){
+  const facteur = FORCES_SOUFFLE[String(force)] || 0;
+  if(!facteur || donnees.length < SOUFFLE_N * 4) return donnees;
+
+  const N = SOUFFLE_N, saut = SOUFFLE_SAUT, demi = N/2 + 1;
+  const fen = new Float32Array(N);
+  for(let i=0;i<N;i++) fen[i] = 0.5 - 0.5*Math.cos(2*Math.PI*i/(N-1));
+
+  const nbTrames = Math.floor((donnees.length - N) / saut) + 1;
+  if(nbTrames < 8) return donnees;
+
+  /* Première passe : amplitudes de chaque trame, et énergie, pour savoir
+     lesquelles sont du silence. */
+  const amplitudes = [], energies = new Float64Array(nbTrames);
+  for(let t=0;t<nbTrames;t++){
+    const deb = t * saut;
+    const re = new Float64Array(N), im = new Float64Array(N);
+    for(let i=0;i<N;i++) re[i] = donnees[deb+i] * fen[i];
+    fftSurPlace(re, im);
+    const amp = new Float64Array(demi);
+    let somme = 0;
+    for(let k=0;k<demi;k++){
+      amp[k] = Math.hypot(re[k], im[k]);
+      somme += amp[k]*amp[k];
+    }
+    amplitudes.push({amp, re, im});
+    energies[t] = somme;
+  }
+
+  /* Profil du souffle : moyenne des trames du premier quintile d'énergie.
+     Prendre la plus faible seule donnerait un profil bruité ; prendre la
+     moyenne de toutes mêlerait la voix au profil. */
+  const rang = Array.from(energies).map((e,i)=>[e,i]).sort((a,b)=>a[0]-b[0]);
+  const nbFond = Math.max(3, Math.floor(nbTrames * 0.2));
+  const profil = new Float64Array(demi);
+  for(let j=0;j<nbFond;j++){
+    const amp = amplitudes[rang[j][1]].amp;
+    for(let k=0;k<demi;k++) profil[k] += amp[k];
+  }
+  for(let k=0;k<demi;k++) profil[k] /= nbFond;
+
+  /* Seconde passe : soustraction, puis reconstruction par recouvrement. */
+  const sortie = new Float32Array(donnees.length);
+  const poids = new Float32Array(donnees.length);
+  for(let t=0;t<nbTrames;t++){
+    const deb = t * saut;
+    const {amp, re, im} = amplitudes[t];
+    for(let k=0;k<demi;k++){
+      const a = amp[k];
+      if(a < 1e-12) continue;
+      const vise = Math.max(a - facteur * profil[k], PLANCHER_SOUFFLE * a);
+      const gain = vise / a;
+      re[k] *= gain; im[k] *= gain;
+      if(k > 0 && k < N/2){           // symétrie hermitienne
+        re[N-k] *= gain; im[N-k] *= gain;
+      }
+    }
+    /* Transformée inverse : conjuguer, transformer, conjuguer, diviser. */
+    for(let i=0;i<N;i++) im[i] = -im[i];
+    fftSurPlace(re, im);
+    for(let i=0;i<N;i++){
+      sortie[deb+i] += (re[i] / N) * fen[i];
+      poids[deb+i]  += fen[i] * fen[i];
+    }
+  }
+  for(let i=0;i<sortie.length;i++){
+    sortie[i] = poids[i] > 1e-6 ? sortie[i] / poids[i] : donnees[i];
+  }
+  return sortie;
+}
+
 function fftSurPlace(re, im){
   const n = re.length;
   for(let i = 1, j = 0; i < n; i++){

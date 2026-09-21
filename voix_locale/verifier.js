@@ -1175,6 +1175,82 @@ async function creerVoix(page, nom) {
     await page.evaluate(async () =>
       (await bdTout('echantillons')).every(e => !!e.profilId)));
 
+  console.log('\n--- Retrait du souffle ---');
+
+  // Le souffle est ce que l'utilisateur entend en premier : un grésillement
+  // sous la voix. Il ne vient pas du moteur mais de la chaine, qui l'amplifie.
+  //
+  // Le signal de controle a des attaques DOUCES. Coupee net, la voix fabrique
+  // des clics que les filtres font sonner dans les silences : on mesure alors
+  // la trainee des filtres en croyant mesurer le souffle. La premiere version
+  // de cette mesure etait faussee exactement ainsi.
+  const souffle = await page.evaluate(async () => {
+    const fe = 24000, n = fe * 6;
+    const d = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      const t = i / fe;
+      const phase = (t * 0.5) % 1;
+      let env = 0;
+      if (phase < 0.45) env = Math.min(1, Math.min(phase, 0.45 - phase) / 0.08);
+      let v = 0;
+      for (let h = 1; h <= 40; h++) v += Math.sin(2*Math.PI*190*h*t + h) / h;
+      d[i] = 0.12 * env * v + 0.004 * (Math.random()*2 - 1);
+    }
+    const zone = (arr, deb, fin) => {
+      let s = 0, k = 0;
+      for (let i = 0; i < arr.length; i++) {
+        const ph = ((i/24000) * 0.5) % 1;
+        if (ph > deb && ph < fin) { s += arr[i]*arr[i]; k++; }
+      }
+      return 20 * Math.log10(Math.sqrt(s/k) + 1e-12);
+    };
+    const ecart = (a) => zone(a, 0.12, 0.33) - zone(a, 0.60, 0.95);
+
+    const src = encoderWav(d, fe, 16);
+    document.getElementById('preset').value = 'naturel';
+    appliquerPreset();
+    document.getElementById('traitementActif').checked = true;
+    const base = {traitement: reglagesTraitement(), nettoyage: null,
+                  resolution:16, frequence:0, loudness:'0',
+                  autoradio:{graves:0,aigus:0,volume:0}};
+    const passer = async (f) => {
+      const b = await decoderAudio(await appliquerTraitement(src, {...base, souffle: f}));
+      const x = b.getChannelData(0);
+      return { ecart: ecart(x), voix: zone(x, 0.12, 0.33) };
+    };
+    const seul = retirerSouffle(d, fe, 'moyen');
+    return {
+      depart: ecart(d),
+      horsChaine: ecart(seul),
+      voixHorsChaine: { avant: zone(d,0.12,0.33), apres: zone(seul,0.12,0.33) },
+      aucun: await passer('aucun'),
+      leger: await passer('leger'),
+      moyen: await passer('moyen'),
+      fort:  await passer('fort')
+    };
+  });
+  verifier('Hors chaîne, le retrait dégage nettement le souffle',
+    souffle.horsChaine - souffle.depart > 6,
+    souffle.depart.toFixed(1) + ' -> ' + souffle.horsChaine.toFixed(1) + ' dB de séparation');
+  verifier('Hors chaîne, la voix n\'est pas entamée',
+    Math.abs(souffle.voixHorsChaine.apres - souffle.voixHorsChaine.avant) < 0.5,
+    souffle.voixHorsChaine.avant.toFixed(2) + ' -> ' + souffle.voixHorsChaine.apres.toFixed(2) + ' dB');
+  verifier('La chaîne dégrade bien la séparation quand rien ne la protège',
+    souffle.depart - souffle.aucun.ecart > 5,
+    souffle.depart.toFixed(1) + ' -> ' + souffle.aucun.ecart.toFixed(1) + ' dB');
+  verifier('Le retrait rend à la chaîne ce qu\'elle avait pris',
+    souffle.moyen.ecart - souffle.aucun.ecart > 8,
+    souffle.aucun.ecart.toFixed(1) + ' -> ' + souffle.moyen.ecart.toFixed(1) + ' dB de séparation');
+  verifier('En bout de chaîne, on fait mieux que le signal de départ',
+    souffle.moyen.ecart > souffle.depart,
+    souffle.moyen.ecart.toFixed(1) + ' dB pour ' + souffle.depart.toFixed(1) + ' dB au départ');
+  verifier('Les trois forces vont croissant',
+    souffle.leger.ecart < souffle.moyen.ecart && souffle.moyen.ecart < souffle.fort.ecart,
+    [souffle.leger, souffle.moyen, souffle.fort].map(x => x.ecart.toFixed(1)).join(' / '));
+  verifier('Aucune force ne prend à la voix',
+    ['leger','moyen','fort'].every(f => souffle[f].voix >= souffle.aucun.voix - 0.5),
+    ['aucun','leger','moyen','fort'].map(f => souffle[f].voix.toFixed(1)).join(' / ') + ' dB');
+
   console.log('\n--- Tonalité et réglages masqués ---');
 
   // Un reglage affiche doit agir. Une fois verrouilles, les curseurs du studio
