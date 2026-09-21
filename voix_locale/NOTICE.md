@@ -73,6 +73,13 @@ sh lancer.sh --port 8771        toute option est transmise au serveur
 reste dans le bon dossier : la flèche du haut rappelle la commande de lancement, et
 Entrée le relance.
 
+Sur un Mac, c'est bien **Contrôle+C** et non Commande+C : Commande+C copie la sélection
+et n'arrête rien.
+
+Si une génération est en cours, le serveur l'annonce et attend qu'elle se termine — un
+traitement engagé ne peut pas être coupé en chemin. **Ctrl+C une seconde fois** arrête
+sans attendre. Mesuré : 1,5 s au lieu de 10,5 s sur une génération de 8,7 s.
+
 Fermer la fenêtre l'arrête aussi, mais c'est le mauvais réflexe : la fenêtre suivante
 s'ouvre dans le dossier personnel, où `venv` et `serveur.py` n'existent pas. C'est de là
 que viennent les messages « no such file or directory » et « command not found: python ».

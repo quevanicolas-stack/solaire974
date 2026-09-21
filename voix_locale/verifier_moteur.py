@@ -383,5 +383,148 @@ with tempfile.TemporaryDirectory() as tmp:
 
 sys.modules.pop("torch", None)
 
+
+# ══════════════════════════════════════════════════════════════
+#   ARRÊT DU SERVEUR
+# ══════════════════════════════════════════════════════════════
+#
+# Ctrl+C ne se vérifie pas en lisant du code : il fallait un vrai terminal, un
+# vrai signal et un vrai traitement en cours. Sans cette mesure, le serveur a
+# passé des mois à ignorer le premier Ctrl+C et à répondre au second par une
+# trace d'erreur, sans qu'aucune suite ne s'en aperçoive.
+
+print("\n--- Arrêt du serveur ---")
+
+
+def mesurer_arret(nb_ctrl_c: int) -> dict:
+    """Lance un vrai serveur, occupe-le, envoie Ctrl+C, mesure."""
+    import json
+    import os
+    import pty
+    import select
+    import signal
+    import socket
+    import subprocess
+    import time
+    import urllib.request
+
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        port = s.getsockname()[1]
+    base = f"http://127.0.0.1:{port}"
+
+    pid, fd = pty.fork()
+    if pid == 0:                                   # le serveur, dans un terminal
+        os.chdir(str(Path(__file__).resolve().parent))
+        os.execvp(sys.executable, [sys.executable, "serveur.py", "--moteur", "test",
+                                   "--chat", "test", "--port", str(port)])
+
+    sortie = b""
+
+    def vider(duree):
+        nonlocal sortie
+        fin = time.time() + duree
+        while time.time() < fin:
+            pret, _, _ = select.select([fd], [], [], 0.2)
+            if pret:
+                try:
+                    bloc = os.read(fd, 65536)
+                except OSError:
+                    return
+                if not bloc:
+                    return
+                sortie += bloc
+
+    try:
+        for _ in range(40):                        # attendre qu'il réponde
+            vider(0.3)
+            try:
+                urllib.request.urlopen(base + "/", timeout=1).read()
+                break
+            except Exception:
+                continue
+
+        voix = json.loads(urllib.request.urlopen(base + "/v1/voices").read())["voices"]
+        # Un texte long en trois versions : le moteur de test y passe ~9 s, assez
+        # pour que le Ctrl+C tombe pendant le traitement.
+        corps = json.dumps({"text": "Bonjour tout le monde, ceci est un essai. " * 110,
+                            "variantes": True}).encode()
+        travail = subprocess.Popen(
+            [_curl := "curl", "-s", "-m", "90", "--noproxy", "*", "-o", os.devnull,
+             "-X", "POST", "-H", "Content-Type: application/json",
+             "--data-binary", "@-", f"{base}/v1/text-to-speech/{voix[0]['voice_id']}"],
+            stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        travail.stdin.write(corps)
+        travail.stdin.close()
+        time.sleep(2)
+
+        # Le serveur répond-il encore pendant le traitement ?
+        debut = time.time()
+        try:
+            urllib.request.urlopen(base + "/v1/user", timeout=5).read()
+            leger = time.time() - debut
+        except Exception:
+            leger = None
+
+        depart = time.time()
+        os.write(fd, b"\x03")
+        if nb_ctrl_c > 1:
+            time.sleep(1.5)
+            os.write(fd, b"\x03")
+
+        arret = None
+        while time.time() - depart < 60:
+            vider(0.3)
+            fini, _ = os.waitpid(pid, os.WNOHANG)
+            if fini:
+                arret = time.time() - depart
+                break
+        if arret is None:
+            os.kill(pid, signal.SIGKILL)
+    finally:
+        try:
+            os.close(fd)
+        except OSError:
+            pass
+        try:
+            os.kill(pid, signal.SIGKILL)
+        except (OSError, ProcessLookupError):
+            pass
+
+    return {"arret": arret, "leger": leger,
+            "terminal": sortie.decode("utf-8", "replace")}
+
+
+un = mesurer_arret(1)
+verifier("Le serveur répond encore pendant un traitement",
+         un["leger"] is not None and un["leger"] < 2,
+         "aucune réponse" if un["leger"] is None else f"{un['leger']:.1f} s")
+verifier("Le premier Ctrl+C dit ce qu'il attend",
+         "Arrêt demandé" in un["terminal"] and "une seconde fois" in un["terminal"])
+verifier("Le premier Ctrl+C finit par arrêter le serveur",
+         un["arret"] is not None,
+         "jamais arrêté" if un["arret"] is None else f"{un['arret']:.1f} s")
+# La trace « [synthese] … » n'est écrite qu'une fois le traitement terminé :
+# elle dit donc si l'arrêt l'a attendu, sans dépendre d'un seuil de durée —
+# le moteur de test n'a pas la lenteur de XTTS, et un seuil fixe laissait
+# passer l'ancien comportement.
+verifier("Le premier Ctrl+C attend la fin du traitement",
+         "[synthese]" in un["terminal"])
+verifier("Un arrêt normal ne laisse aucune trace d'erreur",
+         "Traceback" not in un["terminal"] and "CancelledError" not in un["terminal"],
+         un["terminal"][-120:].replace("\n", " ") if "Traceback" in un["terminal"] else "")
+
+deux = mesurer_arret(2)
+verifier("Le second Ctrl+C arrête sans attendre le traitement",
+         deux["arret"] is not None and "[synthese]" not in deux["terminal"],
+         "jamais arrêté" if deux["arret"] is None
+         else f"{deux['arret']:.1f} s"
+              + (", mais le traitement est allé à son terme"
+                 if "[synthese]" in deux["terminal"] else ""))
+verifier("L'arrêt forcé ne produit aucune trace d'erreur",
+         "Traceback" not in deux["terminal"] and "CancelledError" not in deux["terminal"],
+         deux["terminal"][-120:].replace("\n", " ") if "Traceback" in deux["terminal"] else "")
+verifier("L'arrêt forcé est annoncé", "Arrêt immédiat" in deux["terminal"])
+
 print(f"\nRESULTAT : {sum(resultats)}/{len(resultats)} vérifications réussies")
 sys.exit(0 if all(resultats) else 1)

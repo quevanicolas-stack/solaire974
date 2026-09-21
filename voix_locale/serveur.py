@@ -31,13 +31,15 @@ import wave
 from io import BytesIO
 from pathlib import Path
 
+import anyio.to_thread
+import uvicorn
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, Response
 
 RACINE = Path(__file__).resolve().parent
 DOSSIER_VOIX = RACINE / "donnees" / "voix"
-VERSION = "2026.09.21a"     # affichée au démarrage et sur « / » : sert à vérifier
+VERSION = "2026.09.21b"     # affichée au démarrage et sur « / » : sert à vérifier
                            # que le fichier en place est bien le dernier
 FREQUENCE = 24000          # fréquence d'échantillonnage de sortie, en hertz
 """
@@ -871,7 +873,10 @@ class MoteurXTTS(Moteur):
             return audio.clip_(-1, 1)
 
         xtts.load_audio = lire
-        print("[moteur] lecture audio autonome activée, torchcodec n'est pas sollicité", flush=True)
+        # Message volontairement affirmatif : « torchcodec n'est pas sollicité »
+        # se lisait comme un manque, alors que c'est le but recherché.
+        print("[moteur] lecture audio autonome activée : la référence est lue "
+              "par le serveur, torchcodec n'a donc rien à fournir", flush=True)
 
     def preparer(self) -> None:
         if self.modele is not None:
@@ -1253,6 +1258,32 @@ def erreur(code: int, message: str) -> JSONResponse:
     return JSONResponse(status_code=code, content={"detail": {"message": message}})
 
 
+#   Nombre de travaux bloquants en cours. Il sert à l'arrêt : lui seul permet
+#   de dire à l'utilisateur s'il y a réellement quelque chose à attendre.
+_en_cours = {"n": 0}
+
+
+async def au_fil(fonction, *arguments):
+    """
+    Exécute un travail bloquant hors de la boucle d'événements.
+
+    Une route `async def` s'exécute dans la boucle elle-même : tant qu'elle n'a
+    pas rendu la main, le serveur ne fait plus rien d'autre. Mesuré sur une
+    synthèse réelle : sans ce renvoi, « /v1/user » n'obtient aucune réponse
+    pendant tout le traitement — pas même la page, le serveur paraît éteint ;
+    avec lui, elle arrive en 0,1 s.
+
+    C'est aussi ce qui rendait Ctrl+C sans effet : le gestionnaire de signal
+    d'uvicorn est une fonction de la boucle, et une boucle arrêtée ne le fait
+    pas tourner.
+    """
+    _en_cours["n"] += 1
+    try:
+        return await anyio.to_thread.run_sync(fonction, *arguments)
+    finally:
+        _en_cours["n"] -= 1
+
+
 @app.get("/v1/user")
 def utilisateur():
     moteur = etat["moteur"]
@@ -1325,7 +1356,8 @@ async def ajouter_voix(
 
         debruiter = str(remove_background_noise).lower() in ("1", "true", "vrai", "on", "yes")
         reference = dossier / "reference.wav"
-        assembler_references(chemins, reference, debruiter)
+        # ffmpeg sur plusieurs prises : bloquant, donc hors de la boucle.
+        await au_fil(assembler_references, chemins, reference, debruiter)
 
         secondes = duree_wav(reference)
         if secondes < 3:
@@ -1334,10 +1366,12 @@ async def ajouter_voix(
 
         # Le découpage en tranches est ce qui rend la matière réellement
         # utilisable : sans lui, le moteur ne lit que le début de la référence.
-        tranches = decouper_reference(reference, dossier)
+        tranches = await au_fil(decouper_reference, reference, dossier)
         empreinte = False
         if tranches and hasattr(etat["moteur"], "preparer_voix"):
-            empreinte = etat["moteur"].preparer_voix(dossier, tranches)
+            # Le calcul de l'empreinte fait tourner le modèle : plusieurs
+            # dizaines de secondes sur une vingtaine de tranches.
+            empreinte = await au_fil(etat["moteur"].preparer_voix, dossier, tranches)
 
         fiche = {
             "voice_id": voix_id,
@@ -1410,20 +1444,25 @@ async def synthese(voix_id: str, requete: Request):
     # étant légèrement différente.
     if corps.get("variantes"):
         try:
-            brut, mime, decoupe = prononcer(
-                etat["moteur"], texte, dossier / "reference.wav", reglages)
+            brut, mime, decoupe = await au_fil(
+                prononcer, etat["moteur"], texte, dossier / "reference.wav", reglages)
         except RuntimeError as e:
             return erreur(500, str(e))
         except Exception as e:
             return erreur(500, f"Synthèse impossible : {e}")
 
-        mesures = mesurer_wav(brut) if mime == "audio/wav" else {}
+        mesures = await au_fil(mesurer_wav, brut) if mime == "audio/wav" else {}
         demande = str(reglages.get("denoise") or DEBRUITAGE_DEFAUT)
         conseille, raisons = proposer_reglages(mesures)
 
         etat["caracteres"] += len(texte)
         print(f"[synthese] {len(texte)} caractères en {time.time() - debut:.1f} s "
               f"({fiche['name']}, trois versions, conseil « {conseille} »)", flush=True)
+
+        # Le débruitage appelle ffmpeg : bloquant lui aussi.
+        traite = await au_fil(debruiter_octets, brut, demande)
+        propose = (traite if conseille == demande
+                   else await au_fil(debruiter_octets, brut, conseille))
 
         encoder = lambda d: base64.b64encode(d).decode("ascii")
         return {
@@ -1434,15 +1473,15 @@ async def synthese(voix_id: str, requete: Request):
             "decoupe": decoupe,
             "versions": {
                 "brut":    {"audio": encoder(brut), "debruitage": "aucun"},
-                "traite":  {"audio": encoder(debruiter_octets(brut, demande)),
-                            "debruitage": demande},
-                "propose": {"audio": encoder(debruiter_octets(brut, conseille)),
+                "traite":  {"audio": encoder(traite), "debruitage": demande},
+                "propose": {"audio": encoder(propose),
                             "debruitage": conseille, "raisons": raisons},
             },
         }
 
     try:
-        audio, mime = produire_audio(etat["moteur"], texte, dossier / "reference.wav", reglages)
+        audio, mime = await au_fil(
+            produire_audio, etat["moteur"], texte, dossier / "reference.wav", reglages)
     except RuntimeError as e:
         return erreur(500, str(e))
     except Exception as e:
@@ -1538,7 +1577,7 @@ async def conversation(requete: Request):
     # visiteur pourrait réécrire les consignes de l'assistant depuis sa console.
     debut = time.time()
     try:
-        reponse = etat["chat"].repondre(propres, etat["personnalite"])
+        reponse = await au_fil(etat["chat"].repondre, propres, etat["personnalite"])
     except RuntimeError as e:
         return erreur(500, str(e))
     except Exception as e:
@@ -1696,6 +1735,49 @@ def accueil():
 #   DÉMARRAGE
 # ══════════════════════════════════════════════════════════════
 
+
+class ServeurArretable(uvicorn.Server):
+    """
+    Un serveur que Ctrl+C arrête vraiment, et qui le dit.
+
+    Ce que faisait le serveur avant, mesuré pendant une génération : le premier
+    Ctrl+C n'affichait que « ^C » et ne rendait la main qu'à la fin du
+    traitement ; le second produisait une trace d'erreur — un `CancelledError`
+    qui ne nomme rien — et n'accélérait rien. D'où « Ctrl+C donne une erreur et
+    n'arrête plus le serveur ». Avec XTTS, où une génération se compte en
+    minutes, cela revient à un serveur qui ne s'arrête plus.
+
+    La cause est que rien ne peut interrompre un traitement en cours : ni un
+    signal, ni l'annulation d'une tâche. Le seul arrêt immédiat est la sortie du
+    processus. Elle n'est donc pas décidée à la place de l'utilisateur : le
+    premier Ctrl+C demande l'arrêt et explique l'attente, le second — un geste
+    délibéré — sort tout de suite.
+
+    Mesuré après correction, sur une génération de 8,7 s : arrêt 1,5 s après le
+    second Ctrl+C — c'est-à-dire aussitôt — sans aucune trace d'erreur.
+    `verifier_moteur.py` impose les deux moitiés : que le premier Ctrl+C attende
+    et le dise, que le second n'attende pas.
+    """
+
+    def handle_exit(self, sig, frame):
+        if self.should_exit:
+            print("\n  Arrêt immédiat.\n", flush=True)
+            sys.stdout.flush()
+            sys.stderr.flush()
+            os._exit(0)
+
+        # Ne parler d'attente que s'il y a vraiment quelque chose à attendre :
+        # annoncer un traitement en cours quand il n'y en a aucun serait le même
+        # défaut, à l'envers.
+        if _en_cours["n"]:
+            print("\n  Arrêt demandé. Un traitement est en cours et ne peut pas être\n"
+                  "  interrompu en chemin : il doit d'abord se terminer.\n"
+                  "  Ctrl+C une seconde fois pour arrêter sans attendre.\n", flush=True)
+        else:
+            print("\n  Arrêt en cours…\n", flush=True)
+        super().handle_exit(sig, frame)
+
+
 def principal():
     analyseur = argparse.ArgumentParser(description="Serveur vocal local pour Studio Voix")
     analyseur.add_argument("--moteur", default="test", choices=sorted(MOTEURS),
@@ -1778,8 +1860,14 @@ def principal():
         except RuntimeError as e:
             print(f"  Erreur : {e}\n", file=sys.stderr)
             sys.exit(1)
+        except KeyboardInterrupt:
+            # Le chargement du modèle dure une minute et son premier
+            # téléchargement bien davantage : Ctrl+C y est un geste normal, et
+            # ne doit pas répondre par une trace de PyTorch.
+            print("\n  Chargement interrompu, le serveur n'a pas démarré.\n")
+            sys.exit(0)
 
-    import uvicorn
+    options = dict(host=args.hote, port=args.port, log_level="warning")
     if args.https:
         certificat = preparer_certificat(adresse_locale())
         if not certificat:
@@ -1787,11 +1875,15 @@ def principal():
                   file=sys.stderr)
         else:
             cert, cle = certificat
-            uvicorn.run(app, host=args.hote, port=args.port, log_level="warning",
-                        ssl_certfile=str(cert), ssl_keyfile=str(cle))
-            return
+            options.update(ssl_certfile=str(cert), ssl_keyfile=str(cle))
 
-    uvicorn.run(app, host=args.hote, port=args.port, log_level="warning")
+    try:
+        ServeurArretable(uvicorn.Config(app, **options)).run()
+    except KeyboardInterrupt:
+        # uvicorn rejoue le signal après avoir rendu le gestionnaire d'origine :
+        # sans ce filet, l'arrêt normal se terminait sur une trace d'erreur.
+        pass
+    print("  Serveur arrêté.\n", flush=True)
 
 
 if __name__ == "__main__":

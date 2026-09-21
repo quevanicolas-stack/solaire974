@@ -56,6 +56,7 @@ COQUI_TOS_AGREED=1
 export COQUI_TOS_AGREED
 
 echo "Lancement : $PYTHON serveur.py $*"
-echo "Laissez cette fenêtre ouverte. Ctrl+C pour arrêter."
+echo "Laissez cette fenêtre ouverte."
+echo "Ctrl+C pour arrêter — et une seconde fois si une génération est en cours."
 echo
 exec "$PYTHON" serveur.py "$@"
