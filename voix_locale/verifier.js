@@ -1467,6 +1467,13 @@ async function creerVoix(page, nom) {
   // Un texte qui porte les QUATRE natures : une phrase trop longue, deux
   // phrases dans une ligne, un retour a la ligne, une ligne vide.
   const resp = await page.evaluate(async () => {
+    const p = profilActif();
+    if (p && p.verrouille) await deverrouillerReglages();
+    // Sans segmentation : un style qui coupe apres chaque virgule empeche la
+    // phrase longue d'atteindre la limite, donc supprime la coupure imposee —
+    // la nature meme qu'on veut voir ici.
+    document.getElementById('elocution').value = 'perso';
+    etat.miseEnForme = {segmenter: false, pauses: 'moderees'};
     const memoire = document.getElementById('texteEssai').value;
     document.getElementById('texteEssai').value =
       'Première phrase. Deuxième phrase dans la même ligne.\n' +
@@ -1555,8 +1562,8 @@ async function creerVoix(page, nom) {
     return {
       menus: document.querySelectorAll('#carteRespirations select.choix-resp').length,
       morceaux: (gen.decoupe || []).length,
-      gainAttendu: d[autre] - d[depart], gainMesure: change - base,
-      sansAttendu: -d[depart], sansMesure: sans - base,
+      gainAttendu: (d[autre] - d[depart]) / (gen.vitesse || 1), gainMesure: change - base,
+      sansAttendu: -d[depart] / (gen.vitesse || 1), sansMesure: sans - base,
       rendu: Math.abs(rendu - base),
       dit: /choisi par vous/.test(texte),
       restant: Object.keys(gen.naturesChoisies || {}).length
@@ -1588,6 +1595,90 @@ async function creerVoix(page, nom) {
       await genererEssai();
       return Object.keys(etat.generationEnCours.naturesChoisies || {}).length === 0;
     }));
+
+  // Verrouille, le rejeu doit employer les durees DU PROFIL, celles que la
+  // generation a reellement utilisees — pas celles de curseurs masques.
+  // Sans cela, rejouer sans rien changer changeait quand meme le rythme.
+  const respVerrou = await page.evaluate(async () => {
+    const p = profilActif();
+    document.getElementById('pausePhrase').value = 420;
+    document.getElementById('debit').value = 1.2;
+    majPauses();
+    await verrouillerReglages();
+    // On deregle ce qui est affiche : le rejeu ne doit pas le lire.
+    document.getElementById('pausePhrase').value = 250;
+    document.getElementById('debit').value = 1;
+    majPauses();
+    const lues = dureesDePause();
+    const v = vitesseDeGeneration();
+    await deverrouillerReglages();
+    return {phrase: lues.phrase, vitesse: v, verrouille: true};
+  });
+  verifier('Verrouillé, le rejeu emploie les durées du profil',
+    Math.abs(respVerrou.phrase - 0.42) < 1e-9 && Math.abs(respVerrou.vitesse - 1.2) < 1e-9,
+    'fin de phrase ' + respVerrou.phrase + ' s, débit ' + respVerrou.vitesse +
+    ' malgré 0,25 s et 1,00 affichés');
+
+  // Les respirations se choisissent aussi a l'etape 03, la ou l'on produit un
+  // vrai texte : c'est au moment de l'ecrire qu'on sait ou il doit respirer.
+  const resp3 = await page.evaluate(async () => {
+    const duree = async b => { const a = await decoderAudio(b); return a.length / a.sampleRate; };
+    go(2);
+    document.getElementById('texte').value =
+      'Première phrase. Deuxième phrase dans la même ligne.\n' +
+      'Une ligne qui suit, après un retour à la ligne voulu.\n\n' +
+      'Un paragraphe neuf, plus court.';
+    majCompteur();
+    await synthetiser();
+    const g = etat.generationEnCours;
+    const depart = natureDuMorceau(0);
+    const d = dureesDePause();
+    const avant = {brut: await duree(g.versions.brut.blob),
+                   votre: await duree(g.versions.votre.blob),
+                   propose: await duree(g.versions.propose.blob)};
+    await chargerVersion(g.id, 'votre');
+    const chargeeAvant = g.versionChargee;
+
+    await choisirRespiration(0, 'paragraphe');
+    const change = {brut: await duree(g.versions.brut.blob),
+                    votre: await duree(g.versions.votre.blob),
+                    propose: await duree(g.versions.propose.blob)};
+    // Le meme choix pose deux fois ne doit pas rallonger deux fois : repartir
+    // de l'audio affiche recollerait un audio deja recolle.
+    await choisirRespiration(0, 'ligne');
+    await choisirRespiration(0, 'paragraphe');
+    const bis = await duree(g.versions.votre.blob);
+    await remettreRespirations();
+    const rendu = await duree(g.versions.votre.blob);
+
+    return {
+      menus: document.querySelectorAll('#carteRespirations3 select.choix-resp').length,
+      morceaux: (g.decoupe || []).length,
+      attendu: (d.paragraphe - d[depart]) / (g.vitesse || 1),
+      brut: change.brut - avant.brut,
+      votre: change.votre - avant.votre,
+      propose: change.propose - avant.propose,
+      empile: bis - change.votre,
+      rendu: Math.abs(rendu - avant.votre),
+      chargeeAvant, chargeeApres: g.versionChargee
+    };
+  });
+  verifier('La carte des respirations est aussi à l\'étape 03',
+    resp3.menus === resp3.morceaux - 1,
+    resp3.menus + ' menu(s) pour ' + resp3.morceaux + ' morceau(x)');
+  for (const [nom, cle] of [['non traitée','brut'], ['vos réglages','votre'], ['proposition','propose']]) {
+    verifier('Un choix de respiration refait la version « ' + nom + ' »',
+      Math.abs(resp3[cle] - resp3.attendu) < 0.02,
+      resp3[cle].toFixed(3) + ' s pour ' + resp3.attendu.toFixed(3) + ' attendu');
+  }
+  verifier('Rejouer les respirations ne recolle pas un audio déjà recollé',
+    Math.abs(resp3.empile) < 0.002, 'écart ' + resp3.empile.toFixed(4) + ' s au second passage');
+  verifier('Rendre au découpage ses respirations remet l\'audio d\'origine, à l\'étape 03',
+    resp3.rendu < 0.002, 'écart ' + resp3.rendu.toFixed(4) + ' s');
+  // Ce qui est depose en bibliotheque ne correspond plus : le bouton le redit.
+  verifier('Changer une respiration décharge la version déposée',
+    resp3.chargeeAvant === 'votre' && resp3.chargeeApres === null,
+    String(resp3.chargeeApres));
 
   // Les profils d'avant portaient les deux noms faux : leurs durees doivent
   // revenir la ou elles agissaient reellement, sinon le travail est perdu.
@@ -1754,11 +1845,15 @@ async function creerVoix(page, nom) {
     ton.remis.graves === 0 && ton.remis.aigus === 0 && ton.remis.volume === 0);
 
   // Aucun autre reglage ne doit subsister a l'etape de generation.
-  const etape3 = await page.evaluate(() =>
-    [...document.querySelectorAll('#p2 input[type=range], #p2 select')].map(e => e.id));
+  const etape3 = await page.evaluate(() => ({
+    curseurs: [...document.querySelectorAll('#p2 input[type=range]')].map(e => e.id),
+    menus: [...document.querySelectorAll('#p2 select')]
+             .filter(e => !e.classList.contains('choix-resp')).map(e => e.id)
+  }));
   verifier('À la génération, seule la tonalité reste réglable',
-    etape3.length === 3 && etape3.every(i => i.startsWith('radio')),
-    etape3.join(' ') || 'aucun');
+    etape3.curseurs.length === 3 && etape3.curseurs.every(i => i.startsWith('radio')) &&
+    etape3.menus.length === 0,
+    etape3.curseurs.join(' ') + (etape3.menus.length ? ' + menus : ' + etape3.menus.join(' ') : ''));
 
   console.log('\n--- Montage ---');
 

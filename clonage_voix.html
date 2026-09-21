@@ -887,7 +887,7 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
         <button class="btn btn-p" id="btnEtage2" style="width:100%;justify-content:center;margin-top:14px"
                 onclick="genererEtage(2)">Générer l'amélioration</button>
         <div id="etage2" style="margin-top:12px"></div>
-        <div id="carteRespirations" style="margin-top:12px"></div>
+        <div id="carteRespirations" class="carte-respirations" style="margin-top:12px"></div>
       </div>
 
       <!-- ─── ÉTAGE 03 : le souffle ─── -->
@@ -1262,6 +1262,7 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
         Générer l'audio
       </button>
       <div id="resSynth" style="margin-top:12px"></div>
+      <div id="carteRespirations3" class="carte-respirations" style="margin-top:12px"></div>
 
       <div class="nav-btns">
         <button class="btn btn-g" onclick="go(1)">← Retour</button>
@@ -5198,6 +5199,22 @@ async function synthetiser(champ, idBouton, idZone){
          mais sans aucun réglage de la page. Repartir de la version déjà
          traitée empilerait deux fois l'égaliseur. */
       source: departVotre,
+      /* L'audio du moteur tel qu'il est arrivé. Rejouer les respirations part
+         toujours de lui : repartir de la version affichée recollerait un audio
+         déjà recollé, et les positions du découpage ne vaudraient plus rien —
+         même piège que l'égaliseur empilé sur lui-même. */
+      brutOrigine: brut,
+      /* Vitesse employée à la génération. Le serveur divise chaque silence par
+         elle — un débit de 1,15 raccourcit les pauses d'autant. La page doit
+         faire de même en rejouant, sinon un simple recollage rallongerait
+         toutes les respirations de quinze pour cent sans que personne ne
+         l'ait demandé. */
+      vitesse: vitesseDeGeneration(),
+      /* Départ de la version proposée : elle porte un autre débruitage, mais
+         les mêmes positions de morceaux. Sans elle, changer une respiration
+         ne pourrait refaire que deux versions sur trois. */
+      sourcePropose: versionProposeeBrute,
+      propositionChaine: proposition.chaine,
       base: base,
       decoupe: decoupeServeur,
       niveauManque: etat.niveauManque,
@@ -5221,6 +5238,7 @@ async function synthetiser(champ, idBouton, idZone){
       afficherCascade();
     }else{
       afficherGenerationEnCours();
+      afficherRespirations();
     }
     toast('Audio généré.', 'ok');
   }catch(e){
@@ -5452,8 +5470,27 @@ function majEtatCascade(){
    annonçaient « propositions » et « phrases » alors qu'ils pilotaient en
    réalité le retour à la ligne et le paragraphe. Deux réglages qui mentaient,
    et deux durées qu'on ne pouvait pas atteindre. */
+/* Débit réellement employé : celui du profil s'il est verrouillé. */
+function vitesseDeGeneration(){
+  const p = profilActif();
+  const fige = (p && p.verrouille && p.reglages && p.reglages.nombres) || null;
+  const v = fige && fige.debit !== undefined ? fige.debit : parseFloat($('debit').value);
+  return parseFloat(v) || 1;
+}
+
 function dureesDePause(){
-  const ms = id => parseFloat($(id).value) / 1000;
+  /* Verrouillé, ce sont les durées du profil — celles que la génération a
+     réellement employées — et non celles qu'affichent des curseurs masqués.
+     Mesuré : sans cette lecture, un profil verrouillé à 420 ms de fin de
+     phrase se rejouait avec les 250 ms affichés, et rejouer sans rien changer
+     changeait quand même le rythme. C'est le même principe que
+     `reglagesDeGeneration()` : le verrou prime sur l'affichage. */
+  const p = profilActif();
+  const fige = (p && p.verrouille && p.reglages && p.reglages.nombres) || null;
+  const ms = id => {
+    const v = fige && fige[id] !== undefined ? fige[id] : parseFloat($(id).value);
+    return (parseFloat(v) || 0) / 1000;
+  };
   return {
     proposition: ms('pauseProposition'),
     phrase:      ms('pausePhrase'),
@@ -5480,7 +5517,12 @@ function dureeDuMorceau(i){
   const nature = natureDuMorceau(i);
   if(nature === 'aucune' || nature === 'fin') return 0;
   const d = dureesDePause();
-  return (d[nature] !== undefined) ? d[nature] : 0;
+  const brute = (d[nature] !== undefined) ? d[nature] : 0;
+  /* Même division que le serveur : ce qu'on rejoue doit reproduire ce qu'il a
+     écrit, sinon rejouer sans rien changer changerait quand même le rythme. */
+  const g = etat.generationEnCours;
+  const v = (g && g.vitesse) || 1;
+  return brute / (v > 0 ? v : 1);
 }
 
 /* Durées à passer au recollage : une par morceau, dans l'ordre. */
@@ -5501,7 +5543,54 @@ async function choisirRespiration(i, nature){
   g.naturesChoisies = g.naturesChoisies || {};
   if(nature === (g.decoupe[i] || {}).nature) delete g.naturesChoisies[i];
   else g.naturesChoisies[i] = nature;
-  await genererEtage(2, true);
+  await rejouerLesRespirations();
+}
+
+/* Applique les respirations choisies, là où l'on se trouve.
+
+   À l'étape 02 la chaîne de production reprend depuis son second étage. À
+   l'étape 03 il n'y a pas de chaîne affichée, mais trois versions à refaire —
+   les trois, et non la seule « vos réglages » : elles ne doivent différer que
+   par le traitement, pas par la respiration. */
+async function rejouerLesRespirations(){
+  if(etat.zoneResultat === 'resEssai') return genererEtage(2, true);
+  return refaireVersions();
+}
+
+/* Refait les trois versions d'une génération avec les respirations voulues.
+
+   Le moteur ne reparle pas : on recolle autrement les morceaux déjà
+   prononcés, puis on repasse la chaîne. C'est la même économie que partout
+   ailleurs — regénérer donnerait un autre tirage. */
+async function refaireVersions(){
+  const g = etat.generationEnCours;
+  if(!g || !g.source) return;
+  const rejouable = !!(g.decoupe && g.decoupe.length > 1);
+  const durees = () => dureesParMorceau();
+
+  const origine = g.brutOrigine || g.versions.brut.blob;
+  const brut = rejouable ? await rejouerPauses(origine, g.decoupe, durees()) : origine;
+  const depart = rejouable ? await rejouerPauses(g.source, g.decoupe, durees()) : g.source;
+  const votre = await appliquerTraitement(depart, chaineCourante());
+
+  g.versions.brut.blob = brut;
+  g.versions.votre.blob = votre;
+  g.versions.votre.nom = g.base + '.' + extensionDe(votre.type || 'audio/wav');
+  g.traiteVotre = true;
+  g.niveauManque = etat.niveauManque;
+
+  if(g.sourcePropose && g.propositionChaine){
+    const dp = rejouable ? await rejouerPauses(g.sourcePropose, g.decoupe, durees())
+                         : g.sourcePropose;
+    g.versions.propose.blob = await appliquerTraitement(dp, g.propositionChaine);
+  }
+
+  /* Ce qui a été déposé en bibliothèque ne correspond plus : le bouton doit
+     le redire, comme après une retouche. */
+  g.versionChargee = null;
+  await majInfoFormat(votre);
+  afficherGenerationEnCours();
+  afficherRespirations();
 }
 
 async function remettreRespirations(){
@@ -5511,7 +5600,7 @@ async function remettreRespirations(){
   /* Attendre le recalcul : sans cela la fonction rendait la main avant que
      l'audio ne soit refait, et le lecteur gardait les respirations qu'on
      venait d'abandonner. */
-  await genererEtage(2, true);
+  await rejouerLesRespirations();
 }
 
 function remettrePauses(){
@@ -5550,8 +5639,13 @@ const CHOIX_RESPIRATION = [
    phrase se voit alors, au lieu de s'entendre sans qu'on sache d'où elle
    vient. */
 function afficherRespirations(){
-  const zone = $('carteRespirations');
-  if(!zone) return;
+  /* Deux emplacements, un seul code : l'étape 02 pour régler la voix, l'étape
+     03 pour produire un vrai texte. Les respirations se choisissent aux deux
+     endroits — c'est au moment d'écrire le texte définitif qu'on sait où il
+     doit respirer. */
+  const zones = Array.from(document.querySelectorAll('.carte-respirations'));
+  if(!zones.length) return;
+  const zone = {set innerHTML(v){ zones.forEach(z => z.innerHTML = v); }};
   const g = etat.generationEnCours;
   const d = (g && g.decoupe) || [];
   if(!d.length){
