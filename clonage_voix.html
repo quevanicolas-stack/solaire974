@@ -2439,33 +2439,38 @@ function pannePossibleDuReseau(e){
          m.indexOf('network') >= 0 || m.indexOf('réseau') >= 0;
 }
 
+/* Le message ne nomme pas l'opération : messageReseau sert aussi bien au test
+   de connexion qu'à la génération. Annoncer « le traitement de l'audio a
+   échoué » sur un simple test de connexion envoyait chercher une panne de
+   traitement là où il n'y avait pas d'audio du tout. */
 function messageReseau(e){
   const detail = ' (' + (e && e.message ? e.message : 'échec réseau') + ')';
   if(!pannePossibleDuReseau(e)){
-    return "Le traitement de l'audio a échoué dans la page, le serveur n'est pas en cause." + detail;
+    return "L'opération a échoué dans la page, le serveur n'est pas en cause." + detail;
   }
-  {
-    /* Contenu mixte : le navigateur refuse l'appel avant même de l'émettre.
-       Le serveur peut très bien tourner — le dire évite de le chercher. */
-    if(melangeInterdit()){
-      return "Cette page est ouverte en https, mais l'adresse du serveur est en http : le navigateur " +
-             "bloque l'appel avant de l'émettre. Le serveur n'est pas en cause. " +
-             "Corrigez l'adresse en " + urlCorrigee() + " dans les réglages ci-dessus.";
-    }
-    return "Le serveur local ne répond pas sur " + urlLocale() + ". Vérifiez qu'il est bien lancé " +
-           "(python serveur.py --moteur test dans le dossier voix_locale) et que l'adresse correspond " +
-           "au port affiché à son démarrage." + detail;
+
+  /* Ouverte en file://, la page ne peut appeler personne : le navigateur
+     bloque avant l'émission, quel que soit l'état du serveur. */
+  if(location.protocol === 'file:'){
+    return "Cette page est ouverte depuis un fichier (adresse file://) : le navigateur bloque " +
+           "l'appel avant de l'émettre. Ouvrez-la plutôt sur " + urlLocale() + "/app, " +
+           "servie par le serveur lui-même." + detail;
   }
-  return "Connexion impossible au service vocal. Deux causes habituelles : la page est ouverte en local " +
-         "(adresse file://) et le navigateur bloque l'appel, ou l'accès réseau est filtré. " +
-         "Servez la page via un serveur local, par exemple npx http-server, puis rouvrez-la sur http://localhost:8080/." +
-         detail;
+
+  /* Contenu mixte : le navigateur refuse l'appel avant même de l'émettre.
+     Le serveur peut très bien tourner — le dire évite de le chercher. */
+  if(melangeInterdit()){
+    return "Cette page est ouverte en https, mais l'adresse du serveur est en http : le navigateur " +
+           "bloque l'appel avant de l'émettre. Le serveur n'est pas en cause. " +
+           "Corrigez l'adresse en " + urlCorrigee() + " dans les réglages ci-dessus.";
+  }
+
+  return "Le serveur local ne répond pas sur " + urlLocale() + ". Vérifiez qu'il est bien lancé " +
+         "(sh lancer.sh dans le dossier voix_locale) et que l'adresse correspond " +
+         "au port affiché à son démarrage." + detail;
 }
 
 async function testerConnexion(){
-  {
-  }
-
   const bouton = boutonTest(), zone = zoneResultatTest();
   occupe(bouton, true, 'Test en cours…');
   zone.innerHTML = '';
@@ -2491,7 +2496,7 @@ async function testerConnexion(){
     /* Le serveur local annonce s'il clone vraiment ou s'il tourne en moteur de
        contrôle : l'utilisateur doit le savoir avant d'écouter le résultat. */
     let avis = '';
-    if(local && d.clone_reellement === false){
+    if(d.clone_reellement === false){
       avis = '<div class="note n-amb" style="margin-top:10px"><div class="note-t">Moteur de contrôle</div>' +
              'Ce serveur tourne avec le moteur de test : il produit un signal sonore qui ne ressemble ' +
              'à personne. Il sert uniquement à vérifier la chaîne. Relancez-le avec un moteur réel pour cloner.</div>';

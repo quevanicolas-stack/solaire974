@@ -1531,6 +1531,35 @@ async function creerVoix(page, nom) {
     verifier('En http, aucune adresse n\'est déclarée inappelable', mixte.bloque === false);
   }
 
+  // Le bouton « Tester la connexion » a longtemps echappe a cette suite : elle
+  // lisait les fonctions d'adresse sans jamais presser le bouton. Une variable
+  // orpheline laissee par le retrait du service distant y survivait donc, et
+  // ne se voyait qu'a l'ecran, sous la forme d'un ReferenceError. Un bouton
+  // que l'utilisateur presse doit etre presse ici aussi.
+  await page.evaluate(() => go(1));
+  await page.waitForTimeout(300);
+  const test = await page.evaluate(async () => {
+    etat.connexion = null;
+    let plante = '';
+    try { await testerConnexion(); }
+    catch (e) { plante = String(e && e.message || e); }
+    const zone = document.getElementById('resTest');
+    return {
+      plante,
+      connecte: !!(etat.connexion && etat.connexion.ok),
+      texte: (zone ? zone.textContent : ''),
+      bouton: (document.getElementById('btnTest') || {}).disabled === true
+    };
+  });
+  verifier('Le test de connexion s\'exécute sans lever d\'erreur',
+    test.plante === '', test.plante);
+  verifier('Le test de connexion aboutit sur le serveur local',
+    test.connecte === true, test.texte.slice(0, 90));
+  verifier('Le moteur de contrôle est annoncé comme ne clonant pas',
+    /moteur de test|ne clone pas/i.test(test.texte), test.texte.slice(0, 120));
+  verifier('Le bouton de test est rendu à l\'utilisateur après l\'appel',
+    test.bouton === false);
+
   console.log('\n--- Pièges connus ---');
 
   await page.evaluate(() => go(1));
@@ -1582,6 +1611,14 @@ async function creerVoix(page, nom) {
   verifier('Une erreur locale n\'est pas imputée au serveur',
     await page.evaluate(() =>
       messageReseau(new RangeError('valeur non finie')).includes('dans la page')));
+
+  // Le meme message sert au test de connexion et a la generation : il ne doit
+  // donc pas nommer l'audio, sinon un simple echec de connexion envoie
+  // chercher une panne de traitement la ou aucun audio n'existe.
+  verifier('Le message d\'erreur locale ne nomme pas une opération qu\'il ignore',
+    await page.evaluate(() =>
+      !/audio/i.test(messageReseau(new RangeError('valeur non finie')))),
+    await page.evaluate(() => messageReseau(new RangeError('valeur non finie'))));
 
   // ════════ ASSISTANT ════════
   console.log('\n--- Assistant ---');
