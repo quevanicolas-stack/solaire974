@@ -612,6 +612,21 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
           <button class="btn btn-g" onclick="reinitialiserEssai()">Rétablir le texte proposé</button>
         </div>
         <div id="resEssai" style="margin-top:12px"></div>
+
+        <div class="sec" style="margin-top:16px">Écouter la chaîne étage par étage
+          <button class="btn btn-g btn-sm" style="margin-left:8px;text-transform:none;letter-spacing:0"
+                  id="btnEcoute" onclick="basculerEcoute()">Afficher</button></div>
+        <div id="blocEcoute" style="display:none">
+          <div class="aide" style="margin-bottom:10px">
+            Décompose la dernière génération en six écoutes, de l'audio brut du moteur jusqu'au
+            fichier final. Le moteur ne reparle pas : c'est la même prononciation à chaque fois,
+            donc ce que vous entendez changer vient du traitement et de rien d'autre.
+            Réservé au réglage — une fois le profil verrouillé, vous n'aurez plus à y revenir.
+          </div>
+          <button class="btn btn-g btn-sm" id="btnEtapes" onclick="ecouterEtapes()">
+            Décomposer la dernière génération</button>
+          <div id="resEcoute" style="margin-top:12px"></div>
+        </div>
       </div>
 
       <div class="sec">Prononciation des mots et des noms propres
@@ -3600,6 +3615,18 @@ async function appliquerTraitement(blob, chaineDemandee){
     echantillonsSource = retirerSouffle(echantillonsSource, source.sampleRate, c.souffle);
   }
 
+  /* Arrêt à un étage donné, pour écouter la chaîne pas à pas.
+
+     Les étages sont ceux qu'on entend, dans l'ordre où ils agissent :
+     `souffle`, `egaliseur` (égaliseur et compression), `porte`, et rien —
+     c'est-à-dire la chaîne entière, jusqu'à la mise au niveau. Entendre un
+     étage isolé ne servirait à rien : ce qui compte est ce qu'il ajoute à ce
+     qui le précède. */
+  const arret = c.arret || null;
+  if(arret === 'souffle'){
+    return encoderWav(echantillonsSource, source.sampleRate, c.resolution || 16);
+  }
+
   const off = new HorsLigne(1, source.length, source.sampleRate);
   const tampon = off.createBuffer(1, source.length, source.sampleRate);
   tampon.copyToChannel(echantillonsSource instanceof Float32Array
@@ -3669,12 +3696,20 @@ async function appliquerTraitement(blob, chaineDemandee){
   const rendu = await off.startRendering();
   let donnees = rendu.getChannelData(0);
 
+  if(arret === 'egaliseur'){
+    return encoderWav(donnees, rendu.sampleRate, c.resolution || 16);
+  }
+
   /* Le nettoyage vient après la chaîne : la compression ayant remonté le bruit
      de fond, c'est à ce moment que la porte doit juger du niveau réel. */
   if(c.nettoyage){
     const seuilPorte = c.nettoyage.seuil;
     porteDeBruit(donnees, rendu.sampleRate, seuilPorte);
     if(c.nettoyage.rogner) donnees = rognerSilences(donnees, rendu.sampleRate, seuilPorte);
+  }
+
+  if(arret === 'porte'){
+    return encoderWav(donnees, rendu.sampleRate, c.resolution || 16);
   }
 
   /* Le volume de la tonalité décale l'étage de niveau au lieu de s'ajouter
@@ -3824,6 +3859,56 @@ async function mesurerLoudness(donnees, frequence){
    deux. Elle sert à mesurer une bande sans pente qui déborde : un filtre du
    premier ordre, employé pour la même chose, laissait passer la voix dans la
    mesure censée détecter ce qui se trouve sous elle. */
+/* ══════════════════════════════════════════════════════
+   REJOUER LES PAUSES
+   ══════════════════════════════════════════════════════ */
+
+/* Le serveur rend, avec l'audio, la place de chaque morceau parlé et la nature
+   du silence qui le suit. On peut donc refaire le collage avec d'autres durées
+   sans refaire parler le moteur : même prononciation, autre respiration.
+
+   C'est le seul réglage d'élocution qui se rejoue après coup. La stabilité et
+   la segmentation du texte, elles, décident de ce qui est prononcé : une fois
+   la forme d'onde écrite, il n'y a plus rien à décider. */
+const MONTAGE_PAUSE_FONDU = 0.006;   // secondes, pour ne pas claquer au raccord
+
+async function rejouerPauses(blob, decoupe, durees){
+  if(!decoupe || decoupe.length < 2) return blob;
+  const source = await decoderAudio(blob);
+  const d = source.getChannelData(0);
+  const fe = source.sampleRate;
+
+  const morceaux = [];
+  let total = 0;
+  for(const m of decoupe){
+    const a = Math.max(0, Math.round(m.debut * fe));
+    const b = Math.min(d.length, Math.round(m.fin * fe));
+    if(b <= a) continue;
+    const silence = Math.max(0, Math.round((durees[m.nature] !== undefined
+      ? durees[m.nature] : m.silence) * fe));
+    morceaux.push({a, b, silence});
+    total += (b - a) + silence;
+  }
+  if(!morceaux.length) return blob;
+
+  const sortie = new Float32Array(total);
+  const fondu = Math.max(1, Math.round(MONTAGE_PAUSE_FONDU * fe));
+  let p = 0;
+  for(const m of morceaux){
+    const n = m.b - m.a;
+    for(let i=0;i<n;i++){
+      /* Fondu aux extrémités : un morceau se termine rarement sur un zéro, et
+         recollé tel quel contre un silence l'écart s'entend comme un clic. */
+      let g = 1;
+      if(i < fondu) g = i / fondu;
+      else if(i > n - fondu) g = Math.max(0, (n - i) / fondu);
+      sortie[p + i] = d[m.a + i] * g;
+    }
+    p += n + m.silence;
+  }
+  return encoderWav(sortie, fe, 16);
+}
+
 /* ══════════════════════════════════════════════════════
    RETRAIT DU SOUFFLE, APRÈS LA CHAÎNE
    ══════════════════════════════════════════════════════ */
@@ -4812,7 +4897,7 @@ async function synthetiser(champ, idBouton, idZone){
       return;
     }
     let brut, departVotre, versionProposeeBrute;
-    let debruitageServeur = null, raisonsServeur = [];
+    let debruitageServeur = null, raisonsServeur = [], decoupeServeur = null;
 
     if(troisVersions && (r.headers.get('content-type') || '').indexOf('json') >= 0){
       const d = await r.json();
@@ -4823,6 +4908,9 @@ async function synthetiser(champ, idBouton, idZone){
          proposée du débruitage que le serveur a jugé adapté aux mesures. */
       departVotre = base64VersBlob(d.versions.traite.audio, d.mime);
       versionProposeeBrute = base64VersBlob(d.versions.propose.audio, d.mime);
+      /* Carte des morceaux : elle rend les pauses rejouables sans refaire
+         parler le moteur. Absente si le texte n'a fait qu'un seul morceau. */
+      decoupeServeur = d.decoupe || null;
     }else{
       brut = await r.blob();
       departVotre = brut;
@@ -4872,6 +4960,7 @@ async function synthetiser(champ, idBouton, idZone){
          traitée empilerait deux fois l'égaliseur. */
       source: departVotre,
       base: base,
+      decoupe: decoupeServeur,
       niveauManque: etat.niveauManque,
       versionChargee: null
     };
@@ -5028,6 +5117,93 @@ function afficherGenerationEnCours(){
       '<div style="margin-top:10px;font-size:11.5px">Le nom des fichiers porte la mention ' +
       '« voix-synthetique » : ne la retirez pas.</div>' +
     '</div>';
+}
+
+/* Écoute de la chaîne, étage par étage.
+
+   Une seule prononciation, arrêtée à chaque maillon : on entend alors ce que
+   chaque étage AJOUTE, et non ce qu'il fait isolément. C'est la seule
+   comparaison honnête — regénérer donnerait une autre prononciation, et l'on
+   attribuerait au traitement ce qui vient du tirage.
+
+   Le premier étage, les pauses, est le seul réglage d'élocution qui se rejoue
+   après coup : le serveur ayant rendu la place de chaque morceau, on refait le
+   collage avec d'autres durées. Tout ce qui décide de la PRONONCIATION —
+   stabilité, segmentation du texte, graine — est hors de portée ici : une fois
+   la forme d'onde écrite, le tirage est fait. */
+const ETAPES_ECOUTE = [
+  {cle:'brut',      titre:'1. Brut, le moteur seul',
+   aide:"La prononciation et le tirage. Rien n'a encore été touché."},
+  {cle:'pauses',    titre:'2. + pauses du style',
+   aide:'Même prononciation, autre respiration. Seul réglage d\'élocution rejouable.'},
+  {cle:'souffle',   titre:'3. + retrait du souffle',
+   aide:'Le grésillement est-il parti, et la voix a-t-elle souffert ?'},
+  {cle:'egaliseur', titre:'4. + égaliseur et compression',
+   aide:'Le timbre et la tenue.'},
+  {cle:'porte',     titre:'5. + porte de bruit et rognage',
+   aide:'Les blancs entre les mots.'},
+  {cle:'niveau',    titre:'6. + mise au niveau',
+   aide:'Le volume final. C\'est la version « vos réglages ».'}
+];
+
+function basculerEcoute(){ basculer('blocEcoute', $('btnEcoute')); }
+
+async function ecouterEtapes(){
+  const g = etat.generationEnCours;
+  const zone = $('resEcoute');
+  const bouton = $('btnEtapes');
+  if(!g || !g.source){ toast('Aucune génération à décomposer.', 'err'); return; }
+  occupe(bouton, true, 'Calcul…');
+  try{
+    const votre = chaineCourante();
+    const rendus = {};
+    rendus.brut = g.versions.brut.blob;
+
+    /* Les pauses se rejouent sur la version NON débruitée : c'est la seule qui
+       porte encore la carte des morceaux telle que le serveur l'a écrite. */
+    const forme = ELOCUTIONS[$('elocution').value] || etat.miseEnForme;
+    const pauseP = (forme && PAUSES_DE_PHRASE[forme.pauses] !== undefined)
+      ? PAUSES_DE_PHRASE[forme.pauses] : 0.25;
+    const durees = {
+      proposition: pauseP * 0.64,
+      phrase: pauseP,
+      ligne: parseFloat($('pauseCourte').value) / 1000,
+      paragraphe: parseFloat($('pauseLongue').value) / 1000,
+      fin: 0
+    };
+    rendus.pauses = g.decoupe && g.decoupe.length > 1
+      ? await rejouerPauses(g.versions.brut.blob, g.decoupe, durees)
+      : null;
+
+    for(const arret of ['souffle','egaliseur','porte']){
+      rendus[arret] = await appliquerTraitement(g.source, {...votre, arret});
+    }
+    rendus.niveau = g.versions.votre.blob;
+
+    const lecteur = (e) => {
+      const b = rendus[e.cle];
+      if(!b) return '<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--bdr)">' +
+        '<div style="font-size:12.5px;font-weight:600">' + echapper(e.titre) + '</div>' +
+        '<div class="aide" style="margin-top:4px">Sans objet ici : le texte n\'a fait ' +
+        "qu'un seul morceau, il n'y a aucune pause à rejouer.</div></div>";
+      return '<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--bdr)">' +
+        '<div style="font-size:12.5px;font-weight:600">' + echapper(e.titre) + '</div>' +
+        '<div class="aide" style="margin:4px 0 6px">' + echapper(e.aide) + '</div>' +
+        '<audio controls src="' + URL.createObjectURL(b) + '"></audio></div>';
+    };
+
+    zone.innerHTML = '<div class="note n-blu">' +
+      '<div class="note-t">Une seule prononciation, six écoutes</div>' +
+      'Chaque étage reprend le précédent et lui ajoute le sien. Le moteur n\'a ' +
+      'parlé qu\'une fois : ce que vous entendez changer vient du traitement, ' +
+      'jamais du tirage.' +
+      ETAPES_ECOUTE.map(lecteur).join('') +
+      '</div>';
+  }catch(e){
+    zone.innerHTML = '<div class="note n-red">' + echapper(messageReseau(e)) + '</div>';
+  }finally{
+    occupe(bouton, false);
+  }
 }
 
 /* Rejoue la chaîne de traitement sur une génération déjà produite.

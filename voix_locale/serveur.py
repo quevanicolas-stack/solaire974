@@ -37,7 +37,7 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 
 RACINE = Path(__file__).resolve().parent
 DOSSIER_VOIX = RACINE / "donnees" / "voix"
-VERSION = "2026.09.20e"     # affichée au démarrage et sur « / » : sert à vérifier
+VERSION = "2026.09.21a"     # affichée au démarrage et sur « / » : sert à vérifier
                            # que le fichier en place est bien le dernier
 FREQUENCE = 24000          # fréquence d'échantillonnage de sortie, en hertz
 """
@@ -510,17 +510,37 @@ def adoucir_extremites(trame: bytes, frequence: int) -> bytes:
     return struct.pack(f"<{n}h", *valeurs)
 
 
-def assembler_audio(morceaux: list[tuple[bytes, float]]) -> bytes:
-    """Recolle des WAV mono en intercalant les silences demandés."""
+def assembler_audio(morceaux: list[tuple[bytes, float]],
+                    natures: list[str] | None = None) -> tuple[bytes, list[dict]]:
+    """
+    Recolle des WAV mono en intercalant les silences demandés.
+
+    Rend aussi le DÉCOUPAGE : où commence et où finit chaque morceau parlé dans
+    l'audio assemblé, et de quelle nature est le silence qui le suit. Sans
+    cette carte, l'application ne peut pas rejouer les pauses autrement — il
+    lui faudrait refaire parler le moteur, donc obtenir une autre
+    prononciation, donc comparer deux choses différentes.
+    """
     trames: list[bytes] = []
     frequence, largeur = FREQUENCE, 2
-    for donnees, pause in morceaux:
+    decoupe: list[dict] = []
+    position = 0                       # en échantillons
+    for indice, (donnees, pause) in enumerate(morceaux):
         with wave.open(BytesIO(donnees), "rb") as w:
             frequence, largeur = w.getframerate(), w.getsampwidth()
             trame = w.readframes(w.getnframes())
         trames.append(adoucir_extremites(trame, frequence) if largeur == 2 else trame)
-        if pause > 0:
-            trames.append(b"\x00" * (int(frequence * pause) * largeur))
+        n = len(trame) // largeur
+        silence = int(frequence * pause) if pause > 0 else 0
+        decoupe.append({
+            "debut": round(position / frequence, 6),
+            "fin": round((position + n) / frequence, 6),
+            "silence": round(silence / frequence, 6),
+            "nature": (natures[indice] if natures and indice < len(natures) else "phrase"),
+        })
+        position += n + silence
+        if silence:
+            trames.append(b"\x00" * (silence * largeur))
 
     tampon = BytesIO()
     with wave.open(tampon, "wb") as w:
@@ -528,11 +548,19 @@ def assembler_audio(morceaux: list[tuple[bytes, float]]) -> bytes:
         w.setsampwidth(largeur)
         w.setframerate(frequence)
         w.writeframes(b"".join(trames))
-    return tampon.getvalue()
+    return tampon.getvalue(), decoupe
 
 
-def prononcer(moteur, texte: str, reference: Path, reglages: dict) -> tuple[bytes, str]:
-    """Découpage, prononciation morceau par morceau, recollage. Aucun filtrage."""
+def prononcer(moteur, texte: str, reference: Path,
+              reglages: dict) -> tuple[bytes, str, list[dict]]:
+    """
+    Découpage, prononciation morceau par morceau, recollage. Aucun filtrage.
+
+    Rend un troisième élément : le découpage, c'est-à-dire la place de chaque
+    morceau parlé dans l'audio et la nature du silence qui le suit. Vide quand
+    le texte n'a fait qu'un seul morceau — il n'y a alors aucune pause à
+    rejouer.
+    """
     segments = decouper_texte(texte)
     vitesse = max(0.5, min(2.0, float(reglages.get("speed") or 1.0)))
     # Les pauses sont réglables : l'application peut les allonger ou les
@@ -556,9 +584,11 @@ def prononcer(moteur, texte: str, reference: Path, reglages: dict) -> tuple[byte
     }
 
     if len(segments) <= 1:
-        return moteur.synthetiser(texte.strip(), reference, reglages)
+        audio, mime = moteur.synthetiser(texte.strip(), reference, reglages)
+        return audio, mime, []
 
     morceaux = []
+    natures = []
     for indice, (segment, nature) in enumerate(segments):
         # Le rang du morceau décale la graine, quand il y en a une : chaque
         # morceau part alors d'un état différent du générateur, sans que la
@@ -568,17 +598,20 @@ def prononcer(moteur, texte: str, reference: Path, reglages: dict) -> tuple[byte
         if mime != "audio/wav":
             # Un moteur qui ne rend pas du WAV ne peut pas être recollé ici :
             # on repasse par une seule prononciation, sans pauses maîtrisées.
-            return moteur.synthetiser(texte, reference, reglages)
+            secours, mime2 = moteur.synthetiser(texte, reference, reglages)
+            return secours, mime2, []
         # Une nature inconnue ne doit pas devenir un silence nul en silence :
         # on retombe sur la respiration, qui est le cas le plus fréquent.
         duree = durees.get(nature, courte)
         morceaux.append((audio, duree / vitesse))
-    return assembler_audio(morceaux), "audio/wav"
+        natures.append(nature)
+    audio, decoupe = assembler_audio(morceaux, natures)
+    return audio, "audio/wav", decoupe
 
 
 def produire_audio(moteur, texte: str, reference: Path, reglages: dict) -> tuple[bytes, str]:
     """Synthèse complète : prononciation puis débruitage au niveau demandé."""
-    audio, mime = prononcer(moteur, texte, reference, reglages)
+    audio, mime, _ = prononcer(moteur, texte, reference, reglages)
     niveau = str(reglages.get("denoise") or DEBRUITAGE_DEFAUT)
     return debruiter_octets(audio, niveau), mime
 
@@ -1377,7 +1410,8 @@ async def synthese(voix_id: str, requete: Request):
     # étant légèrement différente.
     if corps.get("variantes"):
         try:
-            brut, mime = prononcer(etat["moteur"], texte, dossier / "reference.wav", reglages)
+            brut, mime, decoupe = prononcer(
+                etat["moteur"], texte, dossier / "reference.wav", reglages)
         except RuntimeError as e:
             return erreur(500, str(e))
         except Exception as e:
@@ -1395,6 +1429,9 @@ async def synthese(voix_id: str, requete: Request):
         return {
             "mime": mime,
             "mesures": mesures,
+            # Carte des morceaux : elle rend les pauses rejouables dans la page,
+            # sans refaire parler le moteur.
+            "decoupe": decoupe,
             "versions": {
                 "brut":    {"audio": encoder(brut), "debruitage": "aucun"},
                 "traite":  {"audio": encoder(debruiter_octets(brut, demande)),

@@ -1175,6 +1175,85 @@ async function creerVoix(page, nom) {
     await page.evaluate(async () =>
       (await bdTout('echantillons')).every(e => !!e.profilId)));
 
+  console.log('\n--- Écoute étage par étage ---');
+
+  // Six ecoutes pour UNE prononciation. Le piege serait qu'un etage ne change
+  // rien : on aurait alors un lecteur qui ment, comme les curseurs inertes.
+  const etapes = await page.evaluate(async () => {
+    const g = etat.generationEnCours;
+    const empreinte = async (blob) => {
+      if (!blob) return null;
+      const a = await decoderAudio(blob);
+      const d = a.getChannelData(0);
+      let carres = 0, somme = 0;
+      for (let i = 0; i < d.length; i++) { carres += d[i]*d[i]; somme += Math.abs(d[i]); }
+      return {n: d.length, duree: d.length / a.sampleRate,
+              rms: Math.sqrt(carres / d.length), somme};
+    };
+    // Des reglages qui agissent vraiment, sinon les etages se ressemblent.
+    document.getElementById('preset').value = 'radio';
+    appliquerPreset();
+    document.getElementById('traitementActif').checked = true;
+    document.getElementById('nettoyageActif').checked = true;
+    document.getElementById('souffle').value = 'moyen';
+    document.getElementById('loudness').value = '-16';
+
+    await ecouterEtapes();
+    const zone = document.getElementById('resEcoute');
+    const lecteurs = zone.querySelectorAll('audio').length;
+
+    const votre = chaineCourante();
+    const rendus = {};
+    for (const arret of ['souffle', 'egaliseur', 'porte']) {
+      rendus[arret] = await empreinte(await appliquerTraitement(g.source, {...votre, arret}));
+    }
+    rendus.brut = await empreinte(g.versions.brut.blob);
+    rendus.niveau = await empreinte(g.versions.votre.blob);
+
+    // Les pauses : rejouees deux fois avec des durees differentes.
+    let pausesCourtes = null, pausesLongues = null, memeVoix = null;
+    if (g.decoupe && g.decoupe.length > 1) {
+      const court = await rejouerPauses(g.versions.brut.blob, g.decoupe,
+        {proposition:0.05, phrase:0.05, ligne:0.05, paragraphe:0.05, fin:0});
+      const long = await rejouerPauses(g.versions.brut.blob, g.decoupe,
+        {proposition:0.6, phrase:0.6, ligne:0.6, paragraphe:0.6, fin:0});
+      pausesCourtes = await empreinte(court);
+      pausesLongues = await empreinte(long);
+      // La PAROLE doit rester la meme : seuls les silences changent. On le
+      // verifie par la somme des valeurs absolues, insensible aux zeros.
+      memeVoix = Math.abs(pausesCourtes.somme - pausesLongues.somme) /
+                 Math.max(pausesCourtes.somme, 1e-9);
+    }
+    return {lecteurs, rendus, pausesCourtes, pausesLongues, memeVoix,
+            nbMorceaux: g.decoupe ? g.decoupe.length : 0};
+  });
+
+  verifier('Le serveur rend la carte des morceaux',
+    etapes.nbMorceaux >= 2, etapes.nbMorceaux + ' morceau(x)');
+  verifier('Six écoutes proposées',
+    etapes.lecteurs === 6, etapes.lecteurs + ' lecteur(s)');
+
+  const suite = ['brut', 'souffle', 'egaliseur', 'porte', 'niveau'];
+  for (let i = 1; i < suite.length; i++) {
+    const a = etapes.rendus[suite[i-1]], b = etapes.rendus[suite[i]];
+    const ecart = Math.abs(a.rms - b.rms) / Math.max(a.rms, b.rms, 1e-12) +
+                  Math.abs(a.somme - b.somme) / Math.max(a.somme, b.somme, 1e-12);
+    verifier('L\'étage « ' + suite[i] + ' » change réellement le son',
+      ecart > 1e-6, 'écart relatif ' + ecart.toExponential(1));
+  }
+
+  if (etapes.pausesCourtes) {
+    verifier('Des pauses plus longues allongent l\'audio',
+      etapes.pausesLongues.duree > etapes.pausesCourtes.duree + 0.5,
+      etapes.pausesCourtes.duree.toFixed(2) + ' s -> ' +
+      etapes.pausesLongues.duree.toFixed(2) + ' s');
+    verifier('Rejouer les pauses ne touche pas à la parole',
+      etapes.memeVoix < 0.02,
+      'écart relatif sur la parole : ' + (etapes.memeVoix * 100).toFixed(2) + ' %');
+  } else {
+    verifier('Des pauses plus longues allongent l\'audio', false, 'aucune carte de morceaux');
+  }
+
   console.log('\n--- Retrait du souffle ---');
 
   // Le souffle est ce que l'utilisateur entend en premier : un grésillement
