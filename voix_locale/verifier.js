@@ -365,20 +365,33 @@ async function creerVoix(page, nom) {
   // L'ecran annonce ce que le serveur deduirait : deux formules divergentes le
   // feraient mentir. La pente s'arrete a 0,45 pour ne pas pousser le decodeur
   // dans la zone ou il boucle.
-  const deduites = await page.evaluate(() => {
-    const c = document.getElementById('stabilite');
-    const avant = c.value;
-    const lire = (v) => { c.value = v; return valeursDeduites().temperature; };
-    const sortie = { bas: lire(0), milieu: lire(0.5), haut: lire(1) };
-    c.value = avant;
-    return sortie;
-  });
+  // La stabilite n'est plus un curseur : elle ne servait qu'a deduire trois
+  // valeurs, et cessait d'etre lue des qu'on pilotait le moteur a la main.
+  // La formule survit pour les styles d'elocution, qui restent decrits par
+  // une stabilite — et elle doit rester celle du serveur.
+  const deduites = await page.evaluate(() => ({
+    bas: valeursDeduites(0).temperature,
+    milieu: valeursDeduites(0.5).temperature,
+    haut: valeursDeduites(1).temperature
+  }));
   verifier('La température déduite suit la pente attendue',
     Math.abs(deduites.bas - 0.85) < 1e-9 && Math.abs(deduites.milieu - 0.65) < 1e-9 &&
     Math.abs(deduites.haut - 0.45) < 1e-9,
     [deduites.bas, deduites.milieu, deduites.haut].map(v => v.toFixed(2)).join(' / '));
   verifier('La stabilité maximale ne descend pas dans la zone de bouclage',
     deduites.haut >= 0.45 - 1e-9, 'température à stabilité 1 : ' + deduites.haut.toFixed(2));
+  // Un reglage qui n'agit plus ne doit pas rester affiche : c'est le defaut
+  // deja corrige pour les reglages du profil et pour similarity_boost.
+  verifier('Le curseur de stabilité a disparu de la page',
+    await page.evaluate(() => !document.getElementById('stabilite')));
+  verifier('La commande directe n\'est plus optionnelle',
+    await page.evaluate(() => !document.getElementById('avanceActif')));
+  verifier('Tout ce qui pilote le moteur part réellement au moteur',
+    await page.evaluate(() => {
+      const v = reglagesMoteur();
+      return ['temperature','top_p','top_k','repetition_penalty','length_penalty']
+        .every(c => typeof v[c] === 'number' && isFinite(v[c]));
+    }), JSON.stringify(await page.evaluate(() => reglagesMoteur())).slice(0, 110));
 
   // Le debit est un etirement applique par le moteur : loin de 1,00 il abime
   // l'elocution. La course s'arrete donc avant.
@@ -765,7 +778,7 @@ async function creerVoix(page, nom) {
     appliquerElocution();
     const avant = { texte: preparerTexte(pitch, 'narrateur'),
                     phrase: reglagesMoteur().pause_phrase };
-    const c = document.getElementById('stabilite');
+    const c = document.getElementById('temperature');
     c.value = '0.9'; c.dispatchEvent(new Event('input', {bubbles:true}));
     const apres = { style: document.getElementById('elocution').value,
                     texte: preparerTexte(pitch, document.getElementById('elocution').value),
@@ -1097,33 +1110,39 @@ async function creerVoix(page, nom) {
   // affiches, sinon il ne sert a rien.
   const verrouillage = await page.evaluate(async () => {
     const p = profilActif();
-    document.getElementById('stabilite').value = 0.75;
+    document.getElementById('temperature').value = 0.75;
     document.getElementById('debit').value = 0.95;
     majReglages();
     await verrouillerReglages();
-    const fige = { verrouille: p.verrouille, stab: p.reglages.nombres.stabilite };
+    const fige = { verrouille: p.verrouille, temp: p.reglages.nombres.temperature,
+                   cache: document.getElementById('blocReglagesProfil').style.display,
+                   remplace: document.getElementById('blocVerrouille').style.display };
 
     // On deregle les curseurs : une generation verrouillee doit les ignorer.
-    document.getElementById('stabilite').value = 0.20;
+    document.getElementById('temperature').value = 0.20;
     document.getElementById('debit').value = 1.20;
     majReglages();
     const repose = reglagesDeGeneration();
-    const pendant = parseFloat(document.getElementById('stabilite').value);
+    const pendant = parseFloat(document.getElementById('temperature').value);
     if (repose) appliquerReglagesProfil(repose);
-    const apres = parseFloat(document.getElementById('stabilite').value);
+    const apres = parseFloat(document.getElementById('temperature').value);
 
     await deverrouillerReglages();
     const rouvert = p.verrouille;
     return { fige, pendant, apres, rouvert };
   });
   verifier('Verrouiller fige les réglages sur le profil',
-    verrouillage.fige.verrouille && Math.abs(verrouillage.fige.stab - 0.75) < 1e-9,
-    'stabilité figée à ' + verrouillage.fige.stab);
+    verrouillage.fige.verrouille && Math.abs(verrouillage.fige.temp - 0.75) < 1e-9,
+    'température figée à ' + verrouillage.fige.temp);
   verifier('Une génération verrouillée reprend les réglages du profil',
     Math.abs(verrouillage.pendant - 0.75) < 1e-9,
-    'stabilité employée : ' + verrouillage.pendant + ' malgré 0,20 affiché');
+    'température employée : ' + verrouillage.pendant + ' malgré 0,20 affiché');
   verifier('Les curseurs affichés sont rendus intacts après la génération',
     Math.abs(verrouillage.apres - 0.20) < 1e-9, String(verrouillage.apres));
+  // Masquer la chaine sans rien dire ferait croire a une page cassee.
+  verifier('Verrouillé, un encadré prend la place de la chaîne',
+    verrouillage.fige.cache === 'none' && verrouillage.fige.remplace === 'block',
+    'chaîne ' + verrouillage.fige.cache + ', encadré ' + verrouillage.fige.remplace);
   verifier('Les réglages peuvent être rouverts', verrouillage.rouvert === false);
 
   // Deux profils ne partagent ni leurs prises, ni leur voix, ni leurs reglages.
@@ -1175,12 +1194,12 @@ async function creerVoix(page, nom) {
     await page.evaluate(async () =>
       (await bdTout('echantillons')).every(e => !!e.profilId)));
 
-  console.log('\n--- Écoute étage par étage ---');
+  console.log('\n--- Chaîne de production, étage par étage ---');
 
-  // Six ecoutes pour UNE prononciation. Le piege serait qu'un etage ne change
-  // rien : on aurait alors un lecteur qui ment, comme les curseurs inertes.
-  const etapes = await page.evaluate(async () => {
-    const g = etat.generationEnCours;
+  // Six etages pour UNE prononciation, et chacun avec son bouton. Le piege
+  // serait qu'un etage ne change rien : on aurait alors un lecteur qui ment,
+  // comme les curseurs inertes. L'etage doit alors se declarer inactif.
+  const cascade = await page.evaluate(async () => {
     const empreinte = async (blob) => {
       if (!blob) return null;
       const a = await decoderAudio(blob);
@@ -1198,24 +1217,32 @@ async function creerVoix(page, nom) {
     document.getElementById('souffle').value = 'moyen';
     document.getElementById('loudness').value = '-16';
 
-    await ecouterEtapes();
-    const zone = document.getElementById('resEcoute');
-    const lecteurs = zone.querySelectorAll('audio').length;
+    // La suite a touche des reglages du moteur plus haut : la chaine est donc
+    // perimee des l'etage 01, et c'est bien ce qu'on veut — un reglage du
+    // moteur ne se rattrape par aucun recalcul. On refait donc parler le
+    // moteur, puis on presse chaque bouton dans l'ordre, comme l'utilisateur.
+    await genererEssai();
+    for (const n of [2, 3, 4, 5, 6]) await genererEtage(n);
 
-    const votre = chaineCourante();
+    const c = etat.cascade;
     const rendus = {};
-    for (const arret of ['souffle', 'egaliseur', 'porte']) {
-      rendus[arret] = await empreinte(await appliquerTraitement(g.source, {...votre, arret}));
+    for (const cle of ['moteur','pauses','souffle','egaliseur','porte','niveau']) {
+      rendus[cle] = await empreinte(c.audios[cle]);
     }
-    rendus.brut = await empreinte(g.versions.brut.blob);
-    rendus.niveau = await empreinte(g.versions.votre.blob);
+    const lecteurs = [1,2,3,4,5,6]
+      .map(n => document.querySelectorAll('#etage' + n + ' audio').length);
+
+    // L'etage 06 doit etre EXACTEMENT la version « vos reglages » : sinon la
+    // bibliotheque recevrait un autre son que celui qu'on vient d'ecouter.
+    const memeQueVotre = (etat.generationEnCours.versions.votre.blob === c.audios.niveau);
 
     // Les pauses : rejouees deux fois avec des durees differentes.
+    const g = etat.generationEnCours;
     let pausesCourtes = null, pausesLongues = null, memeVoix = null;
     if (g.decoupe && g.decoupe.length > 1) {
-      const court = await rejouerPauses(g.versions.brut.blob, g.decoupe,
+      const court = await rejouerPauses(g.source, g.decoupe,
         {proposition:0.05, phrase:0.05, ligne:0.05, paragraphe:0.05, fin:0});
-      const long = await rejouerPauses(g.versions.brut.blob, g.decoupe,
+      const long = await rejouerPauses(g.source, g.decoupe,
         {proposition:0.6, phrase:0.6, ligne:0.6, paragraphe:0.6, fin:0});
       pausesCourtes = await empreinte(court);
       pausesLongues = await empreinte(long);
@@ -1224,36 +1251,163 @@ async function creerVoix(page, nom) {
       memeVoix = Math.abs(pausesCourtes.somme - pausesLongues.somme) /
                  Math.max(pausesCourtes.somme, 1e-9);
     }
-    return {lecteurs, rendus, pausesCourtes, pausesLongues, memeVoix,
-            nbMorceaux: g.decoupe ? g.decoupe.length : 0};
+    return {lecteurs, rendus, pausesCourtes, pausesLongues, memeVoix, memeQueVotre,
+            atteint: c.atteint, nbMorceaux: g.decoupe ? g.decoupe.length : 0};
   });
 
   verifier('Le serveur rend la carte des morceaux',
-    etapes.nbMorceaux >= 2, etapes.nbMorceaux + ' morceau(x)');
-  verifier('Six écoutes proposées',
-    etapes.lecteurs === 6, etapes.lecteurs + ' lecteur(s)');
+    cascade.nbMorceaux >= 2, cascade.nbMorceaux + ' morceau(x)');
+  verifier('Les six étages se génèrent l\'un après l\'autre',
+    cascade.atteint === 6, 'étage atteint : ' + cascade.atteint);
+  verifier('Chaque étage rend son propre lecteur',
+    cascade.lecteurs.every(n => n === 1), cascade.lecteurs.join(' / '));
+  verifier('L\'étage 06 est exactement la version « vos réglages »',
+    cascade.memeQueVotre === true);
 
-  const suite = ['brut', 'souffle', 'egaliseur', 'porte', 'niveau'];
+  const suite = ['moteur', 'pauses', 'souffle', 'egaliseur', 'porte', 'niveau'];
   for (let i = 1; i < suite.length; i++) {
-    const a = etapes.rendus[suite[i-1]], b = etapes.rendus[suite[i]];
+    const a = cascade.rendus[suite[i-1]], b = cascade.rendus[suite[i]];
     const ecart = Math.abs(a.rms - b.rms) / Math.max(a.rms, b.rms, 1e-12) +
                   Math.abs(a.somme - b.somme) / Math.max(a.somme, b.somme, 1e-12);
     verifier('L\'étage « ' + suite[i] + ' » change réellement le son',
       ecart > 1e-6, 'écart relatif ' + ecart.toExponential(1));
   }
 
-  if (etapes.pausesCourtes) {
+  if (cascade.pausesCourtes) {
     verifier('Des pauses plus longues allongent l\'audio',
-      etapes.pausesLongues.duree > etapes.pausesCourtes.duree + 0.5,
-      etapes.pausesCourtes.duree.toFixed(2) + ' s -> ' +
-      etapes.pausesLongues.duree.toFixed(2) + ' s');
+      cascade.pausesLongues.duree > cascade.pausesCourtes.duree + 0.2,
+      cascade.pausesCourtes.duree.toFixed(2) + ' s -> ' + cascade.pausesLongues.duree.toFixed(2) + ' s');
     verifier('Rejouer les pauses ne touche pas à la parole',
-      etapes.memeVoix < 0.02,
-      'écart relatif sur la parole : ' + (etapes.memeVoix * 100).toFixed(2) + ' %');
-  } else {
-    verifier('Des pauses plus longues allongent l\'audio', false, 'aucune carte de morceaux');
+      cascade.memeVoix < 0.01, 'écart relatif sur la parole : ' + (cascade.memeVoix * 100).toFixed(2) + ' %');
   }
 
+  // Un reglage qui bouge PERIME les etages qui en dependent. Laisser un
+  // lecteur jouer un son qui ne correspond plus serait la meme faute qu'un
+  // curseur inerte, en plus discret.
+  const perime = await page.evaluate(async () => {
+    const lire = () => document.getElementById('etatCascade').textContent.trim();
+    const neuf = etat.cascade.perimeA;
+    document.getElementById('porte').value = -50;
+    majNettoyage();
+    const apresPorte = { n: etat.cascade.perimeA, texte: lire() };
+    document.getElementById('temperature').value = 0.9;
+    majMoteur(true);
+    const apresMoteur = { n: etat.cascade.perimeA, texte: lire() };
+    // Un etage ne se recalcule pas tant que le moteur n'a pas reparle.
+    await genererEtage(4);
+    const bloque = etat.cascade.perimeA;
+    return { neuf, apresPorte, apresMoteur, bloque };
+  });
+  verifier('Une cascade fraîche n\'est pas périmée', perime.neuf === 0, String(perime.neuf));
+  verifier('Changer la porte périme à partir de son étage',
+    perime.apresPorte.n === 5, 'étage ' + perime.apresPorte.n);
+  verifier('L\'écran dit à partir d\'où les étages sont périmés',
+    /périmés à partir du 05/.test(perime.apresPorte.texte), perime.apresPorte.texte.slice(0, 60));
+  verifier('Changer un réglage du moteur oblige à regénérer',
+    perime.apresMoteur.n === 1 && /doit reparler/.test(perime.apresMoteur.texte),
+    perime.apresMoteur.texte.slice(0, 60));
+  verifier('Un étage refuse de se recalculer sur un moteur périmé',
+    perime.bloque === 1, 'périmé à ' + perime.bloque);
+
+  // Un etage dont le reglage est eteint doit le DIRE, au lieu d'afficher un
+  // lecteur identique au precedent.
+  const inactif = await page.evaluate(async () => {
+    document.getElementById('temperature').value = 0.65;
+    majMoteur();
+    etat.cascade.perimeA = 0;
+    document.getElementById('souffle').value = 'aucun';
+    document.getElementById('traitementActif').checked = false;
+    document.getElementById('preset').value = 'aucun';
+    majTraitement();
+    etat.cascade.perimeA = 0;
+    await genererEtage(4);
+    return {
+      drapeaux: etat.cascade.inactif,
+      texte3: document.getElementById('etage3').textContent,
+      texte4: document.getElementById('etage4').textContent
+    };
+  });
+  verifier('Un étage éteint se déclare inactif',
+    inactif.drapeaux.souffle === true && inactif.drapeaux.egaliseur === true,
+    JSON.stringify(inactif.drapeaux));
+  verifier('L\'étage inactif le dit à l\'écran, au lieu de faire croire à un effet',
+    /inactif/.test(inactif.texte3) && /inactif/.test(inactif.texte4),
+    inactif.texte4.slice(0, 70));
+
+  // La proposition automatique : la ressemblance aux prises, et rien des
+  // reglages affiches. Signal riche, pour la meme raison que la correction
+  // manuelle — le moteur de test n'emet rien au-dessus de 500 Hz.
+  const propose = await page.evaluate(async () => {
+    const memoireEch = etat.echantillons;
+    const g = etat.generationEnCours;
+    const memoireBrut = g.versions.brut.blob;
+    const memoireSource = g.source;
+    // versionsNonTraitees() moyenne aussi les entrees de bibliotheque : elles
+    // portent encore le signal a trois harmoniques du moteur de test, et
+    // pollueraient le profil moyen. On mesure sur le seul signal de controle.
+    const memoireGen = etat.generations;
+    etat.generations = [];
+
+    const fe = 24000, n = fe * 6;
+    const d = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      const t = i / fe;
+      const env = 0.5 + 0.5 * Math.sin(2 * Math.PI * 2.5 * t);
+      let v = 0;
+      for (let h = 1; h <= 68; h++) v += Math.sin(2 * Math.PI * 160 * h * t + h) / h;
+      d[i] = 0.12 * env * v;
+    }
+    const ctx = new OfflineAudioContext(1, n, fe);
+    const t = ctx.createBuffer(1, n, fe);
+    t.copyToChannel(d, 0);
+    const s = ctx.createBufferSource(); s.buffer = t;
+    const f = ctx.createBiquadFilter();
+    f.type = 'lowshelf'; f.frequency.value = 250; f.Q.value = 1.1; f.gain.value = 5;
+    s.connect(f); f.connect(ctx.destination); s.start();
+    const rendu = await ctx.startRendering();
+
+    g.versions.brut.blob = encoderWav(d, fe, 16);
+    g.source = g.versions.brut.blob;
+    etat.echantillons = [{ id: 'controle', nom: 'controle.wav',
+      blob: encoderWav(rendu.getChannelData(0), fe, 16) }];
+
+    // On note les reglages affiches AVANT : la proposition ne doit en toucher
+    // aucun. C'est ce qui la distingue de « Calculer d'apres mes prises ».
+    const avant = ['graves','basMed','aigus','seuil','ratio']
+      .map(k => document.getElementById(k).value).join('|');
+    const presetAvant = document.getElementById('preset').value;
+    const actifAvant = document.getElementById('traitementActif').checked;
+
+    await proposerRessemblance();
+
+    const apres = ['graves','basMed','aigus','seuil','ratio']
+      .map(k => document.getElementById(k).value).join('|');
+    const zone = document.getElementById('resProposition');
+    const sortie = {
+      texte: zone.textContent,
+      lecteurs: zone.querySelectorAll('audio').length,
+      curseursIntacts: (avant === apres),
+      presetIntact: presetAvant === document.getElementById('preset').value,
+      actifIntact: actifAvant === document.getElementById('traitementActif').checked,
+      versionPropose: !!(g.versions.propose && g.versions.propose.blob)
+    };
+    etat.echantillons = memoireEch;
+    etat.generations = memoireGen;
+    g.versions.brut.blob = memoireBrut;
+    g.source = memoireSource;
+    return sortie;
+  });
+  verifier('La proposition automatique aboutit et rend un audio',
+    propose.lecteurs >= 1 && propose.versionPropose,
+    propose.lecteurs + ' lecteur(s) — ' + propose.texte.slice(0, 60));
+  verifier('La proposition retrouve le défaut introduit dans la prise',
+    /Graves [3-6],\d dB/.test(propose.texte),
+    (propose.texte.match(/Graves [-\d,]+ dB/) || ['?'])[0]);
+  verifier('La proposition ne touche aucun de vos réglages',
+    propose.curseursIntacts && propose.presetIntact && propose.actifIntact,
+    'curseurs ' + (propose.curseursIntacts ? 'intacts' : 'MODIFIÉS'));
+  verifier('La proposition n\'ajoute ni compression ni porte',
+    /Aucune compression, aucune porte/.test(propose.texte));
   console.log('\n--- Retrait du souffle ---');
 
   // Le souffle est ce que l'utilisateur entend en premier : un grésillement

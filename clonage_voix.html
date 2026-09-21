@@ -595,39 +595,18 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
           <div id="resCreation" style="margin-top:12px"></div>
         </div>
       </div>
+      <!-- ═══════════════════════════════════════════════════════════
+           CHAÎNE DE PRODUCTION — un étage à la fois
 
-      <div class="sec">Texte d'essai</div>
-      <div class="card">
-        <div class="note n-blu" style="margin-bottom:12px">
-          <div class="note-t">Régler une fois, puis ne plus y revenir</div>
-          Ce texte sert à caler la voix : il est assez long pour porter des phrases, des nombres et
-          des respirations, assez court pour ne pas faire attendre. Générez-le, réglez l'élocution
-          jusqu'à ce qu'elle vous convienne, puis réglez le son sans regénérer — le bouton
-          « Rejouer les réglages » rejoue tout ce qui suit le moteur sur le même audio.
-          Quand tout est bon, verrouillez.
-        </div>
-        <textarea id="texteEssai" rows="5"></textarea>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
-          <button class="btn btn-p" id="btnEssai" onclick="genererEssai()">Générer le texte d'essai</button>
-          <button class="btn btn-g" onclick="reinitialiserEssai()">Rétablir le texte proposé</button>
-        </div>
-        <div id="resEssai" style="margin-top:12px"></div>
+           L'ancien écran posait tous les réglages côte à côte, puis rendait
+           six lecteurs d'un coup : on voyait le résultat sans jamais voir
+           l'effet d'un réglage. Chaque étage porte désormais ses propres
+           commandes et son propre bouton, et rend son propre audio.
 
-        <div class="sec" style="margin-top:16px">Écouter la chaîne étage par étage
-          <button class="btn btn-g btn-sm" style="margin-left:8px;text-transform:none;letter-spacing:0"
-                  id="btnEcoute" onclick="basculerEcoute()">Afficher</button></div>
-        <div id="blocEcoute" style="display:none">
-          <div class="aide" style="margin-bottom:10px">
-            Décompose la dernière génération en six écoutes, de l'audio brut du moteur jusqu'au
-            fichier final. Le moteur ne reparle pas : c'est la même prononciation à chaque fois,
-            donc ce que vous entendez changer vient du traitement et de rien d'autre.
-            Réservé au réglage — une fois le profil verrouillé, vous n'aurez plus à y revenir.
-          </div>
-          <button class="btn btn-g btn-sm" id="btnEtapes" onclick="ecouterEtapes()">
-            Décomposer la dernière génération</button>
-          <div id="resEcoute" style="margin-top:12px"></div>
-        </div>
-      </div>
+           Chaque étage reprend celui d'avant et lui ajoute le sien. Le moteur
+           ne parle qu'une fois, à l'étage 01 : tout ce qu'on entend changer
+           ensuite vient du traitement, jamais du tirage.
+           ═══════════════════════════════════════════════════════════ -->
 
       <div class="sec">Prononciation des mots et des noms propres
         <button class="btn btn-g btn-sm" style="margin-left:8px;text-transform:none;letter-spacing:0"
@@ -682,14 +661,136 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
         </div>
       </div>
 
-      <!-- Tout ce bloc est repris par le verrouillage : une fois verrouillé,
-           il est masqué, car la génération ne le lit plus. Le laisser visible
-           afficherait des valeurs qui ne sont pas celles employées. -->
+      <div class="sec">Chaîne de production</div>
+      <div class="card">
+        <div class="note n-blu">
+          <div class="note-t">Un étage à la fois, du moteur au fichier</div>
+          Réglez l'étage 01, générez : vous entendez le moteur seul. Réglez l'étage suivant,
+          générez l'amélioration : un nouvel audio apparaît, qui reprend le précédent et lui
+          ajoute ce que vous venez de régler. Et ainsi de suite jusqu'au fichier final.
+          <br><br>
+          Le moteur ne reparle pas après l'étage 01 : tout le reste est calculé dans le
+          navigateur, sur la même prononciation. C'est la seule comparaison honnête —
+          regénérer donnerait un autre tirage, et l'on attribuerait au réglage ce qui vient
+          du hasard. Revenir sur un étage recalcule les suivants, pour qu'aucun lecteur
+          n'affiche un son périmé.
+          <br><br>
+          Quand tout vous convient, verrouillez en bas : chaque texte se générera ensuite
+          avec ces réglages, sans rien avoir à refaire.
+        </div>
+        <div id="etatCascade" style="margin-top:12px"></div>
+      </div>
+
       <div id="blocReglagesProfil">
-      <div class="sec">Style d'élocution</div>
+
+      <!-- ─── ÉTAGE 01 : le moteur ─── -->
+      <div class="sec">Étage 01 — Texte et moteur</div>
       <div class="card">
         <div class="champ">
-          <select id="elocution" onchange="appliquerElocution()">
+          <label class="lbl" for="texteEssai">Texte d'essai</label>
+          <textarea id="texteEssai" rows="5"></textarea>
+          <div class="aide">
+            Ce texte sert à caler la voix : assez long pour porter des phrases de plusieurs
+            longueurs, une énumération, un nombre, une date, un sigle et une question ; assez
+            court pour ne pas faire attendre à chaque essai. Ses paragraphes sont placés à
+            dessein — ce sont eux qui décident des respirations.
+            <button class="btn btn-g btn-sm" style="margin-top:8px" onclick="reinitialiserEssai()">
+              Rétablir le texte proposé</button>
+          </div>
+        </div>
+
+        <div class="sec" style="margin-top:16px">Réglages du moteur</div>
+        <div class="grid2">
+          <div class="champ">
+            <div class="curs-tete"><span>Débit de parole</span><span class="curs-val" id="vDebit">1,00 ×</span></div>
+            <input type="range" id="debit" min="0.8" max="1.2" step="0.05" value="1" oninput="majMoteur(true)">
+            <div class="aide">Étirement appliqué par le décodeur : la hauteur de la voix ne change pas.
+              S'éloigner de 1,00 abîme l'élocution, la course s'arrête donc à 0,80 et 1,20. Pour un
+              écart plus grand, mieux vaut écrire le texte autrement que forcer le moteur.</div>
+          </div>
+          <div class="champ">
+            <div class="curs-tete"><span>Température</span><span class="curs-val" id="vTemperature">0,65</span></div>
+            <input type="range" id="temperature" min="0.05" max="1.2" step="0.01" value="0.65" oninput="majMoteur(true)">
+            <div class="aide">Liberté laissée au moteur. Basse : lecture sage. Haute : plus de relief,
+              plus d'accidents. Trop basse, un décodeur autorégressif ne devient pas plus sage,
+              il <strong>boucle</strong> — et une boucle s'entend comme un membre de phrase répété.</div>
+          </div>
+          <div class="champ">
+            <div class="curs-tete"><span>Diversité (top_p)</span><span class="curs-val" id="vTopP">0,80</span></div>
+            <input type="range" id="topP" min="0.10" max="1" step="0.01" value="0.80" oninput="majMoteur(true)">
+            <div class="aide">Part des possibilités retenues à chaque instant. Baisser resserre l'élocution.</div>
+          </div>
+          <div class="champ">
+            <div class="curs-tete"><span>Choix examinés (top_k)</span><span class="curs-val" id="vTopK">35</span></div>
+            <input type="range" id="topK" min="1" max="100" step="1" value="35" oninput="majMoteur(true)">
+            <div class="aide">Nombre de candidats considérés. Agit dans le même sens que la diversité.</div>
+          </div>
+          <div class="champ">
+            <div class="curs-tete"><span>Pénalité de répétition</span><span class="curs-val" id="vRepetition">10,0</span></div>
+            <input type="range" id="repetition" min="1" max="20" step="0.5" value="10" oninput="majMoteur(true)">
+            <div class="aide">Décourage les boucles et les syllabes bégayées. Trop haute, elle hache la phrase.</div>
+          </div>
+          <div class="champ">
+            <div class="curs-tete"><span>Pénalité de longueur</span><span class="curs-val" id="vLongueur">1,00</span></div>
+            <input type="range" id="longueur" min="0.2" max="3" step="0.05" value="1" oninput="majMoteur(true)">
+            <div class="aide">Sous 1, le moteur écourte ; au-dessus, il étire. À laisser à 1 dans le doute.</div>
+          </div>
+          <div class="champ">
+            <label class="lbl" for="decoupage">Découpage du texte</label>
+            <select id="decoupage" onchange="majMoteur(true)">
+              <option value="auto">Automatique — un seul passage sous 220 caractères</option>
+              <option value="serveur">Toujours découper par le moteur</option>
+              <option value="jamais">Ne jamais laisser le moteur découper</option>
+            </select>
+            <div class="aide">Le découpage en respirations reste fait en amont. Ceci ne concerne que
+              le découpage interne du moteur.</div>
+          </div>
+          <div class="champ">
+            <label class="lbl" for="debruitage">Suppression du bruit de fond, à la production</label>
+            <select id="debruitage" onchange="enregistrerDebruitage(); perimerCascade(1)">
+              <option value="aucun">Aucune — son brut du moteur</option>
+              <option value="leger">Légère — retire environ 12 dB de souffle</option>
+              <option value="moyen" selected>Moyenne — environ 24 dB, réglage conseillé</option>
+              <option value="fort">Forte — environ 40 dB</option>
+              <option value="maximum">Maximum — environ 60 dB, peut ternir les aigus</option>
+            </select>
+            <div class="aide">Faite par le serveur, avant que l'audio n'arrive ici : elle fait donc
+              partie de cet étage et demande une nouvelle génération. Elle s'attaque au grain qui
+              persiste <em>sous</em> la parole, là où la porte de l'étage 05 ne peut rien —
+              couper à cet endroit, ce serait couper la voix.</div>
+          </div>
+        </div>
+
+        <div class="champ" style="margin-top:13px">
+          <label class="lbl">Graine</label>
+          <label class="check"><input type="checkbox" id="graineFixe" onchange="majMoteur(true)">
+            <span>Fixer la graine pour obtenir deux fois le même audio.</span></label>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px">
+            <input type="text" id="graine" value="1234" style="flex:1;min-width:140px" oninput="majMoteur(true)">
+            <button class="btn btn-g btn-sm" onclick="graineAleatoire()">Tirer au hasard</button>
+          </div>
+          <div class="aide">
+            Décoché, chaque génération est un tirage neuf : relancer donne une autre interprétation
+            du même texte. C'est le recours quand une phrase est mal dite.
+            Coché, deux générations de mêmes réglages donnent le même audio — utile pour comparer
+            un réglage, mais une mauvaise interprétation revient alors à l'identique.
+          </div>
+          <button class="btn btn-g btn-sm" style="margin-top:8px" onclick="reinitialiserAvance()">
+            Rétablir les valeurs conseillées</button>
+        </div>
+
+        <button class="btn btn-p" id="btnEssai" style="width:100%;justify-content:center;margin-top:14px"
+                onclick="genererEssai()">Générer — le moteur parle</button>
+        <div id="resEssai" style="margin-top:12px"></div>
+        <div id="etage1" style="margin-top:12px"></div>
+      </div>
+
+      <!-- ─── ÉTAGE 02 : les pauses ─── -->
+      <div class="sec">Étage 02 — Pauses du style</div>
+      <div class="card">
+        <div class="champ">
+          <label class="lbl" for="elocution">Style d'élocution</label>
+          <select id="elocution" onchange="appliquerElocution(); perimerCascade(2)">
             <option value="perso">Personnalisé — réglages libres</option>
             <option value="narrateur">Narrateur — posé, régulier, sans relief appuyé</option>
             <option value="enseignant">Enseignant — articulé, phrases détachées, rythme soutenu</option>
@@ -706,130 +807,33 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
             Modifier un curseur ensuite bascule en personnalisé.
           </div>
         </div>
-      </div>
-
-      <div class="sec">Réglages de rendu</div>
-      <div class="card" id="carteReglages">
-        <div class="grid2">
+        <div class="grid2" style="margin-top:12px">
           <div class="champ">
-            <div class="curs-tete"><span>Stabilité</span><span class="curs-val" id="vStab">0,50</span></div>
-            <input type="range" id="stabilite" min="0" max="1" step="0.05" value="0.5" oninput="majReglages(true)">
-            <div class="aide">Règle la liberté laissée au moteur : température, diversité et nombre de
-              candidats examinés, tous visibles plus bas. Bas : plus d'émotion et de variation.
-              Haut : ton plus constant. La course s'arrête avant la zone où le moteur se met à
-              répéter des syllabes.</div>
+            <div class="curs-tete"><span>Pause entre propositions</span><span class="curs-val" id="vPauseCourte">280 ms</span></div>
+            <input type="range" id="pauseCourte" min="0" max="1200" step="10" value="280" oninput="majPauses(true)">
           </div>
           <div class="champ">
-            <div class="curs-tete"><span>Débit de parole</span><span class="curs-val" id="vDebit">1,00 ×</span></div>
-            <input type="range" id="debit" min="0.8" max="1.2" step="0.05" value="1" oninput="majReglages(true)">
-            <div class="aide">Étirement appliqué par le moteur : la hauteur de la voix ne change pas.
-              Le moteur étire la sortie du décodeur, et s'éloigner de 1,00 abîme l'élocution :
-              la course s'arrête donc à 0,80 et 1,20. Pour un écart plus grand, mieux vaut écrire
-              le texte autrement que forcer le moteur.</div>
+            <div class="curs-tete"><span>Pause entre phrases</span><span class="curs-val" id="vPauseLongue">550 ms</span></div>
+            <input type="range" id="pauseLongue" min="0" max="2000" step="10" value="550" oninput="majPauses(true)">
           </div>
         </div>
+        <div class="aide" style="margin-top:10px">
+          Les pauses sont le <strong>seul</strong> réglage d'élocution qui se rejoue après coup :
+          le serveur ayant rendu la place de chaque morceau, on refait le collage avec d'autres
+          durées. Même prononciation, autre respiration.
+          Le style, lui, règle la durée d'une pause de phrase — il ne réécrit jamais votre texte
+          en paragraphes : la mise en page vous appartient.
+        </div>
+        <button class="btn btn-p" id="btnEtage2" style="width:100%;justify-content:center;margin-top:14px"
+                onclick="genererEtage(2)">Générer l'amélioration</button>
+        <div id="etage2" style="margin-top:12px"></div>
       </div>
 
-      <div class="sec">Commande directe du moteur
-        <button class="btn btn-g btn-sm" style="margin-left:8px;text-transform:none;letter-spacing:0"
-                id="btnAvance" onclick="basculerAvance()">Afficher</button></div>
-      <div class="card" id="blocAvance" style="display:none">
-        <div class="note n-amb">
-          <div class="note-t">Réservé au réglage fin</div>
-          Ces valeurs sont normalement déduites des curseurs ci-dessus. En les reprenant à la main,
-          vous court-circuitez cette déduction : c'est ce qui permet d'aller plus loin, et aussi ce qui
-          permet de tout dérégler. Le bouton en bas rétablit la déduction automatique.
-        </div>
-
-        <label class="check" style="margin-top:13px"><input type="checkbox" id="avanceActif" onchange="majAvance()">
-          <span>Piloter le moteur à la main plutôt que par les curseurs de rendu.</span></label>
-
-        <div id="reglagesAvance" style="margin-top:13px">
-          <div class="grid2">
-            <div class="champ">
-              <div class="curs-tete"><span>Température</span><span class="curs-val" id="vTemperature">0,65</span></div>
-              <input type="range" id="temperature" min="0.05" max="1.2" step="0.01" value="0.65" oninput="majAvance(true)">
-              <div class="aide">Liberté laissée au moteur. Basse : lecture sage et répétable. Haute : plus de relief, plus d'accidents.</div>
-            </div>
-            <div class="champ">
-              <div class="curs-tete"><span>Diversité (top_p)</span><span class="curs-val" id="vTopP">0,80</span></div>
-              <input type="range" id="topP" min="0.10" max="1" step="0.01" value="0.80" oninput="majAvance(true)">
-              <div class="aide">Part des possibilités retenues à chaque instant. Baisser resserre l'élocution.</div>
-            </div>
-            <div class="champ">
-              <div class="curs-tete"><span>Choix examinés (top_k)</span><span class="curs-val" id="vTopK">35</span></div>
-              <input type="range" id="topK" min="1" max="100" step="1" value="35" oninput="majAvance(true)">
-              <div class="aide">Nombre de candidats considérés. Agit dans le même sens que la diversité.</div>
-            </div>
-            <div class="champ">
-              <div class="curs-tete"><span>Pénalité de répétition</span><span class="curs-val" id="vRepetition">10,0</span></div>
-              <input type="range" id="repetition" min="1" max="20" step="0.5" value="10" oninput="majAvance(true)">
-              <div class="aide">Décourage les boucles et les syllabes bégayées. Trop haute, elle hache la phrase.</div>
-            </div>
-            <div class="champ">
-              <div class="curs-tete"><span>Pénalité de longueur</span><span class="curs-val" id="vLongueur">1,00</span></div>
-              <input type="range" id="longueur" min="0.2" max="3" step="0.05" value="1" oninput="majAvance(true)">
-              <div class="aide">Sous 1, le moteur écourte ; au-dessus, il étire. À laisser à 1 dans le doute.</div>
-            </div>
-            <div class="champ">
-              <label class="lbl" for="decoupage">Découpage du texte</label>
-              <select id="decoupage" onchange="majAvance(true)">
-                <option value="auto">Automatique — un seul passage sous 220 caractères</option>
-                <option value="serveur">Toujours découper par le moteur</option>
-                <option value="jamais">Ne jamais laisser le moteur découper</option>
-              </select>
-              <div class="aide">Le découpage en respirations reste fait en amont. Ceci ne concerne que le découpage interne du moteur.</div>
-            </div>
-            <div class="champ">
-              <div class="curs-tete"><span>Pause entre propositions</span><span class="curs-val" id="vPauseCourte">280 ms</span></div>
-              <input type="range" id="pauseCourte" min="0" max="1200" step="10" value="280" oninput="majAvance(true)">
-            </div>
-            <div class="champ">
-              <div class="curs-tete"><span>Pause entre phrases</span><span class="curs-val" id="vPauseLongue">550 ms</span></div>
-              <input type="range" id="pauseLongue" min="0" max="2000" step="10" value="550" oninput="majAvance(true)">
-            </div>
-          </div>
-
-          <div class="champ" style="margin-top:13px">
-            <label class="lbl">Graine</label>
-            <label class="check"><input type="checkbox" id="graineFixe" onchange="majAvance(true)">
-              <span>Fixer la graine pour obtenir deux fois le même audio.</span></label>
-            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px">
-              <input type="text" id="graine" value="1234" style="flex:1;min-width:140px" oninput="majAvance(true)">
-              <button class="btn btn-g btn-sm" onclick="graineAleatoire()">Tirer au hasard</button>
-            </div>
-            <div class="aide">
-              Décoché, chaque génération est un tirage neuf : relancer donne une autre interprétation du
-              même texte. C'est le recours quand une phrase est mal dite.
-              Coché, deux générations de mêmes réglages donnent le même audio — utile pour comparer un
-              réglage, mais une mauvaise interprétation revient alors à l'identique.
-            </div>
-          </div>
-
-          <button class="btn btn-g btn-sm" style="margin-top:6px" onclick="reinitialiserAvance()">
-            Revenir aux valeurs déduites des curseurs</button>
-        </div>
-      </div>
-
-      <div class="sec">Nettoyage du signal</div>
+      <!-- ─── ÉTAGE 03 : le souffle ─── -->
+      <div class="sec">Étage 03 — Retrait du souffle</div>
       <div class="card">
         <div class="champ">
-          <label class="lbl" for="debruitage">Suppression du bruit de fond, à la production</label>
-          <select id="debruitage" onchange="enregistrerDebruitage()">
-            <option value="aucun">Aucune — son brut du moteur</option>
-            <option value="leger">Légère — retire environ 12 dB de souffle</option>
-            <option value="moyen" selected>Moyenne — environ 24 dB, réglage conseillé</option>
-            <option value="fort">Forte — environ 40 dB</option>
-            <option value="maximum">Maximum — environ 60 dB, peut ternir les aigus</option>
-          </select>
-          <div class="aide">
-            Traitement effectué par le serveur, sur le grain qui persiste <em>sous</em> la parole.
-            La porte ci-dessous ne peut rien contre celui-là : couper à cet endroit, ce serait couper
-            la voix.
-          </div>
-        </div>
-        <div class="champ" style="margin-bottom:14px">
-          <label class="lbl" for="souffle">Retrait du souffle, après traitement</label>
+          <label class="lbl" for="souffle">Retrait du souffle, dans le navigateur</label>
           <select id="souffle" onchange="majTraitement(true)">
             <option value="aucun">Aucun — signal laissé tel quel</option>
             <option value="leger">Léger — souffle discret</option>
@@ -837,41 +841,24 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
             <option value="fort">Fort — souffle marqué, voix un peu mate</option>
           </select>
           <div class="aide">
-            Celui de l'étape précédente agit sur l'audio brut du moteur. Celui-ci agit
-            <strong>après</strong> l'égaliseur, la compression et la remontée de niveau — c'est-à-dire
-            avant que l'égaliseur et la compression n'aient de quoi l'amplifier. Mesuré sur un signal
-            de contrôle : la chaîne coûte 11,3 dB de séparation voix / souffle, et le réglage
-            « moyen » en rend 14,6 — sans rien prendre à la voix.
-            Au-delà de « fort », la soustraction fabrique un gargouillis métallique pire que le souffle.
+            Second débruitage, et il agit <strong>avant</strong> l'égaliseur et la compression —
+            c'est-à-dire avant qu'ils n'aient de quoi l'amplifier. Placé après, il perdait
+            l'essentiel de son effet : un compresseur donne plus de gain aux silences qu'à la
+            parole, le souffle y cesse d'être stationnaire, et le profil mesuré ne décrit plus
+            celui qui se trouve sous la voix.
+            Mesuré sur un signal de contrôle : la chaîne coûte 11,3 dB de séparation voix / souffle,
+            et « moyen » la ramène à 36,7 dB — mieux que le signal de départ, sans rien prendre
+            à la voix. Au-delà de « fort », la soustraction fabrique un gargouillis métallique
+            pire que le souffle qu'il remplace.
           </div>
         </div>
-
-        <label class="check"><input type="checkbox" id="nettoyageActif" checked onchange="majNettoyage()">
-          <span>Faire taire ce qui n'est pas de la parole : souffle, clics et bruits entre les mots.</span></label>
-        <div id="reglagesNettoyage" style="margin-top:13px">
-          <div class="grid2">
-            <div class="champ">
-              <div class="curs-tete"><span>Seuil de la porte</span><span class="curs-val" id="vPorte">-42 dB</span></div>
-              <input type="range" id="porte" min="-75" max="-15" step="1" value="-42" oninput="majNettoyage()">
-              <div class="aide">
-                En dessous de ce niveau, le signal est ramené au silence. Monter le seuil coupe
-                davantage de bruit, mais finit par rogner les fins de mots.
-              </div>
-            </div>
-            <div class="champ" style="display:flex;align-items:flex-end">
-              <label class="check" style="width:100%"><input type="checkbox" id="rogner" checked onchange="majNettoyage()">
-                <span>Rogner le silence au début et à la fin, où le moteur laisse souvent une traîne.</span></label>
-            </div>
-          </div>
-          <div class="aide">
-            Ce nettoyage agit sur l'audio produit. Il ne remplace pas une référence propre :
-            un souffle présent dans l'enregistrement est appris par le moteur et ressort à chaque phrase.
-            Pour le traiter à la source, cochez « Retirer le bruit de fond » à l'étape Voix et recréez la voix.
-          </div>
-        </div>
+        <button class="btn btn-p" id="btnEtage3" style="width:100%;justify-content:center;margin-top:14px"
+                onclick="genererEtage(3)">Générer l'amélioration</button>
+        <div id="etage3" style="margin-top:12px"></div>
       </div>
 
-      <div class="sec">Traitement audio</div>
+      <!-- ─── ÉTAGE 04 : égaliseur et compression ─── -->
+      <div class="sec">Étage 04 — Égaliseur et compression</div>
       <div class="card">
         <div class="grid2">
           <div class="champ">
@@ -1002,6 +989,47 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
             </div>
           </div>
 
+        </div>
+        <button class="btn btn-p" id="btnEtage4" style="width:100%;justify-content:center;margin-top:14px"
+                onclick="genererEtage(4)">Générer l'amélioration</button>
+        <div id="etage4" style="margin-top:12px"></div>
+      </div>
+
+      <!-- ─── ÉTAGE 05 : porte de bruit et rognage ─── -->
+      <div class="sec">Étage 05 — Porte de bruit et rognage</div>
+      <div class="card">
+        <label class="check"><input type="checkbox" id="nettoyageActif" checked onchange="majNettoyage()">
+          <span>Faire taire ce qui n'est pas de la parole : souffle, clics et bruits entre les mots.</span></label>
+        <div id="reglagesNettoyage" style="margin-top:13px">
+          <div class="grid2">
+            <div class="champ">
+              <div class="curs-tete"><span>Seuil de la porte</span><span class="curs-val" id="vPorte">-42 dB</span></div>
+              <input type="range" id="porte" min="-75" max="-15" step="1" value="-42" oninput="majNettoyage()">
+              <div class="aide">
+                En dessous de ce niveau, le signal est ramené au silence. Monter le seuil coupe
+                davantage de bruit, mais finit par rogner les fins de mots.
+              </div>
+            </div>
+            <div class="champ" style="display:flex;align-items:flex-end">
+              <label class="check" style="width:100%"><input type="checkbox" id="rogner" checked onchange="majNettoyage()">
+                <span>Rogner le silence au début et à la fin, où le moteur laisse souvent une traîne.</span></label>
+            </div>
+          </div>
+          <div class="aide">
+            La porte juge du niveau réel, après la compression : c'est elle qui a remonté le bruit
+            de fond, donc c'est après elle qu'il faut décider ce qui est du silence.
+            Ce nettoyage ne remplace pas une référence propre : un souffle présent dans
+            l'enregistrement est appris par le moteur et ressort à chaque phrase.
+          </div>
+        </div>
+        <button class="btn btn-p" id="btnEtage5" style="width:100%;justify-content:center;margin-top:14px"
+                onclick="genererEtage(5)">Générer l'amélioration</button>
+        <div id="etage5" style="margin-top:12px"></div>
+      </div>
+
+      <!-- ─── ÉTAGE 06 : mise au niveau ─── -->
+      <div class="sec">Étage 06 — Mise au niveau</div>
+      <div class="card">
           <div class="grid2" style="margin-top:12px">
             <div class="champ">
               <div class="curs-tete"><span>Niveau de sortie visé</span><span class="curs-val" id="vCible">-3,0 dB</span></div>
@@ -1013,11 +1041,6 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
                 <span>Normaliser le niveau final. Sans cette option, le gain reste tel quel.</span></label>
             </div>
           </div>
-        </div>
-      </div>
-
-      <div class="sec">Export</div>
-      <div class="card">
         <div class="grid2">
           <div class="champ">
             <label class="lbl">Résolution</label>
@@ -1050,16 +1073,43 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
           </div>
         </div>
         <div class="note n-blu" style="margin-top:12px">
-          <div class="note-t">Ce que ces réglages font, et ne font pas</div>
-          Le moteur produit du 24 kHz : convertir vers 48 kHz <strong>n'ajoute aucune finesse</strong>,
-          le fichier est seulement plus lourd. L'intérêt est ailleurs — si votre logiciel de montage
-          travaille en 48 kHz, il convertira de toute façon, souvent moins bien qu'ici.
-          Convertissez pour épouser votre chaîne de production, pas pour gagner en qualité.
+          <div class="note-t">Dernier maillon, et il doit le rester</div>
+          La mise au niveau vient en tout dernier : toute correction posée après elle ferait
+          manquer la cible.
+          Le moteur produit du 24 kHz — convertir vers 48 kHz <strong>n'ajoute aucune finesse</strong>,
+          le fichier est seulement plus lourd. Convertissez pour épouser votre chaîne de montage,
+          pas pour gagner en qualité.
         </div>
         <div id="infoFormat" class="item-meta" style="margin-top:10px"></div>
+        <button class="btn btn-p" id="btnEtage6" style="width:100%;justify-content:center;margin-top:14px"
+                onclick="genererEtage(6)">Générer l'amélioration</button>
+        <div id="etage6" style="margin-top:12px"></div>
+      </div>
+
+      <!-- ─── FIN : vos réglages, et la proposition mesurée ─── -->
+      <div class="sec">Au bout de la chaîne</div>
+      <div class="card">
+        <div class="aide">
+          À gauche ce que vos réglages donnent, à droite ce qu'une mesure propose. La proposition
+          ne reprend aucun de vos réglages : elle compare la génération non traitée à vos prises
+          et cherche les trois gains qui rapprochent le plus le moteur de votre voix réelle.
+        </div>
+        <button class="btn btn-g btn-sm" id="btnProposition" style="margin-top:10px"
+                onclick="proposerRessemblance()">Calculer la proposition automatique</button>
+        <div id="resProposition" style="margin-top:12px"></div>
       </div>
 
       </div><!-- fin blocReglagesProfil -->
+
+      <div class="card" id="blocVerrouille" style="display:none">
+        <div class="note n-blu">
+          <div class="note-t">Réglages verrouillés</div>
+          La chaîne est masquée parce qu'elle ne servirait plus à rien : chaque génération reprend
+          désormais les réglages du profil, quoi qu'affichent les curseurs. Les essais se font à
+          l'étape 03. Ouvrez le verrou ci-dessous pour régler à nouveau.
+        </div>
+      </div>
+
 
       <div class="sec">Verrouillage</div>
       <div class="card">
@@ -1271,6 +1321,7 @@ const etat = {
   baseEcartees:[],       // entrées de base désactivées une à une
   miseEnForme:null,      // mise en forme du dernier style, conservée en personnalisé
   generationEnCours:null,// dernière génération produite, avant tout choix de version
+  cascade:{audios:{}, atteint:0, perimeA:0, id:null}, // chaîne de production, étage par étage
   niveauManque:null,     // cible de niveau non atteinte : plafond de crête atteint d'abord
   zoneResultat:'resSynth',// où afficher le résultat : essai (étape 02) ou synthèse (étape 03)
   montage:[],            // extraits assemblés : {cle, source, debut, fin, pause}
@@ -1621,13 +1672,13 @@ function afficherProfils(){
    Deux familles, parce qu'elles ne se corrigent pas au même moment : celle
    qui décide de l'élocution, et celle qui décide du son. Les verrouiller,
    c'est simplement cesser d'avoir à les refaire à chaque texte. */
-const REGLAGES_MOTEUR_CASES = ['graineFixe','avanceActif'];
+const REGLAGES_MOTEUR_CASES = ['graineFixe'];
 const REGLAGES_AUDIO_CASES  = ['traitementActif','nettoyageActif','normaliser','rogner'];
 const REGLAGES_AUDIO_CHOIX  = ['preset','resolution','frequenceExport','loudness'];
 
 function reglagesDuProfil(){
   const nombres = {}, choix = {}, cases = {};
-  ['stabilite','debit','porte'].concat(CURSEURS_AVANCE, CURSEURS_TRAITEMENT)
+  ['porte'].concat(CURSEURS_AVANCE, CURSEURS_TRAITEMENT)
     .forEach(id => { if($(id)) nombres[id] = parseFloat($(id).value); });
   ['elocution','debruitage','decoupage','graine'].concat(CHOIX_TRAITEMENT, REGLAGES_AUDIO_CHOIX)
     .forEach(id => { if($(id)) choix[id] = $(id).value; });
@@ -1741,8 +1792,8 @@ function majVerrou(){
           '<button class="btn btn-g btn-sm" style="margin-top:9px" onclick="deverrouillerReglages()">' +
           'Reprendre les réglages</button></div>'
         : '<div class="note n-amb" style="margin:0"><div class="note-t">Réglages non verrouillés</div>' +
-          "Réglez l'élocution puis le son sur le texte d'essai ci-dessus, puis verrouillez : " +
-          'vous n\'aurez plus à les refaire. ' +
+          'Descendez la chaîne étage par étage, du moteur au fichier, puis verrouillez : ' +
+          'vous n\'aurez plus à la refaire pour chaque texte. ' +
           '<button class="btn btn-p btn-sm" style="margin-top:9px" onclick="verrouillerReglages()">' +
           'Verrouiller les réglages</button></div>';
   }
@@ -1751,6 +1802,10 @@ function majVerrou(){
      manipulables afficherait une fausse information — on les masque. */
   const bloc = $('blocReglagesProfil');
   if(bloc) bloc.style.display = (p && p.verrouille) ? 'none' : 'block';
+  /* Masquer la chaîne sans rien dire laisserait croire à une page cassée :
+     un encadré prend sa place et explique où générer désormais. */
+  const rempl = $('blocVerrouille');
+  if(rempl) rempl.style.display = (p && p.verrouille) ? 'block' : 'none';
 
   const r = $('rappelProfil');
   if(r){
@@ -2272,8 +2327,6 @@ function choisirMode(m){
   $('radioReel').classList.toggle('sel', m === 'reel');
   $('radioDemo').classList.toggle('sel', m === 'demo');
   $('zoneApi').style.display = (m === 'reel') ? 'block' : 'none';
-  const carte = $('carteReglages');
-  if(carte) carte.style.opacity = (m === 'reel') ? '1' : '.45';
   majAffichageEtape4();
   majEtat();
 }
@@ -2837,9 +2890,16 @@ function appliquerElocution(){
     /* Retenue avant de passer la main aux curseurs : c'est elle qui survit au
        basculement en personnalisé. */
     etat.miseEnForme = {segmenter: e.segmenter, pauses: e.pauses};
-    $('stabilite').value = e.stab;
-    $('debit').value     = e.debit;
-    majReglages();
+    /* Les styles restent décrits par une stabilité, parce que c'est ce qu'ils
+       veulent dire. Elle n'est plus un curseur : on la traduit ici en valeurs
+       de moteur, avec la formule qu'employait le serveur. Les styles sonnent
+       donc exactement comme avant. */
+    const d = valeursDeduites(e.stab);
+    $('debit').value       = e.debit;
+    $('temperature').value = d.temperature.toFixed(2);
+    $('topP').value        = d.topP.toFixed(2);
+    $('topK').value        = d.topK;
+    majAvance();
     $('preset').value = e.preset;
     appliquerPreset();
   }
@@ -2851,19 +2911,25 @@ function appliquerElocution(){
    COMMANDE DIRECTE DU MOTEUR
    ══════════════════════════════════════════════════════ */
 
-const CURSEURS_AVANCE = ['temperature','topP','topK','repetition','longueur','pauseCourte','pauseLongue'];
+const CURSEURS_AVANCE = ['debit','temperature','topP','topK','repetition','longueur','pauseCourte','pauseLongue'];
 
-function avanceActif(){ const c = $('avanceActif'); return !!(c && c.checked); }
+/* Le curseur « Stabilité » a été retiré.
 
-function basculerAvance(){ basculer('blocAvance', $('btnAvance')); }
+   Il ne servait qu'à déduire trois valeurs — température, diversité et nombre
+   de candidats — et le serveur ne lisait cette déduction que tant que la page
+   ne lui envoyait rien d'explicite. Dès qu'on ouvrait la commande directe, la
+   stabilité n'était plus lue par personne : un curseur affiché, manipulable,
+   et sans le moindre effet. C'est le défaut déjà corrigé deux fois ici.
 
-/* Valeurs que le serveur déduirait de la stabilité : les afficher évite de
-   régler à l'aveugle, et sert de point de départ quand on reprend la main. */
-function valeursDeduites(){
-  const s = parseFloat($('stabilite').value);
+   La page pilote donc le moteur directement, toujours. La formule survit
+   seulement ici, pour les styles d'élocution, qui restent décrits par une
+   stabilité : elle les traduit en valeurs de moteur, exactement comme le
+   serveur le faisait. */
+function valeursDeduites(stabilite){
+  const s = (typeof stabilite === 'number') ? stabilite : 0.5;
   return {
-    /* Doit rester identique au calcul du serveur : cet écran annonce ce que
-       le serveur déduirait, et deux formules divergentes le feraient mentir.
+    /* Identique au calcul du serveur, qui reste en place pour les clients
+       anciens : deux formules divergentes feraient mentir l'écran.
        verifier.js impose l'égalité. */
     temperature: Math.max(0.05, 0.85 - 0.40 * s),
     topP:        Math.max(0.10, 0.95 - 0.30 * s),
@@ -2874,7 +2940,8 @@ function valeursDeduites(){
 }
 
 function reinitialiserAvance(){
-  const d = valeursDeduites();
+  const d = valeursDeduites(0.5);
+  $('debit').value       = 1;
   $('temperature').value = d.temperature.toFixed(2);
   $('topP').value        = d.topP.toFixed(2);
   $('topK').value        = d.topK;
@@ -2884,7 +2951,6 @@ function reinitialiserAvance(){
   $('pauseLongue').value = 550;
   $('decoupage').value   = 'auto';
   $('graineFixe').checked = false;
-  $('avanceActif').checked = false;
   majAvance();
   toast('Réglages du moteur rétablis.', 'ok');
 }
@@ -2897,10 +2963,17 @@ function graineAleatoire(){
   majAvance(true);
 }
 
-function majAvance(){
-  const actif = avanceActif();
-  $('reglagesAvance').style.opacity = actif ? '1' : '.45';
+/* Bouger un réglage du moteur bascule le style en « Personnalisé », comme le
+   faisaient les curseurs de rendu. Sans cela, l'écran annoncerait un style
+   dont les valeurs ne sont plus les siennes. */
+function majAvance(perso){
+  if(perso && $('elocution') && $('elocution').value !== 'perso'){
+    $('elocution').value = 'perso';
+    $('descElocution').textContent = DESC_PERSO;
+    enregistrerElocution();
+  }
   const f = (n, d) => parseFloat(n).toFixed(d).replace('.', ',');
+  $('vDebit').textContent       = f($('debit').value, 2) + ' ×';
   $('vTemperature').textContent = f($('temperature').value, 2);
   $('vTopP').textContent        = f($('topP').value, 2);
   $('vTopK').textContent        = String(parseInt($('topK').value, 10));
@@ -2908,20 +2981,28 @@ function majAvance(){
   $('vLongueur').textContent    = f($('longueur').value, 2);
   $('vPauseCourte').textContent = Math.round(parseFloat($('pauseCourte').value)) + ' ms';
   $('vPauseLongue').textContent = Math.round(parseFloat($('pauseLongue').value)) + ' ms';
+  majCompteur();
   enregistrerAvance();
 }
 
+/* Deux portes d'entrée vers le même affichage, qui ne périment pas la même
+   chose : un réglage du moteur oblige à regénérer, une durée de pause se
+   rejoue sur la prononciation déjà obtenue. Les confondre ferait redemander
+   une génération pour rien, ou pire, en laisserait passer une nécessaire. */
+function majMoteur(perso){ majAvance(perso); perimerCascade(1); }
+function majPauses(perso){ majAvance(perso); perimerCascade(2); }
+
 function enregistrerAvance(){
   if(!bd) return;
-  const v = {actif: avanceActif(), decoupage: $('decoupage').value,
+  const v = {decoupage: $('decoupage').value,
              graine: $('graine').value, graineFixe: $('graineFixe').checked};
   CURSEURS_AVANCE.forEach(id => v[id] = parseFloat($(id).value));
   bdEcrire('config', {cle:'avance', valeur:v});
 }
 
-/* Réglages envoyés au moteur. Les pauses partent toujours : elles sont gérées
-   par le serveur, pas par le modèle, et ne dépendent donc pas du pilotage
-   manuel. Le reste n'est transmis que si l'on a pris la main. */
+/* Réglages envoyés au moteur. Tout part, toujours : depuis le retrait de la
+   stabilité, la page ne laisse plus rien déduire au serveur. Ce qui est
+   affiché est donc exactement ce qui agit. */
 /* Durée d'une pause de phrase, selon le style. C'est ce qui remplace la
    réécriture du texte : le style règle le temps, l'auteur règle la structure. */
 const PAUSES_DE_PHRASE = {aucune: 0.12, moderees: 0.25, marquees: 0.42};
@@ -2942,8 +3023,6 @@ function reglagesMoteur(){
     const graine = parseInt($('graine').value, 10);
     if(!isNaN(graine)) v.seed = graine;
   }
-  if(!avanceActif()) return v;
-
   v.temperature        = parseFloat($('temperature').value);
   v.top_p              = parseFloat($('topP').value);
   v.top_k              = parseInt($('topK').value, 10);
@@ -3239,17 +3318,9 @@ function preparerTexte(brut, cle){
   return t;
 }
 
-function majReglages(perso){
-  if(perso && $('elocution').value !== 'perso'){
-    $('elocution').value = 'perso';
-    $('descElocution').textContent = DESC_PERSO;
-    enregistrerElocution();
-  }
-  const f = n => n.toFixed(2).replace('.', ',');
-  $('vStab').textContent  = f(parseFloat($('stabilite').value));
-  $('vDebit').textContent = f(parseFloat($('debit').value)) + ' ×';
-  majCompteur();
-}
+/* Gardée pour les appelants qui reposent un profil : l'affichage des réglages
+   du moteur est désormais entièrement tenu par majAvance(). */
+function majReglages(perso){ majAvance(perso); }
 
 /* ══════════════════════════════════════════════════════
    TRAITEMENT AUDIO
@@ -3367,6 +3438,12 @@ function majTraitement(perso){
     enregistrerElocution();
   }
 
+  /* Le souffle est à l'étage 03, l'égaliseur au 04 : on périme à partir du
+     plus précoce des deux, faute de savoir lequel a bougé. Périmer un étage
+     de trop ne coûte qu'un recalcul ; en périmer un de moins laisserait un
+     lecteur jouer un son qui ne correspond plus. */
+  perimerCascade(3);
+
   const r = reglagesTraitement();
   const dec = (n, u) => n.toFixed(1).replace('.', ',') + ' ' + u;
   $('vPasseHaut').textContent = Math.round(r.passeHaut) + ' Hz';
@@ -3408,6 +3485,7 @@ function nettoyageActif(){
 }
 
 function majNettoyage(){
+  perimerCascade(5);
   const actif = nettoyageActif();
   $('vPorte').textContent = Math.round(parseFloat($('porte').value)) + ' dB';
   $('reglagesNettoyage').style.opacity = actif ? '1' : '.45';
@@ -3585,7 +3663,12 @@ function chaineCourante(){
       : null,
     resolution: resolutionExport(),
     frequence: frequenceExport(),
-    loudness: $('loudness').value
+    loudness: $('loudness').value,
+    /* La mise au niveau est un étage à part entière, donc indépendante du
+       traitement : normaliser sans égaliser doit rester possible. Elle ne
+       l'était pas — la cible de crête n'agissait que si la chaîne était
+       active, alors que la cible LUFS, elle, agissait toujours. */
+    niveau: $('normaliser').checked ? {mode:'crete', cible: parseFloat($('cible').value)} : null
   };
 }
 
@@ -3723,14 +3806,17 @@ async function appliquerTraitement(blob, chaineDemandee){
   const volume = (c.autoradio && c.autoradio.volume) || 0;
   let volumeAbsorbe = false;
 
-  if(chaineActive && r.normaliser){
+  /* Repli : une chaîne décrite ailleurs (la proposition, un profil ancien)
+     peut encore porter la normalisation dans le traitement. */
+  const niv = c.niveau || ((chaineActive && r.normaliser) ? {mode:'crete', cible:r.cible} : null);
+  if(niv && niv.mode === 'crete'){
     let crete = 0;
     for(let i=0;i<donnees.length;i++){
       const v = Math.abs(donnees[i]);
       if(v > crete) crete = v;
     }
     if(crete > 0.0001){
-      const facteur = Math.pow(10, (r.cible + volume) / 20) / crete;
+      const facteur = Math.pow(10, (niv.cible + volume) / 20) / crete;
       for(let i=0;i<donnees.length;i++) donnees[i] *= facteur;
       volumeAbsorbe = true;
     }
@@ -3739,7 +3825,8 @@ async function appliquerTraitement(blob, chaineDemandee){
   /* La mise au niveau vient en tout dernier : toute correction appliquée après
      elle ferait manquer la cible. C'est aussi pourquoi elle a lieu ici, dans
      le navigateur, et non sur le serveur dont la sortie est encore retouchée. */
-  const loudness = CIBLES_LOUDNESS[String(c.loudness || '0')];
+  let loudness = CIBLES_LOUDNESS[String(c.loudness || '0')];
+  if(niv && niv.mode === 'lufs') loudness = {cible: niv.cible, creteMax: -1};
   if(loudness){
     const mesure = await mesurerLoudness(donnees, rendu.sampleRate);
     if(mesure !== null){
@@ -4759,6 +4846,7 @@ function exportModifie(){
 }
 
 function enregistrerExport(){
+  perimerCascade(6);
   if(bd) bdEcrire('config', {cle:'export', valeur:{
     resolution: resolutionExport(), frequence: frequenceExport(),
     loudness: $('loudness').value
@@ -4883,7 +4971,6 @@ async function synthetiser(champ, idBouton, idZone){
     const corps = {
       text: texte,
       voice_settings:{
-        stability: parseFloat($('stabilite').value),
         speed: parseFloat($('debit').value),
         denoise: $('debruitage').value,
         ...reglagesMoteur()
@@ -4972,7 +5059,19 @@ async function synthetiser(champ, idBouton, idZone){
     etat.generationEnCours = gen;
 
     gen.traiteVotre = traite;
-    afficherGenerationEnCours();
+
+    /* Toute génération repart la chaîne de production à son premier étage :
+       ce qui était affiché décrivait une autre prononciation. */
+    etat.cascade = {audios:{moteur: gen.source}, atteint:1, perimeA:0, id:gen.id};
+
+    if(idZone === 'resEssai'){
+      /* À l'étape 02 on règle : la chaîne montre les étages un par un, et le
+         bloc des trois versions ferait doublon avec elle. */
+      $(idZone).innerHTML = '';
+      afficherCascade();
+    }else{
+      afficherGenerationEnCours();
+    }
     toast('Audio généré.', 'ok');
   }catch(e){
     $(idZone).innerHTML = '<div class="note n-red">' + echapper(messageReseau(e)) + '</div>';
@@ -5124,91 +5223,358 @@ function afficherGenerationEnCours(){
     '</div>';
 }
 
-/* Écoute de la chaîne, étage par étage.
+/* ══════════════════════════════════════════════════════
+   CHAÎNE DE PRODUCTION — un étage à la fois
+   ══════════════════════════════════════════════════════
 
-   Une seule prononciation, arrêtée à chaque maillon : on entend alors ce que
-   chaque étage AJOUTE, et non ce qu'il fait isolément. C'est la seule
-   comparaison honnête — regénérer donnerait une autre prononciation, et l'on
-   attribuerait au traitement ce qui vient du tirage.
+   L'écran d'avant rendait six lecteurs d'un coup, après coup, sans qu'aucun
+   réglage ne soit à portée : on constatait le résultat sans jamais voir
+   l'effet d'un réglage. Chaque étage porte maintenant ses propres commandes
+   et son propre bouton, et rend son propre audio.
 
-   Le premier étage, les pauses, est le seul réglage d'élocution qui se rejoue
-   après coup : le serveur ayant rendu la place de chaque morceau, on refait le
-   collage avec d'autres durées. Tout ce qui décide de la PRONONCIATION —
-   stabilité, segmentation du texte, graine — est hors de portée ici : une fois
-   la forme d'onde écrite, le tirage est fait. */
-const ETAPES_ECOUTE = [
-  {cle:'brut',      titre:'1. Brut, le moteur seul',
-   aide:"La prononciation et le tirage. Rien n'a encore été touché."},
-  {cle:'pauses',    titre:'2. + pauses du style',
-   aide:'Même prononciation, autre respiration. Seul réglage d\'élocution rejouable.'},
-  {cle:'souffle',   titre:'3. + retrait du souffle',
+   Le principe reste le même, et c'est lui qui compte : le moteur ne parle
+   qu'une fois, à l'étage 01. Tout ce qui suit est calculé dans le navigateur,
+   sur la même prononciation. Regénérer donnerait un autre tirage, et l'on
+   attribuerait au réglage ce qui vient du hasard.
+
+   Chaque étage reprend le précédent et lui ajoute le sien : entendre un étage
+   isolé ne dirait rien, ce qui compte est ce qu'il ajoute. */
+const ETAGES = [
+  {n:1, cle:'moteur',    titre:'Étage 01 — le moteur seul',
+   aide:'La prononciation, le tirage et la suppression du bruit de fond faite par le serveur.'},
+  {n:2, cle:'pauses',    titre:'Étage 02 — + pauses du style',
+   aide:'Même prononciation, autre respiration. Seul réglage d’élocution rejouable après coup.'},
+  {n:3, cle:'souffle',   titre:'Étage 03 — + retrait du souffle',
    aide:'Le grésillement est-il parti, et la voix a-t-elle souffert ?'},
-  {cle:'egaliseur', titre:'4. + égaliseur et compression',
+  {n:4, cle:'egaliseur', titre:'Étage 04 — + égaliseur et compression',
    aide:'Le timbre et la tenue.'},
-  {cle:'porte',     titre:'5. + porte de bruit et rognage',
+  {n:5, cle:'porte',     titre:'Étage 05 — + porte de bruit et rognage',
    aide:'Les blancs entre les mots.'},
-  {cle:'niveau',    titre:'6. + mise au niveau',
-   aide:'Le volume final. C\'est la version « vos réglages ».'}
+  {n:6, cle:'niveau',    titre:'Étage 06 — + mise au niveau',
+   aide:'Le volume final. C’est la version « vos réglages ».'}
 ];
 
-function basculerEcoute(){ basculer('blocEcoute', $('btnEcoute')); }
+/* Un réglage qui bouge périme les étages qui en dépendent, et tous ceux qui
+   les suivent. Le dire vaut mieux que laisser un lecteur jouer un son qui ne
+   correspond plus à ce qui est affiché — ce serait la même faute qu'un
+   curseur inerte, en plus discret. */
+function perimerCascade(etage){
+  const c = etat.cascade;
+  if(!c || !c.atteint) return;
+  c.perimeA = Math.min(c.perimeA || 99, etage);
+  majEtatCascade();
+}
 
-async function ecouterEtapes(){
+function majEtatCascade(){
+  const zone = $('etatCascade');
+  if(!zone) return;
+  const c = etat.cascade || {};
+  if(!c.atteint){
+    zone.innerHTML = '<div class="aide">Rien n’a encore été généré. Commencez par l’étage 01.</div>';
+    return;
+  }
+  if(!c.perimeA){
+    zone.innerHTML = '<div class="note n-grn">' +
+      (c.atteint > 1 ? 'Les ' + c.atteint + ' premiers étages sont à jour.'
+                     : 'L’étage 01 est à jour.') + '</div>';
+    return;
+  }
+  if(c.perimeA <= 1){
+    zone.innerHTML = '<div class="note n-amb"><div class="note-t">Le moteur doit reparler</div>' +
+      'Un réglage de l’étage 01 a changé. Il agit avant la sortie du moteur : aucun ' +
+      'recalcul ne peut le rattraper, il faut regénérer.</div>';
+    return;
+  }
+  zone.innerHTML = '<div class="note n-amb"><div class="note-t">Étages périmés à partir du ' +
+    ('0' + c.perimeA).slice(-2) + '</div>' +
+    'Un réglage a changé depuis. Rejouez cet étage : les suivants se recalculent avec lui, ' +
+    'sans refaire parler le moteur.</div>';
+}
+
+/* Durées de silence à poser au recollage, d'après le style et les deux
+   curseurs de pause. Les natures viennent du serveur : les confondre
+   s'entend, un texte de cinq phrases gagnait deux secondes de blanc. */
+function dureesDePause(){
+  const forme = ELOCUTIONS[$('elocution').value] || etat.miseEnForme;
+  const pauseP = (forme && PAUSES_DE_PHRASE[forme.pauses] !== undefined)
+    ? PAUSES_DE_PHRASE[forme.pauses] : 0.25;
+  return {
+    proposition: pauseP * 0.64,
+    phrase: pauseP,
+    ligne: parseFloat($('pauseCourte').value) / 1000,
+    paragraphe: parseFloat($('pauseLongue').value) / 1000,
+    fin: 0
+  };
+}
+
+/* Recalcule la cascade jusqu'à l'étage atteint.
+
+   Les étages 3 à 6 repartent tous de la même base — l'audio de l'étage 02 —
+   et s'arrêtent chacun à leur maillon. C'est ce qui les rend cumulatifs : on
+   entend ce que chacun AJOUTE, et non ce qu'il ferait isolément. */
+async function calculerCascade(){
   const g = etat.generationEnCours;
-  const zone = $('resEcoute');
-  const bouton = $('btnEtapes');
-  if(!g || !g.source){ toast('Aucune génération à décomposer.', 'err'); return; }
+  const c = etat.cascade;
+  if(!g || !g.source) return;
+
+  const votre = chaineCourante();
+  const a = {};
+  a.moteur = g.source;
+
+  if(c.atteint >= 2){
+    a.pauses = (g.decoupe && g.decoupe.length > 1)
+      ? await rejouerPauses(g.source, g.decoupe, dureesDePause())
+      : null;
+  }
+  const base = a.pauses || a.moteur;
+
+  if(c.atteint >= 3) a.souffle   = await appliquerTraitement(base, {...votre, arret:'souffle'});
+  if(c.atteint >= 4) a.egaliseur = await appliquerTraitement(base, {...votre, arret:'egaliseur'});
+  if(c.atteint >= 5) a.porte     = await appliquerTraitement(base, {...votre, arret:'porte'});
+  if(c.atteint >= 6){
+    a.niveau = await appliquerTraitement(base, votre);
+    /* L'étage 06 EST la version « vos réglages » : la génération doit porter
+       la même, sinon la bibliothèque recevrait un autre son que celui qu'on
+       vient d'écouter. */
+    g.versions.votre = {
+      blob: a.niveau,
+      nom: g.base + '.' + extensionDe(a.niveau.type || 'audio/wav'),
+      titre: 'vos réglages'
+    };
+    g.traitement = votre.traitement ? $('preset').value : null;
+    g.nettoyage = !!votre.nettoyage;
+    g.traiteVotre = true;
+    g.niveauManque = etat.niveauManque;
+    if(g.versionChargee === 'votre') g.versionChargee = null;
+    await majInfoFormat(a.niveau);
+  }
+
+  /* Un étage dont les réglages sont inactifs rend un son identique au
+     précédent. Afficher malgré tout un lecteur laisserait croire à un effet
+     qui n'existe pas — c'est le défaut du curseur inerte, déplacé dans un
+     lecteur. L'étage le dit donc lui-même. */
+  c.inactif = {
+    souffle:   !(votre.souffle && votre.souffle !== 'aucun'),
+    egaliseur: !votre.traitement,
+    porte:     !votre.nettoyage,
+    niveau:    !votre.niveau && !CIBLES_LOUDNESS[String(votre.loudness || '0')]
+                 && !frequenceExport() && resolutionExport() === 16
+  };
+
+  c.audios = a;
+  c.perimeA = 0;
+  c.id = g.id;
+}
+
+/* Ce qu'il faut régler pour que l'étage agisse. Dire « rien n'a changé » sans
+   dire où appuyer laisserait chercher. */
+const REMEDE_ETAGE = {
+  souffle:   'Choisissez autre chose que « Aucun » ci-dessus.',
+  egaliseur: 'Cochez « Appliquer le traitement » ou choisissez un préréglage ci-dessus.',
+  porte:     'Cochez « Faire taire ce qui n’est pas de la parole » ci-dessus.',
+  niveau:    'Cochez « Normaliser le niveau final », ou choisissez un niveau normalisé.'
+};
+
+function afficherCascade(){
+  const c = etat.cascade || {};
+  const a = c.audios || {};
+  ETAGES.forEach(e => {
+    const zone = $('etage' + e.n);
+    if(!zone) return;
+    if(e.n > (c.atteint || 0)){ zone.innerHTML = ''; return; }
+    const b = a[e.cle];
+    if(!b){
+      zone.innerHTML = '<div class="note n-blu"><div class="note-t">' + echapper(e.titre) + '</div>' +
+        'Sans objet ici : le texte n’a fait qu’un seul morceau, il n’y a aucune ' +
+        'pause à rejouer. L’étage suivant reprend donc l’audio du moteur.</div>';
+      return;
+    }
+    const inactif = (c.inactif || {})[e.cle];
+    zone.innerHTML = '<div class="note ' + (inactif ? 'n-amb' : 'n-grn') + '">' +
+      '<div class="note-t">' + echapper(e.titre) + '</div>' +
+      '<div class="aide" style="margin:2px 0 8px">' + echapper(e.aide) + '</div>' +
+      (inactif
+        ? '<div style="margin-bottom:8px">Cet étage est <strong>inactif</strong> : le son est ' +
+          'identique à celui du dessus. ' + echapper(REMEDE_ETAGE[e.cle] || '') + '</div>'
+        : '') +
+      '<audio controls src="' + URL.createObjectURL(b) + '"></audio></div>';
+  });
+  majEtatCascade();
+}
+
+/* Bouton d'un étage. L'étage 01 fait parler le moteur ; les autres se
+   calculent ici, sur la prononciation déjà obtenue. */
+async function genererEtage(n){
+  if(n === 1) return genererEssai();
+
+  const g = etat.generationEnCours;
+  if(!g || !g.source){
+    toast('Générez d’abord l’étage 01 : il n’y a encore aucune prononciation.', 'err');
+    return;
+  }
+  const c = etat.cascade;
+  /* perimeA vaut zéro quand rien n'est périmé : le confondre avec l'étage 01
+     bloquait tous les étages juste après une génération. */
+  if(c.perimeA && c.perimeA <= 1){
+    toast('Un réglage du moteur a changé : regénérez l’étage 01.', 'err');
+    return;
+  }
+  const bouton = $('btnEtage' + n);
   occupe(bouton, true, 'Calcul…');
   try{
-    const votre = chaineCourante();
-    const rendus = {};
-    rendus.brut = g.versions.brut.blob;
+    c.atteint = Math.max(c.atteint || 1, n);
+    await calculerCascade();
+    afficherCascade();
+    toast('Étage ' + ('0' + n).slice(-2) + ' ajouté, sans refaire parler le moteur.', 'ok');
+  }catch(e){
+    toast(messageReseau(e), 'err');
+  }finally{
+    occupe(bouton, false);
+  }
+}
 
-    /* Les pauses se rejouent sur la version NON débruitée : c'est la seule qui
-       porte encore la carte des morceaux telle que le serveur l'a écrite. */
-    const forme = ELOCUTIONS[$('elocution').value] || etat.miseEnForme;
-    const pauseP = (forme && PAUSES_DE_PHRASE[forme.pauses] !== undefined)
-      ? PAUSES_DE_PHRASE[forme.pauses] : 0.25;
-    const durees = {
-      proposition: pauseP * 0.64,
-      phrase: pauseP,
-      ligne: parseFloat($('pauseCourte').value) / 1000,
-      paragraphe: parseFloat($('pauseLongue').value) / 1000,
-      fin: 0
-    };
-    rendus.pauses = g.decoupe && g.decoupe.length > 1
-      ? await rejouerPauses(g.versions.brut.blob, g.decoupe, durees)
-      : null;
+/* Proposition automatique : la ressemblance, pas vos réglages.
 
-    for(const arret of ['souffle','egaliseur','porte']){
-      rendus[arret] = await appliquerTraitement(g.source, {...votre, arret});
+   Elle ne reprend rien de ce qui est affiché. Elle compare la génération NON
+   TRAITÉE — la seule qui décrive le moteur seul — au profil de vos prises, et
+   cherche les trois gains qui rapprochent le plus l'un de l'autre. C'est la
+   même mesure que « Calculer d'après mes prises », à ceci près qu'elle ne
+   touche aucun curseur : elle rend un audio, et vous jugez.
+
+   Rien d'autre n'entre dans la proposition. Pas de compression : elle écrase
+   la dynamique, donc elle éloigne de l'enregistrement d'origine au lieu de
+   l'en rapprocher. Pas de porte. Seul le niveau est aligné sur celui de vos
+   prises, parce qu'une différence de volume s'entend comme une différence de
+   timbre et fausserait la comparaison. */
+async function proposerRessemblance(){
+  const zone = $('resProposition');
+  const bouton = $('btnProposition');
+  const g = etat.generationEnCours;
+
+  if(!etat.echantillons.length){
+    zone.innerHTML = '<div class="note n-amb">Aucune prise enregistrée : il n’y a rien à ' +
+      'quoi ressembler. Ajoutez vos enregistrements plus haut.</div>';
+    return;
+  }
+  const bruts = versionsNonTraitees();
+  if(!bruts.length || !g){
+    zone.innerHTML = '<div class="note n-amb">Générez d’abord l’étage 01. La mesure se ' +
+      'fait sur la version non traitée, celle qui décrit le moteur seul.</div>';
+    return;
+  }
+
+  occupe(bouton, true, 'Mesure…');
+  try{
+    const prises = await profilDesPrises();
+    if(!prises){
+      zone.innerHTML = '<div class="note n-red">Vos prises n’ont pas pu être mesurées : ' +
+        'elles sont peut-être trop courtes.</div>';
+      return;
     }
-    rendus.niveau = g.versions.votre.blob;
+    const sujet = await profilDesGenerations(bruts);
+    if(!sujet){
+      zone.innerHTML = '<div class="note n-red">La génération n’a pas pu être mesurée.</div>';
+      return;
+    }
+    const source = await decoderAudio(bruts[0]);
+    const r = ajusterCorrection(prises.profil, sujet.profil, source.sampleRate);
+    if(!r){
+      zone.innerHTML = '<div class="note n-red">La correction n’a pas pu être calculée.</div>';
+      return;
+    }
 
-    const lecteur = (e) => {
-      const b = rendus[e.cle];
-      if(!b) return '<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--bdr)">' +
-        '<div style="font-size:12.5px;font-weight:600">' + echapper(e.titre) + '</div>' +
-        '<div class="aide" style="margin-top:4px">Sans objet ici : le texte n\'a fait ' +
-        "qu'un seul morceau, il n'y a aucune pause à rejouer.</div></div>";
-      return '<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--bdr)">' +
-        '<div style="font-size:12.5px;font-weight:600">' + echapper(e.titre) + '</div>' +
-        '<div class="aide" style="margin:4px 0 6px">' + echapper(e.aide) + '</div>' +
-        '<audio controls src="' + URL.createObjectURL(b) + '"></audio></div>';
+    /* Même garde-fou que la correction manuelle : deux prises d'une même voix
+       ne s'écartent que de deux décibels environ. Au-delà, les deux profils ne
+       décrivent pas la même chose, et appliquer poserait trois filtres à fond. */
+    const butes = r.gains.filter(x => Math.abs(x) >= GAIN_MAX_CORRECTION - 0.01).length;
+    if(r.ecartApres > RESIDU_MAX_CORRECTION || butes === 3){
+      zone.innerHTML = '<div class="note n-amb"><div class="note-t">Comparaison inexploitable</div>' +
+        'L’écart entre vos prises et cette génération reste de ' +
+        r.ecartApres.toFixed(1).replace('.', ',') + ' dB après ajustement' +
+        (butes === 3 ? ', et les trois filtres butent sur leur limite' : '') +
+        '. Aucune proposition n’est faite : mieux vaut rien qu’un réglage inventé.</div>';
+      return;
+    }
+
+    /* Chaîne de la proposition : les trois filtres mesurés, rien d'autre.
+       Le compresseur est neutralisé par un taux de 1 : 1, la porte est
+       absente, et le niveau vise celui des prises. */
+    const cible = await niveauDesPrises();
+    const chaine = {
+      autoradio: {graves:0, aigus:0, volume:0},
+      souffle: $('souffle') ? $('souffle').value : 'aucun',
+      traitement: {
+        passeHaut: 20, passeBas: 12000,
+        typeGraves:'lowshelf', graves:r.gains[0],
+        fGraves:FILTRES_CORRECTION[0].f, qGraves:FILTRES_CORRECTION[0].q,
+        basMed:r.gains[1], fBasMed:FILTRES_CORRECTION[1].f, qBasMed:FILTRES_CORRECTION[1].q,
+        mediums:0, fMediums:1800, qMediums:0.9,
+        typeAigus:'highshelf', aigus:r.gains[2],
+        fAigus:FILTRES_CORRECTION[2].f, qAigus:FILTRES_CORRECTION[2].q,
+        deess:0, fDeess:7000, qDeess:3.5,
+        seuil:0, ratio:1, normaliser:false, cible:-3
+      },
+      nettoyage: null,
+      resolution: resolutionExport(),
+      frequence: frequenceExport(),
+      loudness: '0',
+      niveau: (cible !== null) ? {mode:'lufs', cible: cible} : null
     };
 
-    zone.innerHTML = '<div class="note n-blu">' +
-      '<div class="note-t">Une seule prononciation, six écoutes</div>' +
-      'Chaque étage reprend le précédent et lui ajoute le sien. Le moteur n\'a ' +
-      'parlé qu\'une fois : ce que vous entendez changer vient du traitement, ' +
-      'jamais du tirage.' +
-      ETAPES_ECOUTE.map(lecteur).join('') +
+    const blob = await appliquerTraitement(g.source, chaine);
+    g.versions.propose = {
+      blob: blob,
+      nom: g.base + '_propose.' + extensionDe(blob.type || 'audio/wav'),
+      titre: 'proposition'
+    };
+    if(g.versionChargee === 'propose') g.versionChargee = null;
+
+    const d1 = v => v.toFixed(1).replace('.', ',');
+    const votre = (etat.cascade && etat.cascade.audios && etat.cascade.audios.niveau) || null;
+
+    zone.innerHTML = '<div class="note n-grn"><div class="note-t">Proposition, mesurée sur vos prises</div>' +
+      'Trois filtres, ajustés sur neuf bandes pour rapprocher le moteur de votre voix réelle. ' +
+      'Écart moyen ramené de ' + d1(r.ecartAvant) + ' à ' + d1(r.ecartApres) + ' dB.' +
+      '<div style="margin-top:8px;font-size:11.5px;line-height:1.6;color:var(--txt2)">' +
+        '— Graves ' + d1(r.gains[0]) + ' dB à ' + FILTRES_CORRECTION[0].f + ' Hz<br>' +
+        '— Bas-médiums ' + d1(r.gains[1]) + ' dB à ' + FILTRES_CORRECTION[1].f + ' Hz<br>' +
+        '— Aigus ' + d1(r.gains[2]) + ' dB à ' + FILTRES_CORRECTION[2].f + ' Hz<br>' +
+        '— Aucune compression, aucune porte : elles éloigneraient de l’original.<br>' +
+        (cible !== null
+          ? '— Niveau aligné sur vos prises : ' + d1(cible) + ' LUFS.'
+          : '— Niveau laissé tel quel : vos prises n’ont pas pu être mesurées.') +
+      '</div>' +
+      '<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--bdr)">' +
+        '<div style="font-size:12.5px;font-weight:600;margin-bottom:6px">Proposition automatique</div>' +
+        '<audio controls src="' + URL.createObjectURL(blob) + '"></audio></div>' +
+      (votre
+        ? '<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--bdr)">' +
+          '<div style="font-size:12.5px;font-weight:600;margin-bottom:6px">Vos réglages, pour comparer</div>' +
+          '<audio controls src="' + URL.createObjectURL(votre) + '"></audio></div>'
+        : '<div class="aide" style="margin-top:10px">Générez l’étage 06 pour comparer avec vos ' +
+          'réglages sur la même prononciation.</div>') +
       '</div>';
   }catch(e){
     zone.innerHTML = '<div class="note n-red">' + echapper(messageReseau(e)) + '</div>';
   }finally{
     occupe(bouton, false);
   }
+}
+
+/* Niveau perçu moyen des prises, en LUFS. Il sert de cible à la proposition :
+   une différence de volume s'entend comme une différence de timbre, et
+   fausserait la comparaison qu'on cherche justement à rendre honnête. */
+async function niveauDesPrises(){
+  const mesures = [];
+  for(const e of etat.echantillons.slice(0, 3)){
+    try{
+      const tampon = await decoderAudio(e.blob);
+      const m = await mesurerLoudness(tampon.getChannelData(0), tampon.sampleRate);
+      if(m !== null && isFinite(m)) mesures.push(m);
+    }catch(err){}
+  }
+  if(!mesures.length) return null;
+  return mesures.reduce((a, b) => a + b, 0) / mesures.length;
 }
 
 /* Rejoue la chaîne de traitement sur une génération déjà produite.
@@ -5698,7 +6064,6 @@ async function demarrer(){
         if(v.decoupage) $('decoupage').value = v.decoupage;
         if(v.graine) $('graine').value = v.graine;
         $('graineFixe').checked = !!v.graineFixe;
-        $('avanceActif').checked = !!v.actif;
         /* Sans ce rappel, les valeurs affichées resteraient celles du départ
            alors que les curseurs portent déjà les valeurs restaurées. */
         majAvance();
