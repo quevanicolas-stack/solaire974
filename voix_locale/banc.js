@@ -31,6 +31,13 @@ const { chromium } = require(CHEMIN_PLAYWRIGHT);
 const BASE = process.env.BASE || 'http://127.0.0.1:8770';
 const SIGNAL_SEUL = process.argv.includes('--signal');
 
+/* --reel <fichier.wav> : mesure une vraie génération non traitée au lieu du
+   signal fabriqué. Un signal de synthèse dit ce que la chaîne fait ; un vrai
+   fichier dit ce qu'elle fait À VOTRE VOIX. Les deux sont nécessaires : le
+   premier est reproductible, le second est vrai. */
+const iReel = process.argv.indexOf('--reel');
+const FICHIER_REEL = iReel >= 0 ? process.argv[iReel + 1] : null;
+
 /* ══════════════════════════════════════════════════════
    LE SIGNAL D'ESSAI
    ══════════════════════════════════════════════════════
@@ -797,6 +804,106 @@ const MESURES = `
     Math.abs(ton.volPlus - 6) < 0.5);
   constat('Volume -6 dB : effet mesuré', ton.volMoins, 'dB',
     Math.abs(ton.volMoins + 6) < 0.5);
+
+  /* ─── 7. Sur un vrai fichier ───────────────────────────────────────
+     Le souffle d'un vrai moteur n'est pas celui qu'on simule : il a sa
+     couleur, ses creux, sa part de bruit musical laissée par le débruitage du
+     serveur. Ce que la chaîne lui fait ne se déduit pas du signal d'essai. */
+  if (FICHIER_REEL) {
+    titre('7. Sur un vrai fichier — ' + require('path').basename(FICHIER_REEL));
+    const octets = require('fs').readFileSync(FICHIER_REEL);
+    const b64 = octets.toString('base64');
+
+    const reel = await page.evaluate(async ([b64]) => {
+      const bin = atob(b64);
+      const u8 = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+      const src = new Blob([u8], {type: 'audio/wav'});
+      const buf = await decoderAudio(src);
+      const x = buf.getChannelData(0);
+
+      /* Parole et silence sont repérés sur l'énergie, faute d'enveloppe
+         connue : les 20 % de fenêtres les plus faibles sont du silence, les
+         20 % les plus fortes de la parole. */
+      const fe = buf.sampleRate, w = Math.round(fe * 0.05);
+      const niveaux = [];
+      for (let i = 0; i + w <= x.length; i += w) {
+        let s = 0;
+        for (let j = 0; j < w; j++) s += x[i+j]*x[i+j];
+        niveaux.push({i, r: Math.sqrt(s/w)});
+      }
+      /* Les silences insérés entre les morceaux sont des ZÉROS EXACTS : le
+         serveur les fabrique en recollant. Les prendre pour le plancher de
+         bruit donnait -92 dBFS et 82 dB de séparation, c'est-à-dire la mesure
+         du vide. On les écarte, et on cherche le plancher parmi les fenêtres
+         faibles mais non nulles. */
+      const PLANCHER_NUMERIQUE = Math.pow(10, -85/20);
+      const utiles = niveaux.filter(n => n.r > PLANCHER_NUMERIQUE);
+      const tries = utiles.slice().sort((a,b) => a.r - b.r);
+      const partZero = 1 - utiles.length / Math.max(1, niveaux.length);
+      const prendre = (liste) => {
+        const out = [];
+        for (const {i} of liste) for (let j = 0; j < w; j++) out.push(x[i+j]);
+        return Float32Array.from(out);
+      };
+      const nb = Math.max(4, Math.floor(tries.length * 0.2));
+      const silence = prendre(tries.slice(0, nb));
+      const parole  = prendre(tries.slice(-nb));
+
+      const sortie = {fe, duree: x.length/fe, partZero,
+                      crete: bancCrete(x), ecretage: bancEcretage(x),
+                      parole: bancRms(parole), silence: bancRms(silence),
+                      audibleNu: bancAudible(parole, silence).pire,
+                      ouNu: bancAudible(parole, silence).bande,
+                      presets: []};
+
+      /* Chaque préréglage : ce qu'il fait au souffle réel. Le souffle est
+         approché par les fenêtres les plus faibles du fichier traité — il n'y
+         a pas de version « sans souffle » d'un vrai enregistrement. */
+      for (const preset of ['aucun','naturel','radio','podcast']) {
+        document.getElementById('preset').value = (preset === 'aucun') ? 'perso' : preset;
+        if (preset !== 'aucun') appliquerPreset();
+        document.getElementById('traitementActif').checked = (preset !== 'aucun');
+        const chaine = {traitement: preset === 'aucun' ? null : reglagesTraitement(),
+                        nettoyage: null, resolution: 16, frequence: 0,
+                        loudness: '0', souffle: 'aucun',
+                        autoradio: {graves:0, aigus:0, volume:0}};
+        const y = (await decoderAudio(await appliquerTraitement(src, chaine))).getChannelData(0);
+        const pr = [], si = [];
+        for (const {i} of tries.slice(-nb)) for (let j = 0; j < w && i+j < y.length; j++) pr.push(y[i+j]);
+        for (const {i} of tries.slice(0, nb)) for (let j = 0; j < w && i+j < y.length; j++) si.push(y[i+j]);
+        const a = bancAudible(Float32Array.from(pr), Float32Array.from(si));
+        sortie.presets.push({preset, audible: a.pire, bande: a.bande,
+                             snr: bancRms(Float32Array.from(pr)) - bancRms(Float32Array.from(si))});
+      }
+      return sortie;
+    }, [b64]);
+
+    constat('Fréquence du fichier', reel.fe, 'Hz', null, reel.duree.toFixed(1) + ' s');
+    constat('Part de silence numérique exact', reel.partZero * 100, '%', null,
+      'silences insérés au recollage — écartés de la mesure du plancher');
+    constat('Crête', reel.crete, 'dBFS', reel.crete < -0.5,
+      'une génération au ras du plafond n\'a aucune marge');
+    constat('Échantillons à pleine échelle', reel.ecretage, '', reel.ecretage < 10);
+    constat('Parole', reel.parole, 'dBFS', null);
+    constat('Plancher', reel.silence, 'dBFS', null);
+    constat('Séparation', reel.parole - reel.silence, 'dB',
+      reel.parole - reel.silence > 30);
+    constat('Souffle audible, fichier nu', reel.audibleNu, 'dB', null,
+      'vers ' + reel.ouNu + ' Hz');
+    dire('');
+    dire('       préréglage      souffle audible        où     séparation');
+    for (const p of reel.presets) {
+      dire('       ' + p.preset.padEnd(14) + p.audible.toFixed(1).padStart(10) + ' dB' +
+           String(p.bande).padStart(10) + ' Hz' + p.snr.toFixed(1).padStart(13) + ' dB');
+    }
+    const nu = reel.presets.find(p => p.preset === 'aucun');
+    for (const p of reel.presets.filter(p => p.preset !== 'aucun')) {
+      constat('« ' + p.preset + ' » : souffle rendu audible en plus',
+        p.audible - nu.audible, 'dB', p.audible - nu.audible < 2,
+        'au-delà de 2 dB, le préréglage découvre le souffle');
+    }
+  }
 
   /* ─── Fin ──────────────────────────────────────────────────────── */
   await nav.close();
