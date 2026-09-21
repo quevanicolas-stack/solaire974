@@ -1256,6 +1256,7 @@ const etat = {
   baseEcartees:[],       // entrées de base désactivées une à une
   miseEnForme:null,      // mise en forme du dernier style, conservée en personnalisé
   generationEnCours:null,// dernière génération produite, avant tout choix de version
+  niveauManque:null,     // cible de niveau non atteinte : plafond de crête atteint d'abord
   zoneResultat:'resSynth',// où afficher le résultat : essai (étape 02) ou synthèse (étape 03)
   montage:[],            // extraits assemblés : {cle, source, debut, fin, pause}
   montageRendu:null,     // dernier assemblage produit : {blob, nom}
@@ -3713,9 +3714,23 @@ async function appliquerTraitement(blob, chaineDemandee){
         if(v > crete) crete = v;
       }
       const plafond = Math.pow(10, loudness.creteMax / 20);
+      /* Le plafond de crête gagne toujours contre la cible de niveau — sinon
+         on saturerait. Mais il gagnait EN SILENCE : la page annonçait
+         « -16 LUFS » et livrait -19, sans que rien ne le dise. Mesuré au banc :
+         3,0 LU manquants à -16, 4,5 à -14.
+
+         On retient donc l'écart, et la page le signale. Un réglage qui
+         n'atteint pas ce qu'il annonce doit le dire. */
+      const vise = facteur;
       if(crete * facteur > plafond) facteur = plafond / Math.max(crete, 1e-9);
       for(let i=0;i<donnees.length;i++) donnees[i] *= facteur;
+      const manque = 20 * Math.log10(vise / Math.max(facteur, 1e-12));
+      etat.niveauManque = (manque > 0.5)
+        ? {cible: loudness.cible, manque: manque, crete: loudness.creteMax}
+        : null;
     }
+  }else{
+    etat.niveauManque = null;
   }
 
   /* Aucun étage de niveau n'a absorbé le volume : il s'applique alors
@@ -4857,6 +4872,7 @@ async function synthetiser(champ, idBouton, idZone){
          traitée empilerait deux fois l'égaliseur. */
       source: departVotre,
       base: base,
+      niveauManque: etat.niveauManque,
       versionChargee: null
     };
     etat.generationEnCours = gen;
@@ -4999,6 +5015,16 @@ function afficherGenerationEnCours(){
           '(stabilité, débit, graine, texte, style).' +
         '</div>' +
       '</div>' +
+      (g.niveauManque
+        ? '<div class="note n-amb" style="margin-top:12px">' +
+          '<div class="note-t">Niveau visé non atteint</div>' +
+          'La cible de ' + g.niveauManque.cible + ' LUFS demanderait ' +
+          g.niveauManque.manque.toFixed(1).replace('.', ',') + ' dB de plus, ' +
+          'mais la crête butterait sur le plafond de ' + g.niveauManque.crete +
+          ' dBFS et saturerait. Le fichier est donc ' +
+          g.niveauManque.manque.toFixed(1).replace('.', ',') + ' dB sous la cible. ' +
+          'Pour y arriver : comprimer davantage, ou viser un niveau plus bas.</div>'
+        : '') +
       '<div style="margin-top:10px;font-size:11.5px">Le nom des fichiers porte la mention ' +
       '« voix-synthetique » : ne la retirez pas.</div>' +
     '</div>';
@@ -5034,6 +5060,7 @@ async function retoucher(){
     g.traitement = votre.traitement ? $('preset').value : null;
     g.nettoyage = !!votre.nettoyage;
     g.traiteVotre = (blob !== g.source) || (g.source !== g.versions.brut.blob);
+    g.niveauManque = etat.niveauManque;
     /* La version déposée en bibliothèque, si c'était celle-ci, ne correspond
        plus à ce qu'on vient de calculer : le bouton doit le redire. */
     if(g.versionChargee === 'votre') g.versionChargee = null;
