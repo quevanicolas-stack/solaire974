@@ -1309,6 +1309,39 @@ async function creerVoix(page, nom) {
   verifier('Un étage refuse de se recalculer sur un moteur périmé',
     perime.bloque === 1, 'périmé à ' + perime.bloque);
 
+  // Un style n'est pas le reglage d'un etage : il ecrit le moteur (01), la
+  // duree des pauses (02), l'egaliseur (04) et la mise au niveau (06). Le
+  // placer dans un etage laissait croire qu'il n'agissait que la, et il ne
+  // perimait alors qu'a partir du 02 — l'etage 01 jouait une prononciation
+  // obtenue avec d'autres valeurs que celles affichees.
+  const style = await page.evaluate(async () => {
+    await genererEssai();
+    const lire = () => ['debit','temperature','topP','topK','preset','graves','cible']
+      .map(k => document.getElementById(k).value).join('|');
+    const avant = lire();
+    const neuf = etat.cascade.perimeA;
+    const sel = document.getElementById('elocution');
+    sel.value = 'publicite';
+    sel.dispatchEvent(new Event('change', {bubbles:true}));
+    return { avant, apres: lire(), neuf, perime: etat.cascade.perimeA,
+             texte: document.getElementById('etatCascade').textContent.trim(),
+             dansEtage2: !!document.querySelector('#etage2') &&
+                         !!document.getElementById('elocution').closest('.card')
+                           .querySelector('#pauseCourte') };
+  });
+  verifier('Choisir un style réécrit bien les réglages du moteur',
+    style.avant !== style.apres, style.apres);
+  verifier('Choisir un style oblige à refaire parler le moteur',
+    style.neuf === 0 && style.perime === 1 && /doit reparler/.test(style.texte),
+    'après génération ' + style.neuf + ', après style ' + style.perime);
+  // Reposer des reglages n'est pas les changer : une generation verrouillee se
+  // terminait en rendant les curseurs intacts, donc en perimant ce qu'elle
+  // venait de calculer.
+  verifier('Une génération fraîche n\'est jamais annoncée périmée',
+    style.neuf === 0, 'périmé à ' + style.neuf + ' juste après génération');
+  verifier('Le style est hors des étages, puisqu\'il les traverse',
+    style.dansEtage2 === false);
+
   // Un etage dont le reglage est eteint doit le DIRE, au lieu d'afficher un
   // lecteur identique au precedent.
   const inactif = await page.evaluate(async () => {

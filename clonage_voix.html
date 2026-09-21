@@ -683,6 +683,39 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
 
       <div id="blocReglagesProfil">
 
+      <div class="sec">Style d'élocution</div>
+      <div class="card">
+        <div class="champ">
+          <label class="lbl" for="elocution">Style d'élocution</label>
+          <select id="elocution" onchange="appliquerElocution()">
+            <option value="perso">Personnalisé — réglages libres</option>
+            <option value="narrateur">Narrateur — posé, régulier, sans relief appuyé</option>
+            <option value="enseignant">Enseignant — articulé, phrases détachées, rythme soutenu</option>
+            <option value="short">Présentateur de vidéo courte — très dynamique et rapide</option>
+            <option value="publicite">Publicité — énergique, percutant, très en avant</option>
+            <option value="journal">Journal — neutre, clair, débit constant</option>
+            <option value="livre">Livre audio — chaleureux, plus lent, respirations marquées</option>
+            <option value="documentaire">Documentaire — grave, posé, autorité tranquille</option>
+            <option value="accueil">Accueil téléphonique — très articulé, bande téléphonique</option>
+            <option value="conversation">Conversation — naturel, familier, peu appuyé</option>
+          </select>
+          <div class="aide" id="descElocution">
+            Chaque style règle d'un coup le moteur, la préparation du texte et le traitement audio.
+            Modifier un curseur ensuite bascule en personnalisé.
+          </div>
+          <div class="note n-amb" style="margin-top:10px">
+            <div class="note-t">Un style traverse plusieurs étages</div>
+            Ce n'est pas le réglage d'un étage, c'est un préréglage de la chaîne entière : il
+            écrit le <strong>débit et les réglages du moteur</strong> (étage 01), la
+            <strong>durée des pauses de phrase</strong> (étage 02), l'<strong>égaliseur et la
+            compression</strong> (étage 04) et la <strong>mise au niveau</strong> (étage 06).
+            C'est pour cela qu'il est ici et non dans un étage : le placer dans l'un d'eux
+            laisserait croire qu'il n'agit que là. En choisir un oblige donc à refaire parler
+            le moteur — la page le dit.
+          </div>
+        </div>
+      </div>
+
       <!-- ─── ÉTAGE 01 : le moteur ─── -->
       <div class="sec">Étage 01 — Texte et moteur</div>
       <div class="card">
@@ -786,28 +819,13 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
       </div>
 
       <!-- ─── ÉTAGE 02 : les pauses ─── -->
-      <div class="sec">Étage 02 — Pauses du style</div>
+      <div class="sec">Étage 02 — Pauses</div>
       <div class="card">
-        <div class="champ">
-          <label class="lbl" for="elocution">Style d'élocution</label>
-          <select id="elocution" onchange="appliquerElocution(); perimerCascade(2)">
-            <option value="perso">Personnalisé — réglages libres</option>
-            <option value="narrateur">Narrateur — posé, régulier, sans relief appuyé</option>
-            <option value="enseignant">Enseignant — articulé, phrases détachées, rythme soutenu</option>
-            <option value="short">Présentateur de vidéo courte — très dynamique et rapide</option>
-            <option value="publicite">Publicité — énergique, percutant, très en avant</option>
-            <option value="journal">Journal — neutre, clair, débit constant</option>
-            <option value="livre">Livre audio — chaleureux, plus lent, respirations marquées</option>
-            <option value="documentaire">Documentaire — grave, posé, autorité tranquille</option>
-            <option value="accueil">Accueil téléphonique — très articulé, bande téléphonique</option>
-            <option value="conversation">Conversation — naturel, familier, peu appuyé</option>
-          </select>
-          <div class="aide" id="descElocution">
-            Chaque style règle d'un coup le moteur, la préparation du texte et le traitement audio.
-            Modifier un curseur ensuite bascule en personnalisé.
-          </div>
+        <div class="aide" style="margin-bottom:12px">
+          La durée d'une pause de phrase vient du style choisi en tête de chaîne. Les deux
+          durées ci-dessous sont à vous, et se rejouent sans refaire parler le moteur.
         </div>
-        <div class="grid2" style="margin-top:12px">
+        <div class="grid2">
           <div class="champ">
             <div class="curs-tete"><span>Pause entre propositions</span><span class="curs-val" id="vPauseCourte">280 ms</span></div>
             <input type="range" id="pauseCourte" min="0" max="1200" step="10" value="280" oninput="majPauses(true)">
@@ -873,7 +891,9 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
               <option value="naturel">Rapprocher du naturel — corrige l'écart mesuré du moteur</option>
               <option value="perso">Personnalisé</option>
             </select>
-            <div class="aide">Traitement appliqué dans le navigateur, après la génération.</div>
+            <div class="aide">Traitement appliqué dans le navigateur, après la génération.
+              Un préréglage écrit aussi la <strong>mise au niveau de l'étage 06</strong> :
+              normalisation et niveau visé.</div>
             <button class="btn btn-g btn-sm" id="btnCorrection" style="margin-top:8px"
                     onclick="calculerCorrection()">Calculer d'après mes prises</button>
             <div class="aide" style="margin-top:6px">
@@ -1322,6 +1342,7 @@ const etat = {
   miseEnForme:null,      // mise en forme du dernier style, conservée en personnalisé
   generationEnCours:null,// dernière génération produite, avant tout choix de version
   cascade:{audios:{}, atteint:0, perimeA:0, id:null}, // chaîne de production, étage par étage
+  reposeReglages:false,  // vrai pendant qu'on repose des réglages : ne rien périmer
   niveauManque:null,     // cible de niveau non atteinte : plafond de crête atteint d'abord
   zoneResultat:'resSynth',// où afficher le résultat : essai (étape 02) ou synthèse (étape 03)
   montage:[],            // extraits assemblés : {cle, source, debut, fin, pause}
@@ -1692,8 +1713,19 @@ function reglagesDuProfil(){
    Les rappels d'affichage sont indispensables : sans eux les curseurs
    porteraient les bonnes valeurs mais les étiquettes afficheraient encore
    celles du profil précédent. */
+/* Reposer des réglages n'est pas les changer : la chaîne ne doit pas être
+   déclarée périmée pour autant. Sans ce drapeau, une génération verrouillée se
+   terminait en rendant les curseurs intacts — donc en appelant majTraitement et
+   majNettoyage — et l'écran annonçait aussitôt des étages périmés qui venaient
+   d'être calculés. */
 function appliquerReglagesProfil(r){
   if(!r) return;
+  etat.reposeReglages = true;
+  try{ appliquerReglagesProfilVraiment(r); }
+  finally{ etat.reposeReglages = false; }
+}
+
+function appliquerReglagesProfilVraiment(r){
   Object.keys(r.nombres || {}).forEach(id => { if($(id)) $(id).value = r.nombres[id]; });
   Object.keys(r.choix   || {}).forEach(id => { if($(id)) $(id).value = r.choix[id]; });
   Object.keys(r.cases   || {}).forEach(id => { if($(id)) $(id).checked = r.cases[id]; });
@@ -2905,6 +2937,11 @@ function appliquerElocution(){
   }
   majCompteur();
   enregistrerElocution();
+  /* Un style réécrit le débit et les réglages du moteur : l'audio de l'étage 01
+     ne correspond alors plus à ce qui est affiché. Périmer seulement à partir de
+     l'étage 02, comme au début, laissait un lecteur jouer une prononciation
+     obtenue avec d'autres valeurs que celles montrées. */
+  perimerCascade(1);
 }
 
 /* ══════════════════════════════════════════════════════
@@ -5260,6 +5297,7 @@ const ETAGES = [
    curseur inerte, en plus discret. */
 function perimerCascade(etage){
   const c = etat.cascade;
+  if(etat.reposeReglages) return;
   if(!c || !c.atteint) return;
   c.perimeA = Math.min(c.perimeA || 99, etage);
   majEtatCascade();
