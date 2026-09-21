@@ -1522,9 +1522,72 @@ async function creerVoix(page, nom) {
   verifier('Chaque morceau de la carte porte son texte',
     resp.textes.length > 1 && resp.textes.every(t => t.trim().length > 0),
     resp.textes.length + ' morceau(x), le premier : « ' + resp.textes[0].slice(0, 30) + ' »');
+  // Insensible a la casse : le nom de la nature s'ecrit « Coupure de longueur »
+  // dans le menu et « coupure(s) de longueur » dans l'avertissement.
   verifier('La carte nomme la coupure imposée et dit comment la déplacer',
-    /coupure de longueur/.test(resp.carte) && /coupez la phrase vous-même/.test(resp.carte),
+    /coupure\(?s?\)? de longueur/i.test(resp.carte) &&
+    /coupez la phrase vous-même/.test(resp.carte),
     resp.carte.replace(/\s+/g, ' ').slice(0, 80));
+
+  // Chaque respiration se choisit : les quatre natures, ou aucune pause. Le
+  // choix doit AGIR, et se rendre. C'est le meme piege que partout ailleurs —
+  // un menu qui n'agit pas serait un curseur inerte deguise.
+  const respirationChoisie = await page.evaluate(async () => {
+    const gen = etat.generationEnCours;
+    const duree = async () => {
+      const a = await decoderAudio(etat.cascade.audios.pauses);
+      return a.length / a.sampleRate;
+    };
+    await genererEtage(2, true);
+    const base = await duree();
+    const depart = natureDuMorceau(0);
+    const autre = ['paragraphe','ligne','phrase'].find(n => n !== depart);
+    const d = dureesDePause();
+
+    await choisirRespiration(0, autre);
+    const change = await duree();
+    const texte = document.getElementById('carteRespirations').textContent;
+    await choisirRespiration(0, 'aucune');
+    const sans = await duree();
+    await remettreRespirations();
+    const rendu = await duree();
+
+    return {
+      menus: document.querySelectorAll('#carteRespirations select.choix-resp').length,
+      morceaux: (gen.decoupe || []).length,
+      gainAttendu: d[autre] - d[depart], gainMesure: change - base,
+      sansAttendu: -d[depart], sansMesure: sans - base,
+      rendu: Math.abs(rendu - base),
+      dit: /choisi par vous/.test(texte),
+      restant: Object.keys(gen.naturesChoisies || {}).length
+    };
+  });
+  verifier('Chaque morceau porte un menu, sauf le dernier',
+    respirationChoisie.menus === respirationChoisie.morceaux - 1,
+    respirationChoisie.menus + ' menu(s) pour ' + respirationChoisie.morceaux + ' morceau(x)');
+  verifier('Choisir une autre respiration change réellement la durée',
+    Math.abs(respirationChoisie.gainMesure - respirationChoisie.gainAttendu) < 0.02,
+    respirationChoisie.gainMesure.toFixed(3) + ' s pour ' +
+    respirationChoisie.gainAttendu.toFixed(3) + ' attendu');
+  verifier('« Aucune pause » supprime réellement le silence',
+    Math.abs(respirationChoisie.sansMesure - respirationChoisie.sansAttendu) < 0.02,
+    respirationChoisie.sansMesure.toFixed(3) + ' s pour ' +
+    respirationChoisie.sansAttendu.toFixed(3) + ' attendu');
+  verifier('La carte dit quand une respiration a été choisie à la main',
+    respirationChoisie.dit);
+  verifier('Rendre au découpage ses respirations remet l\'audio d\'origine',
+    respirationChoisie.rendu < 0.002 && respirationChoisie.restant === 0,
+    'écart ' + respirationChoisie.rendu.toFixed(4) + ' s, ' +
+    respirationChoisie.restant + ' choix restant(s)');
+
+  // Un decoupage neuf ne doit pas heriter des choix de l'ancien : un rang de
+  // morceau ne veut rien dire sur un autre texte.
+  verifier('Une génération neuve repart sans respiration choisie',
+    await page.evaluate(async () => {
+      await choisirRespiration(0, 'paragraphe');
+      await genererEssai();
+      return Object.keys(etat.generationEnCours.naturesChoisies || {}).length === 0;
+    }));
 
   // Les profils d'avant portaient les deux noms faux : leurs durees doivent
   // revenir la ou elles agissaient reellement, sinon le travail est perdu.

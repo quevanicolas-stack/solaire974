@@ -196,6 +196,24 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
 .b-amb{background:var(--amb-d);color:var(--amb-l);border:1px solid rgba(240,180,41,.3)}
 .b-red{background:var(--red-d);color:var(--red-l);border:1px solid rgba(248,81,73,.3)}
 
+/* La bulle d'une respiration est un choix, pas une étiquette : elle en garde
+   l'allure, et porte la flèche qui dit qu'on peut en changer. Un menu déguisé
+   en étiquette tromperait ; une étiquette qui s'ouvre ne trompe pas, à
+   condition que la flèche soit là. */
+.choix-resp{appearance:none;-webkit-appearance:none;
+  background:var(--vio-d);color:var(--vio);border:1px solid rgba(163,113,247,.3);
+  padding:3px 22px 3px 9px;border-radius:20px;
+  font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
+  font-family:inherit;cursor:pointer;line-height:1.6;min-height:0;height:auto;width:auto;
+  background-image:linear-gradient(45deg,transparent 50%,var(--vio) 50%),
+                   linear-gradient(135deg,var(--vio) 50%,transparent 50%);
+  background-position:calc(100% - 11px) 52%,calc(100% - 7px) 52%;
+  background-size:4px 4px,4px 4px;background-repeat:no-repeat}
+.choix-resp:hover{border-color:var(--vio)}
+.choix-resp:focus{outline:2px solid var(--vio);outline-offset:1px}
+.choix-resp option{background:var(--bg2);color:var(--txt);text-transform:none;
+  letter-spacing:0;font-size:12.5px}
+
 .kv{display:flex;justify-content:space-between;padding:7px 0;font-size:12.5px;border-bottom:1px solid var(--bdr)}
 .kv:last-child{border-bottom:none}
 .kv-c{color:var(--txt2)}
@@ -4100,8 +4118,13 @@ async function rejouerPauses(blob, decoupe, durees){
     const a = Math.max(0, Math.round(m.debut * fe));
     const b = Math.min(d.length, Math.round(m.fin * fe));
     if(b <= a) continue;
-    const silence = Math.max(0, Math.round((durees[m.nature] !== undefined
-      ? durees[m.nature] : m.silence) * fe));
+    /* La durée peut être donnée morceau par morceau — c'est ce qui permet de
+       choisir la nature d'une respiration précise, sans toucher aux autres.
+       À défaut, celle de la nature ; à défaut encore, celle du serveur. */
+    const voulue = (typeof durees === 'function')
+      ? durees(m, morceaux.length)
+      : (durees[m.nature] !== undefined ? durees[m.nature] : m.silence);
+    const silence = Math.max(0, Math.round((voulue || 0) * fe));
     morceaux.push({a, b, silence});
     total += (b - a) + silence;
   }
@@ -5187,6 +5210,9 @@ async function synthetiser(champ, idBouton, idZone){
     /* Toute génération repart la chaîne de production à son premier étage :
        ce qui était affiché décrivait une autre prononciation. */
     etat.cascade = {audios:{moteur: gen.source}, atteint:1, perimeA:0, id:gen.id};
+    /* Les respirations choisies à la main décrivaient l'autre découpage :
+       les garder ferait porter un choix sur un morceau qui n'est plus le même. */
+    gen.naturesChoisies = {};
 
     if(idZone === 'resEssai'){
       /* À l'étape 02 on règle : la chaîne montre les étages un par un, et le
@@ -5437,6 +5463,57 @@ function dureesDePause(){
   };
 }
 
+/* Nature choisie pour un morceau donné, ou celle que le découpage a posée.
+
+   Le choix appartient à la génération en cours et à elle seule : un rang de
+   morceau ne veut rien dire sur un autre texte. La page le dit plutôt que de
+   faire croire à un réglage durable. */
+function natureDuMorceau(i){
+  const g = etat.generationEnCours;
+  const choisi = g && g.naturesChoisies && g.naturesChoisies[i];
+  if(choisi) return choisi;
+  const m = g && g.decoupe && g.decoupe[i];
+  return m ? m.nature : 'phrase';
+}
+
+function dureeDuMorceau(i){
+  const nature = natureDuMorceau(i);
+  if(nature === 'aucune' || nature === 'fin') return 0;
+  const d = dureesDePause();
+  return (d[nature] !== undefined) ? d[nature] : 0;
+}
+
+/* Durées à passer au recollage : une par morceau, dans l'ordre. */
+function dureesParMorceau(){
+  let i = -1;
+  return () => { i++; return dureeDuMorceau(i); };
+}
+
+/* Change la respiration d'un morceau, et rejoue aussitôt.
+
+   Pas de bouton à presser : le changement est instantané et se voit sur la
+   carte comme il s'entend sur le lecteur. Laisser l'écran périmé en attendant
+   une action de plus n'apporterait rien ici — le calcul dure quelques
+   dizaines de millisecondes. */
+async function choisirRespiration(i, nature){
+  const g = etat.generationEnCours;
+  if(!g || !g.decoupe) return;
+  g.naturesChoisies = g.naturesChoisies || {};
+  if(nature === (g.decoupe[i] || {}).nature) delete g.naturesChoisies[i];
+  else g.naturesChoisies[i] = nature;
+  await genererEtage(2, true);
+}
+
+async function remettreRespirations(){
+  const g = etat.generationEnCours;
+  if(!g) return;
+  g.naturesChoisies = {};
+  /* Attendre le recalcul : sans cela la fonction rendait la main avant que
+     l'audio ne soit refait, et le lecteur gardait les respirations qu'on
+     venait d'abandonner. */
+  await genererEtage(2, true);
+}
+
 function remettrePauses(){
   Object.keys(PAUSES_CONSEILLEES).forEach(id => { $(id).value = PAUSES_CONSEILLEES[id]; });
   majPauses(true);
@@ -5451,8 +5528,18 @@ const NATURES_PAUSE = {
   phrase:      {nom:'fin de phrase',       cause:'un point dans la ligne', couleur:'b-vio'},
   ligne:       {nom:'retour à la ligne',   cause:'votre mise en page',     couleur:'b-vio'},
   paragraphe:  {nom:'paragraphe',          cause:'une ligne vide',         couleur:'b-vio'},
-  fin:         {nom:'fin du texte',        cause:'aucun silence',          couleur:'b-vio'}
+  fin:         {nom:'fin du texte',        cause:'aucun silence',          couleur:'b-vio'},
+  aucune:      {nom:'aucune pause',        cause:'enchaîné sans silence',  couleur:'b-amb'}
 };
+
+/* Ce qu'on peut choisir pour une respiration, dans l'ordre des durées. */
+const CHOIX_RESPIRATION = [
+  {cle:'aucune',      nom:'Aucune pause'},
+  {cle:'proposition', nom:'Coupure de longueur'},
+  {cle:'phrase',      nom:'Fin de phrase'},
+  {cle:'ligne',       nom:'Retour à la ligne'},
+  {cle:'paragraphe',  nom:'Paragraphe'}
+];
 
 /* Carte des respirations réellement pratiquées.
 
@@ -5472,26 +5559,51 @@ function afficherRespirations(){
       'génération. Elle est vide quand le texte tient en un seul morceau.</div>';
     return;
   }
-  const durees = dureesDePause();
-  const imposees = d.filter(m => m.nature === 'proposition').length;
+  const imposees = d.filter((m, i) => natureDuMorceau(i) === 'proposition').length;
+  const changes = Object.keys((etat.generationEnCours.naturesChoisies) || {}).length;
+
   const lignes = d.map((m, i) => {
-    const n = NATURES_PAUSE[m.nature] || NATURES_PAUSE.phrase;
-    const secondes = (durees[m.nature] !== undefined) ? durees[m.nature] : m.silence;
+    /* Le dernier morceau n'est suivi d'aucun silence : lui proposer une
+       respiration serait proposer un réglage sans effet. */
+    const dernier = (m.nature === 'fin');
+    const nature = natureDuMorceau(i);
+    const n = NATURES_PAUSE[nature] || NATURES_PAUSE.phrase;
+    const change = !dernier && nature !== m.nature;
     const texte = (m.texte || '').trim();
     const court = texte.length > 64 ? texte.slice(0, 62) + '…' : texte;
+
+    const choix = dernier ? '' :
+      '<select class="choix-resp" onchange="choisirRespiration(' + i + ', this.value)">' +
+      CHOIX_RESPIRATION.map(c =>
+        '<option value="' + c.cle + '"' + (c.cle === nature ? ' selected' : '') + '>' +
+        echapper(c.nom) + '</option>').join('') +
+      '</select>';
+
     return '<div style="padding:6px 0;border-top:1px solid var(--bdr)">' +
       '<div style="font-size:11.5px;color:var(--txt2)">' + (i + 1) + '. ' +
         echapper(court || '(morceau sans texte)') + '</div>' +
       '<div style="margin-top:3px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">' +
-        '<span class="badge ' + n.couleur + '">' + echapper(n.nom) + '</span>' +
-        '<span style="font-size:11.5px;color:var(--txt2)">' + echapper(n.cause) + '</span>' +
+        (dernier
+          ? '<span class="badge ' + n.couleur + '">' + echapper(n.nom) + '</span>'
+          : choix) +
+        '<span style="font-size:11.5px;color:var(--txt2)">' +
+          echapper(change ? 'choisi par vous, au lieu de : ' + (NATURES_PAUSE[m.nature] || {}).nom
+                          : n.cause) + '</span>' +
         '<span style="font-size:11.5px;font-weight:600">' +
-          (m.nature === 'fin' ? '—' : Math.round(secondes * 1000) + ' ms') + '</span>' +
+          (dernier ? '—' : Math.round(dureeDuMorceau(i) * 1000) + ' ms') + '</span>' +
       '</div></div>';
   }).join('');
 
   zone.innerHTML = '<div class="note ' + (imposees ? 'n-amb' : 'n-blu') + '">' +
-    '<div class="note-t">Carte des respirations — ' + d.length + ' morceau(x)</div>' +
+    '<div class="note-t">Carte des respirations — ' + d.length + ' morceau(x)' +
+      (changes ? ' · ' + changes + ' choisie(s) à la main' : '') + '</div>' +
+    '<div class="aide" style="margin-bottom:6px">Chaque respiration se choisit dans sa liste : ' +
+      'les quatre natures, ou aucune pause. Le changement s\u2019entend aussitôt. Ces choix ' +
+      'appartiennent à <strong>cette génération</strong> — un rang de morceau ne veut rien dire ' +
+      'sur un autre texte — et voyagent avec l\u2019audio que vous chargerez en bibliothèque.' +
+      (changes ? ' <button class="btn btn-g btn-sm" style="margin-top:8px" ' +
+                 'onclick="remettreRespirations()">Rendre au découpage ses respirations</button>' : '') +
+    '</div>' +
     (imposees
       ? imposees + ' coupure(s) de longueur : le texte dépassait ce que le moteur accepte ' +
         'd\u2019un seul tenant, et elles tombent où la longueur l\u2019impose, pas où vous ' +
@@ -5517,7 +5629,7 @@ async function calculerCascade(){
 
   if(c.atteint >= 2){
     a.pauses = (g.decoupe && g.decoupe.length > 1)
-      ? await rejouerPauses(g.source, g.decoupe, dureesDePause())
+      ? await rejouerPauses(g.source, g.decoupe, dureesParMorceau())
       : null;
   }
   const base = a.pauses || a.moteur;
@@ -5599,7 +5711,10 @@ function afficherCascade(){
 
 /* Bouton d'un étage. L'étage 01 fait parler le moteur ; les autres se
    calculent ici, sur la prononciation déjà obtenue. */
-async function genererEtage(n){
+/* `discret` : le recalcul vient d'un choix fait dans la carte, pas d'un
+   bouton. Annoncer chaque changement empilerait les messages pour rien —
+   l'effet s'entend, et la carte se redessine. */
+async function genererEtage(n, discret){
   if(n === 1) return genererEssai();
 
   const g = etat.generationEnCours;
@@ -5620,7 +5735,7 @@ async function genererEtage(n){
     c.atteint = Math.max(c.atteint || 1, n);
     await calculerCascade();
     afficherCascade();
-    toast('Étage ' + ('0' + n).slice(-2) + ' ajouté, sans refaire parler le moteur.', 'ok');
+    if(!discret) toast('Étage ' + ('0' + n).slice(-2) + ' ajouté, sans refaire parler le moteur.', 'ok');
   }catch(e){
     toast(messageReseau(e), 'err');
   }finally{
