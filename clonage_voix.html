@@ -818,33 +818,58 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
         <div id="etage1" style="margin-top:12px"></div>
       </div>
 
-      <!-- ─── ÉTAGE 02 : les pauses ─── -->
-      <div class="sec">Étage 02 — Pauses</div>
+      <!-- ─── ÉTAGE 02 : les respirations ─── -->
+      <div class="sec">Étage 02 — Respirations</div>
       <div class="card">
-        <div class="aide" style="margin-bottom:12px">
-          La durée d'une pause de phrase vient du style choisi en tête de chaîne. Les deux
-          durées ci-dessous sont à vous, et se rejouent sans refaire parler le moteur.
+        <div class="note n-blu">
+          <div class="note-t">Où le texte respire, et combien de temps</div>
+          Le découpage produit quatre natures de silence, et <strong>c'est votre mise en page
+          qui en décide trois</strong> : un retour à la ligne est une respiration, une ligne
+          vide est un paragraphe, un point est une fin de phrase. La quatrième, la coupure de
+          longueur, est imposée par le moteur — c'est la seule que vous ne placez pas.
+          <br><br>
+          Les quatre durées ci-dessous sont réglables une à une, et se rejouent sans refaire
+          parler le moteur : même prononciation, autre respiration.
         </div>
-        <div class="grid2">
+
+        <div class="grid2" style="margin-top:13px">
           <div class="champ">
-            <div class="curs-tete"><span>Pause entre propositions</span><span class="curs-val" id="vPauseCourte">280 ms</span></div>
-            <input type="range" id="pauseCourte" min="0" max="1200" step="10" value="280" oninput="majPauses(true)">
+            <div class="curs-tete"><span>Coupure de longueur</span><span class="curs-val" id="vPauseProposition">160 ms</span></div>
+            <input type="range" id="pauseProposition" min="0" max="1200" step="10" value="160" oninput="majPauses(true)">
+            <div class="aide">Coupure <strong>imposée</strong> au milieu d'une phrase trop longue :
+              le moteur refuse plus de 273 caractères, et tronque sans prévenir au-delà. Vous ne
+              choisissez pas où elle tombe — la carte ci-dessous vous montre où. La raccourcir
+              la rend moins audible.</div>
           </div>
           <div class="champ">
-            <div class="curs-tete"><span>Pause entre phrases</span><span class="curs-val" id="vPauseLongue">550 ms</span></div>
-            <input type="range" id="pauseLongue" min="0" max="2000" step="10" value="550" oninput="majPauses(true)">
+            <div class="curs-tete"><span>Fin de phrase</span><span class="curs-val" id="vPausePhrase">250 ms</span></div>
+            <input type="range" id="pausePhrase" min="0" max="1500" step="10" value="250" oninput="majPauses(true)">
+            <div class="aide">Entre deux phrases d'une même ligne, après un point, un point
+              d'interrogation ou d'exclamation. Le style en tête de chaîne écrit cette valeur ;
+              vous pouvez la reprendre ensuite.</div>
+          </div>
+          <div class="champ">
+            <div class="curs-tete"><span>Retour à la ligne</span><span class="curs-val" id="vPauseLigne">280 ms</span></div>
+            <input type="range" id="pauseLigne" min="0" max="2000" step="10" value="280" oninput="majPauses(true)">
+            <div class="aide">Une respiration que <strong>vous avez écrite</strong>, en passant
+              à la ligne dans le texte. C'est le levier le plus direct : déplacez le retour à la
+              ligne, la respiration suit.</div>
+          </div>
+          <div class="champ">
+            <div class="curs-tete"><span>Changement de paragraphe</span><span class="curs-val" id="vPauseParagraphe">550 ms</span></div>
+            <input type="range" id="pauseParagraphe" min="0" max="3000" step="10" value="550" oninput="majPauses(true)">
+            <div class="aide">Une ligne vide dans le texte. La plus longue des quatre, et celle
+              qui marque un changement d'idée.</div>
           </div>
         </div>
-        <div class="aide" style="margin-top:10px">
-          Les pauses sont le <strong>seul</strong> réglage d'élocution qui se rejoue après coup :
-          le serveur ayant rendu la place de chaque morceau, on refait le collage avec d'autres
-          durées. Même prononciation, autre respiration.
-          Le style, lui, règle la durée d'une pause de phrase — il ne réécrit jamais votre texte
-          en paragraphes : la mise en page vous appartient.
-        </div>
+
+        <button class="btn btn-g btn-sm" style="margin-top:10px" onclick="remettrePauses()">
+          Rétablir les durées conseillées</button>
+
         <button class="btn btn-p" id="btnEtage2" style="width:100%;justify-content:center;margin-top:14px"
                 onclick="genererEtage(2)">Générer l'amélioration</button>
         <div id="etage2" style="margin-top:12px"></div>
+        <div id="carteRespirations" style="margin-top:12px"></div>
       </div>
 
       <!-- ─── ÉTAGE 03 : le souffle ─── -->
@@ -1699,7 +1724,7 @@ const REGLAGES_AUDIO_CHOIX  = ['preset','resolution','frequenceExport','loudness
 
 function reglagesDuProfil(){
   const nombres = {}, choix = {}, cases = {};
-  ['porte'].concat(CURSEURS_AVANCE, CURSEURS_TRAITEMENT)
+  ['porte'].concat(CURSEURS_AVANCE, CURSEURS_PAUSES, CURSEURS_TRAITEMENT)
     .forEach(id => { if($(id)) nombres[id] = parseFloat($(id).value); });
   ['elocution','debruitage','decoupage','graine'].concat(CHOIX_TRAITEMENT, REGLAGES_AUDIO_CHOIX)
     .forEach(id => { if($(id)) choix[id] = $(id).value; });
@@ -1726,7 +1751,15 @@ function appliquerReglagesProfil(r){
 }
 
 function appliquerReglagesProfilVraiment(r){
-  Object.keys(r.nombres || {}).forEach(id => { if($(id)) $(id).value = r.nombres[id]; });
+  /* Reprise des profils d'avant. Les deux anciens curseurs portaient des noms
+     faux : « pauseCourte » pilotait le retour à la ligne, « pauseLongue » le
+     paragraphe. On les remet où ils agissaient réellement, sinon le profil
+     reviendrait avec les durées par défaut — le travail de l'utilisateur
+     serait perdu en silence. */
+  const n = Object.assign({}, r.nombres || {});
+  if(n.pauseCourte !== undefined && n.pauseLigne === undefined) n.pauseLigne = n.pauseCourte;
+  if(n.pauseLongue !== undefined && n.pauseParagraphe === undefined) n.pauseParagraphe = n.pauseLongue;
+  Object.keys(n).forEach(id => { if($(id)) $(id).value = n[id]; });
   Object.keys(r.choix   || {}).forEach(id => { if($(id)) $(id).value = r.choix[id]; });
   Object.keys(r.cases   || {}).forEach(id => { if($(id)) $(id).checked = r.cases[id]; });
   etat.miseEnForme = r.miseEnForme || etat.miseEnForme;
@@ -2927,6 +2960,11 @@ function appliquerElocution(){
        de moteur, avec la formule qu'employait le serveur. Les styles sonnent
        donc exactement comme avant. */
     const d = valeursDeduites(e.stab);
+    /* La durée d'une pause de phrase appartient au style : il l'écrit dans le
+       curseur, qui reste ensuite repreneable à la main. */
+    if(PAUSES_DE_PHRASE[e.pauses] !== undefined && $('pausePhrase')){
+      $('pausePhrase').value = Math.round(PAUSES_DE_PHRASE[e.pauses] * 1000);
+    }
     $('debit').value       = e.debit;
     $('temperature').value = d.temperature.toFixed(2);
     $('topP').value        = d.topP.toFixed(2);
@@ -2948,7 +2986,12 @@ function appliquerElocution(){
    COMMANDE DIRECTE DU MOTEUR
    ══════════════════════════════════════════════════════ */
 
-const CURSEURS_AVANCE = ['debit','temperature','topP','topK','repetition','longueur','pauseCourte','pauseLongue'];
+const CURSEURS_AVANCE = ['debit','temperature','topP','topK','repetition','longueur'];
+/* Les quatre natures de silence, réglables une à une. Elles vivent à l'étage
+   02 et non parmi les réglages du moteur : ce sont les seules valeurs
+   d'élocution qui se rejouent sans refaire parler le moteur. */
+const CURSEURS_PAUSES = ['pauseProposition','pausePhrase','pauseLigne','pauseParagraphe'];
+const PAUSES_CONSEILLEES = {pauseProposition:160, pausePhrase:250, pauseLigne:280, pauseParagraphe:550};
 
 /* Le curseur « Stabilité » a été retiré.
 
@@ -2984,8 +3027,6 @@ function reinitialiserAvance(){
   $('topK').value        = d.topK;
   $('repetition').value  = d.repetition;
   $('longueur').value    = d.longueur;
-  $('pauseCourte').value = 280;
-  $('pauseLongue').value = 550;
   $('decoupage').value   = 'auto';
   $('graineFixe').checked = false;
   majAvance();
@@ -3016,8 +3057,10 @@ function majAvance(perso){
   $('vTopK').textContent        = String(parseInt($('topK').value, 10));
   $('vRepetition').textContent  = f($('repetition').value, 1);
   $('vLongueur').textContent    = f($('longueur').value, 2);
-  $('vPauseCourte').textContent = Math.round(parseFloat($('pauseCourte').value)) + ' ms';
-  $('vPauseLongue').textContent = Math.round(parseFloat($('pauseLongue').value)) + ' ms';
+  CURSEURS_PAUSES.forEach(id => {
+    const v = $('v' + id.charAt(0).toUpperCase() + id.slice(1));
+    if(v) v.textContent = Math.round(parseFloat($(id).value)) + ' ms';
+  });
   majCompteur();
   enregistrerAvance();
 }
@@ -3027,13 +3070,13 @@ function majAvance(perso){
    rejoue sur la prononciation déjà obtenue. Les confondre ferait redemander
    une génération pour rien, ou pire, en laisserait passer une nécessaire. */
 function majMoteur(perso){ majAvance(perso); perimerCascade(1); }
-function majPauses(perso){ majAvance(perso); perimerCascade(2); }
+function majPauses(perso){ majAvance(perso); perimerCascade(2); afficherRespirations(); }
 
 function enregistrerAvance(){
   if(!bd) return;
   const v = {decoupage: $('decoupage').value,
              graine: $('graine').value, graineFixe: $('graineFixe').checked};
-  CURSEURS_AVANCE.forEach(id => v[id] = parseFloat($(id).value));
+  CURSEURS_AVANCE.concat(CURSEURS_PAUSES).forEach(id => v[id] = parseFloat($(id).value));
   bdEcrire('config', {cle:'avance', valeur:v});
 }
 
@@ -3046,13 +3089,18 @@ const PAUSES_DE_PHRASE = {aucune: 0.12, moderees: 0.25, marquees: 0.42};
 
 function reglagesMoteur(){
   const v = {
-    pause_courte: parseFloat($('pauseCourte').value) / 1000,
-    pause_longue: parseFloat($('pauseLongue').value) / 1000
+    /* Les quatre natures partent explicitement. Elles ne l'étaient pas :
+       deux seulement étaient transmises, et les deux autres se déduisaient au
+       serveur, proportionnellement — on ne pouvait donc pas allonger une fin
+       de phrase sans allonger aussi la respiration. */
+    pause_proposition: parseFloat($('pauseProposition').value) / 1000,
+    pause_phrase:      parseFloat($('pausePhrase').value) / 1000,
+    pause_ligne:       parseFloat($('pauseLigne').value) / 1000,
+    pause_paragraphe:  parseFloat($('pauseParagraphe').value) / 1000
   };
-  const forme = ELOCUTIONS[$('elocution').value] || etat.miseEnForme;
-  if(forme && PAUSES_DE_PHRASE[forme.pauses] !== undefined){
-    v.pause_phrase = PAUSES_DE_PHRASE[forme.pauses];
-  }
+  /* Le style écrit désormais le curseur de fin de phrase au moment où on le
+     choisit, au lieu d'imposer sa valeur ici : sans cela le curseur affichait
+     une durée et le moteur en recevait une autre. */
   /* La graine n'est transmise que si l'on demande à la fixer. Envoyée en
      permanence, elle rendait chaque génération identique à la précédente :
      une phrase mal dite le restait, et relancer n'y changeait rien. */
@@ -5279,7 +5327,7 @@ function afficherGenerationEnCours(){
 const ETAGES = [
   {n:1, cle:'moteur',    titre:'Étage 01 — le moteur seul',
    aide:'La prononciation, le tirage et la suppression du bruit de fond faite par le serveur.'},
-  {n:2, cle:'pauses',    titre:'Étage 02 — + pauses du style',
+  {n:2, cle:'pauses',    titre:'Étage 02 — + respirations',
    aide:'Même prononciation, autre respiration. Seul réglage d’élocution rejouable après coup.'},
   {n:3, cle:'souffle',   titre:'Étage 03 — + retrait du souffle',
    aide:'Le grésillement est-il parti, et la voix a-t-elle souffert ?'},
@@ -5332,17 +5380,86 @@ function majEtatCascade(){
 /* Durées de silence à poser au recollage, d'après le style et les deux
    curseurs de pause. Les natures viennent du serveur : les confondre
    s'entend, un texte de cinq phrases gagnait deux secondes de blanc. */
+/* Les quatre durées lues telles qu'elles sont affichées.
+
+   Elles ne l'étaient pas : la coupure de longueur et la fin de phrase se
+   déduisaient du style, avec un rapport fixe, et les deux curseurs visibles
+   annonçaient « propositions » et « phrases » alors qu'ils pilotaient en
+   réalité le retour à la ligne et le paragraphe. Deux réglages qui mentaient,
+   et deux durées qu'on ne pouvait pas atteindre. */
 function dureesDePause(){
-  const forme = ELOCUTIONS[$('elocution').value] || etat.miseEnForme;
-  const pauseP = (forme && PAUSES_DE_PHRASE[forme.pauses] !== undefined)
-    ? PAUSES_DE_PHRASE[forme.pauses] : 0.25;
+  const ms = id => parseFloat($(id).value) / 1000;
   return {
-    proposition: pauseP * 0.64,
-    phrase: pauseP,
-    ligne: parseFloat($('pauseCourte').value) / 1000,
-    paragraphe: parseFloat($('pauseLongue').value) / 1000,
+    proposition: ms('pauseProposition'),
+    phrase:      ms('pausePhrase'),
+    ligne:       ms('pauseLigne'),
+    paragraphe:  ms('pauseParagraphe'),
     fin: 0
   };
+}
+
+function remettrePauses(){
+  Object.keys(PAUSES_CONSEILLEES).forEach(id => { $(id).value = PAUSES_CONSEILLEES[id]; });
+  majPauses(true);
+  toast('Durées de respiration rétablies.', 'ok');
+}
+
+/* Noms lisibles des natures, et ce qui les déclenche. Les afficher, c'est
+   rendre le découpage réglable : sans savoir ce qui provoque une coupure, on
+   ne peut pas la déplacer. */
+const NATURES_PAUSE = {
+  proposition: {nom:'coupure de longueur', cause:'imposée par le moteur', couleur:'b-amb'},
+  phrase:      {nom:'fin de phrase',       cause:'un point dans la ligne', couleur:'b-vio'},
+  ligne:       {nom:'retour à la ligne',   cause:'votre mise en page',     couleur:'b-vio'},
+  paragraphe:  {nom:'paragraphe',          cause:'une ligne vide',         couleur:'b-vio'},
+  fin:         {nom:'fin du texte',        cause:'aucun silence',          couleur:'b-vio'}
+};
+
+/* Carte des respirations réellement pratiquées.
+
+   Le serveur rend, avec l'audio, la place de chaque morceau, la nature du
+   silence qui le suit et ce qui y est prononcé. L'afficher répond à la seule
+   question qu'on se pose vraiment en réglant des pauses : où est-ce que ça
+   respire, et pourquoi là. Une coupure de longueur tombée au milieu d'une
+   phrase se voit alors, au lieu de s'entendre sans qu'on sache d'où elle
+   vient. */
+function afficherRespirations(){
+  const zone = $('carteRespirations');
+  if(!zone) return;
+  const g = etat.generationEnCours;
+  const d = (g && g.decoupe) || [];
+  if(!d.length){
+    zone.innerHTML = '<div class="aide">La carte des respirations apparaîtra après une ' +
+      'génération. Elle est vide quand le texte tient en un seul morceau.</div>';
+    return;
+  }
+  const durees = dureesDePause();
+  const imposees = d.filter(m => m.nature === 'proposition').length;
+  const lignes = d.map((m, i) => {
+    const n = NATURES_PAUSE[m.nature] || NATURES_PAUSE.phrase;
+    const secondes = (durees[m.nature] !== undefined) ? durees[m.nature] : m.silence;
+    const texte = (m.texte || '').trim();
+    const court = texte.length > 64 ? texte.slice(0, 62) + '…' : texte;
+    return '<div style="padding:6px 0;border-top:1px solid var(--bdr)">' +
+      '<div style="font-size:11.5px;color:var(--txt2)">' + (i + 1) + '. ' +
+        echapper(court || '(morceau sans texte)') + '</div>' +
+      '<div style="margin-top:3px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">' +
+        '<span class="badge ' + n.couleur + '">' + echapper(n.nom) + '</span>' +
+        '<span style="font-size:11.5px;color:var(--txt2)">' + echapper(n.cause) + '</span>' +
+        '<span style="font-size:11.5px;font-weight:600">' +
+          (m.nature === 'fin' ? '—' : Math.round(secondes * 1000) + ' ms') + '</span>' +
+      '</div></div>';
+  }).join('');
+
+  zone.innerHTML = '<div class="note ' + (imposees ? 'n-amb' : 'n-blu') + '">' +
+    '<div class="note-t">Carte des respirations — ' + d.length + ' morceau(x)</div>' +
+    (imposees
+      ? imposees + ' coupure(s) de longueur : le texte dépassait ce que le moteur accepte ' +
+        'd\u2019un seul tenant, et elles tombent où la longueur l\u2019impose, pas où vous ' +
+        'le voudriez. Pour les déplacer, coupez la phrase vous-même — un point ou un retour ' +
+        'à la ligne au bon endroit vaut mieux qu\u2019une coupure subie.'
+      : 'Aucune coupure imposée : toutes les respirations viennent de votre texte.') +
+    lignes + '</div>';
 }
 
 /* Recalcule la cascade jusqu'à l'étage atteint.
@@ -5437,6 +5554,7 @@ function afficherCascade(){
         : '') +
       '<audio controls src="' + URL.createObjectURL(b) + '"></audio></div>';
   });
+  afficherRespirations();
   majEtatCascade();
 }
 
@@ -6098,7 +6216,13 @@ async function demarrer(){
       const av = await bdLire('config','avance');
       if(av && av.valeur){
         const v = av.valeur;
-        CURSEURS_AVANCE.forEach(id => { if(typeof v[id] === 'number') $(id).value = v[id]; });
+        /* Reprise des deux anciens noms, qui pilotaient en réalité le retour
+           à la ligne et le paragraphe : sans cela, les durées enregistrées
+           seraient remplacées sans bruit par celles du départ. */
+        if(typeof v.pauseCourte === 'number' && v.pauseLigne === undefined) v.pauseLigne = v.pauseCourte;
+        if(typeof v.pauseLongue === 'number' && v.pauseParagraphe === undefined) v.pauseParagraphe = v.pauseLongue;
+        CURSEURS_AVANCE.concat(CURSEURS_PAUSES)
+          .forEach(id => { if(typeof v[id] === 'number') $(id).value = v[id]; });
         if(v.decoupage) $('decoupage').value = v.decoupage;
         if(v.graine) $('graine').value = v.graine;
         $('graineFixe').checked = !!v.graineFixe;

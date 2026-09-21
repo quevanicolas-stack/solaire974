@@ -39,7 +39,7 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 
 RACINE = Path(__file__).resolve().parent
 DOSSIER_VOIX = RACINE / "donnees" / "voix"
-VERSION = "2026.09.21b"     # affichée au démarrage et sur « / » : sert à vérifier
+VERSION = "2026.09.21c"     # affichée au démarrage et sur « / » : sert à vérifier
                            # que le fichier en place est bien le dernier
 FREQUENCE = 24000          # fréquence d'échantillonnage de sortie, en hertz
 """
@@ -513,15 +513,21 @@ def adoucir_extremites(trame: bytes, frequence: int) -> bytes:
 
 
 def assembler_audio(morceaux: list[tuple[bytes, float]],
-                    natures: list[str] | None = None) -> tuple[bytes, list[dict]]:
+                    natures: list[str] | None = None,
+                    textes: list[str] | None = None) -> tuple[bytes, list[dict]]:
     """
     Recolle des WAV mono en intercalant les silences demandés.
 
     Rend aussi le DÉCOUPAGE : où commence et où finit chaque morceau parlé dans
-    l'audio assemblé, et de quelle nature est le silence qui le suit. Sans
-    cette carte, l'application ne peut pas rejouer les pauses autrement — il
-    lui faudrait refaire parler le moteur, donc obtenir une autre
+    l'audio assemblé, de quelle nature est le silence qui le suit, et ce qui y
+    est prononcé. Sans cette carte, l'application ne peut pas rejouer les pauses
+    autrement — il lui faudrait refaire parler le moteur, donc obtenir une autre
     prononciation, donc comparer deux choses différentes.
+
+    Le texte de chaque morceau s'y trouve pour une autre raison : il permet de
+    MONTRER où le texte respire. Une coupure imposée par la longueur peut
+    tomber au milieu d'une phrase, et c'est précisément celle-là qu'on veut
+    voir ; sans le texte, la carte ne dit que des secondes.
     """
     trames: list[bytes] = []
     frequence, largeur = FREQUENCE, 2
@@ -539,6 +545,7 @@ def assembler_audio(morceaux: list[tuple[bytes, float]],
             "fin": round((position + n) / frequence, 6),
             "silence": round(silence / frequence, 6),
             "nature": (natures[indice] if natures and indice < len(natures) else "phrase"),
+            "texte": (textes[indice] if textes and indice < len(textes) else ""),
         })
         position += n + silence
         if silence:
@@ -569,19 +576,46 @@ def prononcer(moteur, texte: str, reference: Path,
     # supprimer. Les deux réglages exposés pilotent la respiration et le
     # paragraphe ; les silences internes à une phrase suivent la respiration,
     # proportionnellement, pour qu'un réglage à zéro les emporte aussi.
-    courte = float(reglages.get("pause_courte", PAUSE_COURTE))
-    longue = float(reglages.get("pause_longue", PAUSE_LONGUE))
-    # La pause de phrase vient du style choisi dans l'application. À défaut,
-    # elle suit la respiration, proportionnellement, pour qu'un réglage des
-    # pauses à zéro emporte aussi les silences internes.
-    phrase = reglages.get("pause_phrase")
-    phrase = (float(phrase) if phrase not in (None, "")
-              else courte * (PAUSE_PHRASE / PAUSE_COURTE))
+    # Les quatre natures de silence sont réglables une à une. Elles ne
+    # l'étaient pas : deux curseurs seulement pilotaient « ligne » et
+    # « paragraphe », et les deux autres suivaient proportionnellement — de
+    # sorte qu'on ne pouvait ni allonger une pause de phrase sans allonger la
+    # respiration, ni raccourcir une coupure de longueur sans tout raccourcir.
+    #
+    # Les anciens noms restent acceptés : une page plus ancienne continue de
+    # fonctionner, et retrouve exactement le comportement d'avant.
+    def duree(cle, ancienne, defaut):
+        valeur = reglages.get(cle)
+        if valeur in (None, ""):
+            valeur = reglages.get(ancienne)
+        if valeur in (None, ""):
+            return None
+        try:
+            return max(0.0, float(valeur))
+        except (TypeError, ValueError):
+            return None
+
+    ligne = duree("pause_ligne", "pause_courte", PAUSE_COURTE)
+    if ligne is None:
+        ligne = PAUSE_COURTE
+    paragraphe = duree("pause_paragraphe", "pause_longue", PAUSE_LONGUE)
+    if paragraphe is None:
+        paragraphe = PAUSE_LONGUE
+    # Sans valeur explicite, les deux autres suivent la respiration dans la
+    # proportion d'origine : un réglage des pauses à zéro emporte alors tout.
+    phrase = duree("pause_phrase", "pause_phrase", PAUSE_PHRASE)
+    if phrase is None:
+        phrase = ligne * (PAUSE_PHRASE / PAUSE_COURTE)
+    proposition = duree("pause_proposition", "pause_proposition", PAUSE_PROPOSITION)
+    if proposition is None:
+        proposition = ligne * (PAUSE_PROPOSITION / PAUSE_COURTE)
+
+    courte = ligne          # conservé : la suite de la fonction s'en sert
     durees = {
-        "proposition": courte * (PAUSE_PROPOSITION / PAUSE_COURTE),
+        "proposition": proposition,
         "phrase":      phrase,
-        "ligne":       courte,
-        "paragraphe":  longue,
+        "ligne":       ligne,
+        "paragraphe":  paragraphe,
         "fin":         0.0,
     }
 
@@ -591,6 +625,7 @@ def prononcer(moteur, texte: str, reference: Path,
 
     morceaux = []
     natures = []
+    textes = []
     for indice, (segment, nature) in enumerate(segments):
         # Le rang du morceau décale la graine, quand il y en a une : chaque
         # morceau part alors d'un état différent du générateur, sans que la
@@ -607,7 +642,8 @@ def prononcer(moteur, texte: str, reference: Path,
         duree = durees.get(nature, courte)
         morceaux.append((audio, duree / vitesse))
         natures.append(nature)
-    audio, decoupe = assembler_audio(morceaux, natures)
+        textes.append(segment)
+    audio, decoupe = assembler_audio(morceaux, natures, textes)
     return audio, "audio/wav", decoupe
 
 

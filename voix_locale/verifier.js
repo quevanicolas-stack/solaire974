@@ -1441,6 +1441,102 @@ async function creerVoix(page, nom) {
     'curseurs ' + (propose.curseursIntacts ? 'intacts' : 'MODIFIÉS'));
   verifier('La proposition n\'ajoute ni compression ni porte',
     /Aucune compression, aucune porte/.test(propose.texte));
+
+  // ════════ RESPIRATIONS ════════
+  console.log('\n--- Respirations ---');
+
+  // Quatre natures de silence, quatre durees. Deux curseurs seulement etaient
+  // exposes, et ils mentaient : « pause entre propositions » pilotait en
+  // realite le retour a la ligne, « pause entre phrases » le paragraphe. Les
+  // deux autres durees se deduisaient au serveur, proportionnellement, et
+  // n'etaient donc pas atteignables.
+  verifier('Quatre durées de respiration, une par nature',
+    await page.evaluate(() =>
+      ['pauseProposition','pausePhrase','pauseLigne','pauseParagraphe']
+        .every(id => !!document.getElementById(id))));
+  verifier('Les deux curseurs aux noms faux ont disparu',
+    await page.evaluate(() =>
+      !document.getElementById('pauseCourte') && !document.getElementById('pauseLongue')));
+  verifier('Les quatre durées partent explicitement au moteur',
+    await page.evaluate(() => {
+      const v = reglagesMoteur();
+      return ['pause_proposition','pause_phrase','pause_ligne','pause_paragraphe']
+        .every(c => typeof v[c] === 'number' && isFinite(v[c]));
+    }));
+
+  // Un texte qui porte les QUATRE natures : une phrase trop longue, deux
+  // phrases dans une ligne, un retour a la ligne, une ligne vide.
+  const resp = await page.evaluate(async () => {
+    const memoire = document.getElementById('texteEssai').value;
+    document.getElementById('texteEssai').value =
+      'Première phrase. Deuxième phrase dans la même ligne.\n' +
+      'Une ligne qui suit, après un retour à la ligne voulu.\n\n' +
+      'Un paragraphe neuf, qui contient une phrase délibérément très longue afin de dépasser ' +
+      'la limite que le moteur accepte d’un seul tenant, et pour cela il faut vraiment ' +
+      'beaucoup de mots, encore et encore, jusqu’à ce que la coupure devienne inévitable ' +
+      'et tombe au milieu, sans que personne ne l’ait choisie.';
+    await genererEssai();
+    const g = etat.generationEnCours;
+    const decoupe = g.decoupe || [];
+
+    const duree = async (blob) => {
+      const a = await decoderAudio(blob);
+      return a.length / a.sampleRate;
+    };
+    const base = {pauseProposition:160, pausePhrase:250, pauseLigne:280, pauseParagraphe:550};
+    const poser = (o) => Object.keys(o).forEach(k => document.getElementById(k).value = o[k]);
+    const compte = {};
+    decoupe.forEach(m => compte[m.nature] = (compte[m.nature] || 0) + 1);
+
+    poser(base);
+    const ref = await duree(await rejouerPauses(g.source, g.decoupe, dureesDePause()));
+    const effet = {};
+    for (const [id, nature] of [['pauseProposition','proposition'], ['pausePhrase','phrase'],
+                                ['pauseLigne','ligne'], ['pauseParagraphe','paragraphe']]) {
+      poser(base);
+      // Une seconde de plus par silence de cette nature : le gain de duree doit
+      // valoir exactement le nombre de silences de cette nature.
+      document.getElementById(id).value = base[id] + 1000;
+      const d = await duree(await rejouerPauses(g.source, g.decoupe, dureesDePause()));
+      effet[nature] = {gain: d - ref, attendu: compte[nature] || 0};
+    }
+    poser(base);
+    majPauses();
+    const carte = document.getElementById('carteRespirations').textContent;
+    document.getElementById('texteEssai').value = memoire;
+    return {natures: decoupe.map(m => m.nature), textes: decoupe.map(m => m.texte || ''),
+            effet, carte};
+  });
+
+  verifier('Les quatre natures de silence apparaissent sur un texte qui les porte',
+    ['proposition','phrase','ligne','paragraphe'].every(n => resp.natures.includes(n)),
+    resp.natures.join(', '));
+  for (const nature of ['proposition','phrase','ligne','paragraphe']) {
+    const e = resp.effet[nature];
+    verifier('La durée « ' + nature +' » agit sur sa nature, et sur elle seule',
+      e.attendu > 0 && Math.abs(e.gain - e.attendu) < 0.05,
+      e.gain.toFixed(3) + ' s de plus pour ' + e.attendu + ' silence(s) de cette nature');
+  }
+  // Sans le texte de chaque morceau, la carte ne dit que des secondes : on ne
+  // sait pas OU la coupure imposee est tombee, donc on ne peut pas la deplacer.
+  verifier('Chaque morceau de la carte porte son texte',
+    resp.textes.length > 1 && resp.textes.every(t => t.trim().length > 0),
+    resp.textes.length + ' morceau(x), le premier : « ' + resp.textes[0].slice(0, 30) + ' »');
+  verifier('La carte nomme la coupure imposée et dit comment la déplacer',
+    /coupure de longueur/.test(resp.carte) && /coupez la phrase vous-même/.test(resp.carte),
+    resp.carte.replace(/\s+/g, ' ').slice(0, 80));
+
+  // Les profils d'avant portaient les deux noms faux : leurs durees doivent
+  // revenir la ou elles agissaient reellement, sinon le travail est perdu.
+  verifier('Un profil d\'avant retrouve ses durées de respiration',
+    await page.evaluate(() => {
+      const avant = ['pauseLigne','pauseParagraphe'].map(id => document.getElementById(id).value);
+      appliquerReglagesProfil({nombres: {pauseCourte: 700, pauseLongue: 1400}});
+      const apres = ['pauseLigne','pauseParagraphe'].map(id => document.getElementById(id).value);
+      appliquerReglagesProfil({nombres: {pauseLigne: +avant[0], pauseParagraphe: +avant[1]}});
+      return apres[0] === '700' && apres[1] === '1400';
+    }));
+
   console.log('\n--- Retrait du souffle ---');
 
   // Le souffle est ce que l'utilisateur entend en premier : un grésillement
