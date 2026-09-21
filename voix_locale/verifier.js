@@ -1891,6 +1891,38 @@ async function creerVoix(page, nom) {
   });
   verifier('Un réglage incomplet ne casse pas la génération', resiste === 'ok', resiste);
 
+  // Un refus de FastAPI nomme le champ fautif, et la page le jetait : toute
+  // erreur de validation devenait « paramètres invalides », c'est-a-dire rien.
+  const refusValidation = await page.evaluate(async () => {
+    const corps = new FormData();
+    corps.append('name', 'Essai');          // pas de fichier : FastAPI refuse
+    const r = await fetch(baseApi() + '/voices/add', {method:'POST', body: corps});
+    const texte = await messageErreur(r.clone());
+    return {code: r.status, texte,
+            // La page doit aussi savoir lire la forme brute de FastAPI, au cas
+            // ou elle parlerait a un serveur qui ne la traduit pas.
+            brute: detailFastapi([{loc:['body','files'], msg:'Field required'}])};
+  });
+  verifier('Un refus de validation nomme le champ fautif',
+    refusValidation.code === 422 && /files/.test(refusValidation.texte) &&
+    !/paramètres invalides/.test(refusValidation.texte), refusValidation.texte);
+  verifier('La page sait lire la forme brute de FastAPI',
+    /files/.test(refusValidation.brute), refusValidation.brute);
+
+  // Une prise sans audio ne doit jamais partir : FormData la convertirait en
+  // chaine, et le serveur repondrait sans dire laquelle manquait.
+  const sansAudio = await page.evaluate(async () => {
+    const memoire = etat.echantillons;
+    etat.echantillons = [{id:'vide', nom:'Prise fantôme', blob:null, duree:3}];
+    await creerVoix(false);
+    const texte = document.getElementById('resCreation').textContent;
+    etat.echantillons = memoire;
+    return texte;
+  });
+  verifier('Une prise sans audio est refusée avant l\'envoi, et nommée',
+    /Prise fantôme/.test(sansAudio) && /sans audio/i.test(sansAudio),
+    sansAudio.replace(/\s+/g, ' ').slice(0, 80));
+
   verifier('Une erreur locale n\'est pas imputée au serveur',
     await page.evaluate(() =>
       messageReseau(new RangeError('valeur non finie')).includes('dans la page')));

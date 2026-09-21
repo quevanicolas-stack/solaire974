@@ -34,12 +34,13 @@ from pathlib import Path
 import anyio.to_thread
 import uvicorn
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, Response
 
 RACINE = Path(__file__).resolve().parent
 DOSSIER_VOIX = RACINE / "donnees" / "voix"
-VERSION = "2026.09.21c"     # affichée au démarrage et sur « / » : sert à vérifier
+VERSION = "2026.09.21d"     # affichée au démarrage et sur « / » : sert à vérifier
                            # que le fichier en place est bien le dernier
 FREQUENCE = 24000          # fréquence d'échantillonnage de sortie, en hertz
 """
@@ -1253,6 +1254,30 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.exception_handler(RequestValidationError)
+async def requete_invalide(requete: Request, erreur_validation: RequestValidationError):
+    """
+    Traduit le refus de FastAPI dans la forme que l'application sait lire.
+
+    Quand une requête n'atteint même pas notre code — un champ manquant, un
+    fichier qui n'en est pas un — FastAPI répond par une LISTE de détails, là
+    où tout le reste du serveur répond par un objet portant un message. La page
+    ne savait lire que le second : le refus devenait « paramètres invalides »,
+    c'est-à-dire rien, alors que le serveur nommait le champ fautif.
+
+    On le traduit donc ici, et on l'écrit aussi dans le terminal : c'est là
+    qu'on regarde quand l'écran ne dit pas assez.
+    """
+    details = []
+    for e in erreur_validation.errors():
+        ou = " → ".join(str(x) for x in e.get("loc", ()) if x != "body")
+        quoi = e.get("msg") or e.get("type") or "refusé"
+        details.append(f"champ « {ou} » : {quoi}" if ou else quoi)
+    message = " ; ".join(details[:3]) or "paramètres invalides."
+    print(f"[refus] {requete.method} {requete.url.path} — {message}", flush=True)
+    return JSONResponse(status_code=422, content={"detail": {"message": message}})
+
 
 etat = {
     "moteur": MoteurTest(),

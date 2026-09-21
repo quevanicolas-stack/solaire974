@@ -2529,12 +2529,32 @@ function entetes(json){
 }
 
 /* Traduit une erreur du service en message compréhensible. */
+/* Le refus de FastAPI décrit le champ fautif, et la page le jetait.
+
+   Le serveur rend deux formes de `detail` : la nôtre, un objet portant un
+   message écrit à la main, et celle de FastAPI quand la requête n'a même pas
+   atteint notre code — une LISTE, un élément par champ refusé. La page ne
+   savait lire que la première : toute erreur de validation devenait
+   « paramètres invalides », c'est-à-dire rien. Le serveur disait pourtant
+   « Field required, body → files » ; il suffisait de le lire. */
+function detailFastapi(liste){
+  if(!Array.isArray(liste) || !liste.length) return '';
+  return liste.slice(0, 3).map(e => {
+    const ou = Array.isArray(e.loc)
+      ? e.loc.filter(x => x !== 'body').join(' → ')
+      : '';
+    const quoi = e.msg || e.type || 'refusé';
+    return ou ? 'champ « ' + ou + ' » : ' + quoi : quoi;
+  }).join(' ; ');
+}
+
 async function messageErreur(reponse){
   let brut = '';
   try{
     const donnees = await reponse.json();
     brut = (donnees && donnees.detail && (donnees.detail.message || donnees.detail.status)) ||
-           (typeof donnees.detail === 'string' ? donnees.detail : '') || '';
+           (typeof donnees.detail === 'string' ? donnees.detail : '') ||
+           detailFastapi(donnees && donnees.detail) || '';
   }catch(e){}
 
   if(reponse.status === 422) return 'Requête refusée : ' + (brut || 'paramètres invalides.');
@@ -2748,12 +2768,31 @@ async function creerVoix(remplacer){
   $('resCreation').innerHTML = '';
 
   try{
+    /* Une prise dont l'audio manque ne doit jamais partir.
+
+       `FormData.append` ne refuse rien : il convertit en chaîne ce qui n'est
+       pas un Blob, et le serveur reçoit alors le mot « undefined » à la place
+       d'un fichier. Sa réponse est juste — « Expected UploadFile, received
+       str » — mais elle arrive après l'envoi de toutes les prises, et ne dit
+       pas laquelle manquait. Mieux vaut refuser ici, en nommant la prise. */
+    const sansAudio = etat.echantillons.filter(e => !(e.blob instanceof Blob) || !e.blob.size);
+    if(sansAudio.length){
+      $('resCreation').innerHTML = '<div class="note n-red">' +
+        '<div class="note-t">Prise(s) sans audio</div>' +
+        echapper(sansAudio.map(e => e.nom || e.id).join(', ')) +
+        (sansAudio.length > 1 ? ' ne portent plus leur enregistrement.' : ' ne porte plus son enregistrement.') +
+        ' Le stockage local l’a perdu — cela arrive quand la base est vidée ou quand le ' +
+        'navigateur libère de la place. Supprimez cette ou ces prises et réenregistrez-les, ' +
+        'puis relancez la création.</div>';
+      return;
+    }
+
     const donnees = new FormData();
     donnees.append('name', nom);
     const desc = $('voixDesc').value.trim();
     if(desc) donnees.append('description', desc);
     if($('optBruit').checked) donnees.append('remove_background_noise', 'true');
-    etat.echantillons.forEach(e=>donnees.append('files', e.blob, e.nom));
+    etat.echantillons.forEach(e=>donnees.append('files', e.blob, e.nom || 'prise.wav'));
 
     /* Content-Type volontairement omis : le navigateur pose lui-même la frontière multipart. */
     const r = await fetch(baseApi() + '/voices/add', {method:'POST', body:donnees});
